@@ -17,8 +17,6 @@ abstract class PrismItem {
     abstract val name: Component
     abstract val material: Material
     open val itemModel: Key? = null
-
-    open val recipe: Recipe? = null
     open val recipes: List<Recipe>? = null
 
     companion object {

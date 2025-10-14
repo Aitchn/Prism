@@ -14,7 +14,7 @@ import org.bukkit.inventory.ShapedRecipe
 import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.inventory.recipe.CraftingBookCategory
 
-internal object CompressedCobblestone: PrismItem() {
+object CompressedCobblestone: PrismItem() {
     override val id: Key = PrismUtil.key("compressed_cobblestone")
     override val name: Component = Component.translatable("item.prism.compressed_cobblestone", "Compressed Cobblestone")
     override val material: Material = Material.COBBLESTONE

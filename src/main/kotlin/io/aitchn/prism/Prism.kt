@@ -1,6 +1,5 @@
 package io.aitchn.prism
 
-import io.aitchn.prism.core.item.TestItem
 import io.aitchn.prism.core.command.GiveCommand
 import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestone
 import io.aitchn.prism.core.item.compressed.cobblestone.DoubleCompressedCobblestone
@@ -14,7 +13,6 @@ class Prism : JavaPlugin() {
 
     private fun register() {
         PrismItemRegistry.register(
-            TestItem,
             CompressedCobblestone,
             DoubleCompressedCobblestone
         )
