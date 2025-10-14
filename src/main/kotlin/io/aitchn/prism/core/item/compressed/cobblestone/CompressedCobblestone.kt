@@ -3,6 +3,7 @@ package io.aitchn.prism.core.item.compressed.cobblestone
 import io.aitchn.prism.api.PrismItem
 import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.api.util.conversion
+import io.aitchn.prism.api.util.stackOf
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
@@ -18,15 +19,23 @@ internal object CompressedCobblestone: PrismItem() {
     override val material: Material = Material.COBBLESTONE
 
     override val recipes: List<Recipe> = listOf(
+        // 鵝卵石 -> 壓縮
         ShapedRecipe(PrismUtil.namespacedKey("compressed_cobblestone_craft"), build()).apply {
             shape("CCC", "CCC", "CCC")
             setIngredient('C', ItemStack(Material.COBBLESTONE))
             group = id.asString()
             category = CraftingBookCategory.MISC
         },
-        ShapelessRecipe(PrismUtil.namespacedKey("compressed_cobblestone_uncraft"), ItemStack(Material.COBBLESTONE, 9)).apply {
-            addIngredient(build())
+        // 二重壓縮 -> 壓縮
+        ShapelessRecipe(PrismUtil.namespacedKey("compressed_cobblestone_uncraft"), build().stackOf(9)).apply {
+            addIngredient(DoubleCompressedCobblestone.build())
             group = id.asString()
+            category = CraftingBookCategory.MISC
+        },
+        // 壓縮 -> 鵝卵石
+        ShapelessRecipe(PrismUtil.namespacedKey("cobblestone_uncraft"), ItemStack(Material.COBBLESTONE).stackOf(9)).apply {
+            addIngredient(build())
+            group = "prism:cobblestone"
             category = CraftingBookCategory.MISC
         }
     )
