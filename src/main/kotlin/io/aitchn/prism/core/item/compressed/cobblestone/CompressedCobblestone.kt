@@ -24,8 +24,8 @@ internal object CompressedCobblestone: PrismItem() {
             group = id.asString()
             category = CraftingBookCategory.MISC
         },
-        ShapelessRecipe(PrismUtil.namespacedKey("compressed_cobblestone_uncraft"), build()).apply {
-            addIngredient(DoubleCompressedCobblestone.build())
+        ShapelessRecipe(PrismUtil.namespacedKey("compressed_cobblestone_uncraft"), ItemStack(Material.COBBLESTONE, 9)).apply {
+            addIngredient(build())
             group = id.asString()
             category = CraftingBookCategory.MISC
         }
