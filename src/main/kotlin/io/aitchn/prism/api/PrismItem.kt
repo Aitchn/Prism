@@ -15,6 +15,7 @@ abstract class PrismItem {
     abstract val id: Key
     abstract val name: Component
     abstract val material: Material
+    open val itemModel: Key? = null
 
     companion object {
         val ITEM_ID = NamespacedKey("prism", "item_id")
@@ -23,6 +24,10 @@ abstract class PrismItem {
     /**
      * 名稱方面是唯一不可更改 更新程序是
      * `Paper` -> `editItemStack()` -> `build()`
+     *
+     * `item_name` 使用 name
+     * `item_model` 使用 itemModel
+     * 這是無法更改的地方
      */
     open fun editItemStack(item: ItemStack) {}
 
@@ -37,6 +42,10 @@ abstract class PrismItem {
         }
 
         item.setData(DataComponentTypes.ITEM_NAME, name)
+
+        itemModel?.let {
+            item.setData(DataComponentTypes.ITEM_MODEL, it)
+        } ?: item.resetData(DataComponentTypes.ITEM_MODEL)
 
         return item
     }

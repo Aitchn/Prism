@@ -1,6 +1,6 @@
 package io.aitchn.prism
 
-import io.aitchn.prism.core.TestItem
+import io.aitchn.prism.core.item.TestItem
 import io.aitchn.prism.core.command.GiveCommand
 import io.aitchn.prism.core.listener.ServerLoadListener
 import io.aitchn.prism.core.registry.PrismCommandRegistry

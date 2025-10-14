@@ -1,4 +1,4 @@
-package io.aitchn.prism.core
+package io.aitchn.prism.core.item
 
 import io.aitchn.prism.api.PrismItem
 import net.kyori.adventure.key.Key
