@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.Recipe
 import org.bukkit.persistence.PersistentDataContainer
 import org.bukkit.persistence.PersistentDataType
 
@@ -16,6 +17,9 @@ abstract class PrismItem {
     abstract val name: Component
     abstract val material: Material
     open val itemModel: Key? = null
+
+    open val recipe: Recipe? = null
+    open val recipes: List<Recipe>? = null
 
     companion object {
         val ITEM_ID = NamespacedKey("prism", "item_id")
