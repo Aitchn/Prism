@@ -1,4 +1,4 @@
-package io.aitchn.prism.core.item.compressed.iron
+package io.aitchn.prism.core.item.compressed.copper
 
 import io.aitchn.prism.api.PrismItem
 import io.aitchn.prism.api.util.PrismUtil
@@ -6,6 +6,7 @@ import io.aitchn.prism.api.util.add
 import io.aitchn.prism.api.util.conversion
 import io.aitchn.prism.api.util.stackOf
 import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
+import io.aitchn.prism.core.item.compressed.iron.CompressedIron
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
@@ -15,21 +16,21 @@ import org.bukkit.inventory.ShapedRecipe
 import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.inventory.recipe.CraftingBookCategory
 
-object CompressedIron: PrismItem() {
-    override val id: Key = PrismUtil.key("compressed_iron")
-    override val name: Component = Component.translatable("item.prism.compressed_iron", "Compressed Iron")
-    override val material: Material = Material.IRON_INGOT
+object CompressedCopper: PrismItem() {
+    override val id: Key = PrismUtil.key("compressed_copper")
+    override val name: Component = Component.translatable("item.prism.compressed_copper", "Compressed Copper")
+    override val material: Material = Material.COPPER_INGOT
 
     override val recipes: List<Recipe> = listOf(
         ShapedRecipe(id.add("_craft").conversion(), build()).apply {
             shape("CCC", "CCC", "CCC")
-            setIngredient('C', ItemStack(Material.IRON_BLOCK))
+            setIngredient('C', ItemStack(Material.COPPER_BLOCK))
             group = id.asString()
             category = CraftingBookCategory.MISC
         },
-        ShapelessRecipe(CompressedEmerald.id.add("_uncraft").conversion(), ItemStack(Material.IRON_BLOCK).stackOf(9)).apply {
+        ShapelessRecipe(CompressedEmerald.id.add("_uncraft").conversion(), ItemStack(Material.COPPER_BLOCK).stackOf(9)).apply {
             addIngredient(build())
-            group = "prism:iron_block"
+            group = "prism:copper_block"
             category = CraftingBookCategory.MISC
         }
     )
