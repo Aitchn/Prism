@@ -6,7 +6,6 @@ import io.aitchn.prism.api.util.add
 import io.aitchn.prism.api.util.conversion
 import io.aitchn.prism.api.util.stackOf
 import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
-import io.aitchn.prism.core.item.compressed.iron.CompressedIron
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import org.bukkit.Material

@@ -5,6 +5,7 @@ import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestone
 import io.aitchn.prism.core.item.compressed.cobblestone.DoubleCompressedCobblestone
 import io.aitchn.prism.core.item.compressed.copper.CompressedCopper
 import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
+import io.aitchn.prism.core.item.compressed.gold.CompressedGold
 import io.aitchn.prism.core.item.compressed.iron.CompressedIron
 import io.aitchn.prism.core.listener.ServerLoadListener
 import io.aitchn.prism.core.registry.PrismCommandRegistry
@@ -20,7 +21,8 @@ class Prism : JavaPlugin() {
             DoubleCompressedCobblestone,
             CompressedIron,
             CompressedCopper,
-            CompressedEmerald
+            CompressedEmerald,
+            CompressedGold
         )
 
         PrismCommandRegistry.register(
