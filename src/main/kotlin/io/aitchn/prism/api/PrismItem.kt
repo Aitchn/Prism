@@ -34,7 +34,7 @@ abstract class PrismItem {
     open fun editItemStack(item: ItemStack) {}
 
     @Suppress("UnstableApiUsage")
-    fun build(): ItemStack {
+    fun build(itemModelEnabled: Boolean = false): ItemStack {
         require(material.isItem) {"Item material cannot be an item!"}
         val item = ItemStack(material)
         editItemStack(item)
@@ -46,7 +46,9 @@ abstract class PrismItem {
         item.setData(DataComponentTypes.ITEM_NAME, name)
 
         itemModel?.let {
-            item.setData(DataComponentTypes.ITEM_MODEL, it)
+            if (itemModelEnabled) {
+                item.setData(DataComponentTypes.ITEM_MODEL, it)
+            }
         } ?: item.resetData(DataComponentTypes.ITEM_MODEL)
 
         return item

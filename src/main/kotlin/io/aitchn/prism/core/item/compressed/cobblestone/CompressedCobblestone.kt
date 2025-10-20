@@ -18,6 +18,7 @@ object CompressedCobblestone: PrismItem() {
     override val id: Key = PrismUtil.key("compressed_cobblestone")
     override val name: Component = Component.translatable("item.prism.compressed_cobblestone", "Compressed Cobblestone")
     override val material: Material = Material.COBBLESTONE
+    override val itemModel: Key = PrismUtil.key("item/compressed_cobblestone")
 
     override val recipes: List<Recipe> = listOf(
         // 鵝卵石 -> 壓縮
