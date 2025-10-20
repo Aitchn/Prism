@@ -20,13 +20,13 @@ object CompressedEmerald: PrismItem() {
     override val material: Material = Material.EMERALD
 
     override val recipes: List<Recipe> = listOf(
-        ShapedRecipe(id.add("_craft").conversion(), build()).apply {
+        ShapedRecipe(id.add("craft").conversion(), build()).apply {
             shape("CCC", "CCC", "CCC")
             setIngredient('C', ItemStack(Material.EMERALD_BLOCK))
             group = id.asString()
             category = CraftingBookCategory.MISC
         },
-        ShapelessRecipe(id.add("_uncraft").conversion(), ItemStack(Material.EMERALD_BLOCK).stackOf(9)).apply {
+        ShapelessRecipe(id.add("uncraft").conversion(), ItemStack(Material.EMERALD_BLOCK).stackOf(9)).apply {
             addIngredient(build())
             group = "prism:emerald_block"
             category = CraftingBookCategory.MISC

@@ -21,13 +21,13 @@ object CompressedCopper: PrismItem() {
     override val material: Material = Material.COPPER_INGOT
 
     override val recipes: List<Recipe> = listOf(
-        ShapedRecipe(id.add("_craft").conversion(), build()).apply {
+        ShapedRecipe(id.add("craft").conversion(), build()).apply {
             shape("CCC", "CCC", "CCC")
             setIngredient('C', ItemStack(Material.COPPER_BLOCK))
             group = id.asString()
             category = CraftingBookCategory.MISC
         },
-        ShapelessRecipe(CompressedEmerald.id.add("_uncraft").conversion(), ItemStack(Material.COPPER_BLOCK).stackOf(9)).apply {
+        ShapelessRecipe(id.add("uncraft").conversion(), ItemStack(Material.COPPER_BLOCK).stackOf(9)).apply {
             addIngredient(build())
             group = "prism:copper_block"
             category = CraftingBookCategory.MISC
