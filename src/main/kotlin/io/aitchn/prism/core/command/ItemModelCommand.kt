@@ -12,9 +12,10 @@ import org.bukkit.entity.Player
 
 object ItemModelCommand: PrismSubCommand {
     override val name: String = "itemmodel"
+    override val permission: String = "prism.command.itemmodel"
 
     override fun build(): LiteralArgumentBuilder<CommandSourceStack> = literal(name)
-        .requires { it.sender is Player }
+        .requires { it.sender.hasPermission(permission) }
         .executes { ctx ->
             val player = ctx.source.sender as? Player
             if (player == null) {

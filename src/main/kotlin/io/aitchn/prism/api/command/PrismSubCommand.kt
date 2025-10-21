@@ -5,5 +5,6 @@ import io.papermc.paper.command.brigadier.CommandSourceStack
 
 interface PrismSubCommand {
     val name: String
+    val permission: String
     fun build(): LiteralArgumentBuilder<CommandSourceStack>
 }

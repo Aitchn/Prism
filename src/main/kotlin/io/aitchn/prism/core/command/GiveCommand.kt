@@ -18,8 +18,10 @@ import org.bukkit.entity.Player
 
 internal object GiveCommand: PrismSubCommand {
     override val name: String = "give"
+    override val permission: String = "prism.command.give"
 
     override fun build(): LiteralArgumentBuilder<CommandSourceStack> = literal(name)
+        .requires { it.sender.hasPermission(permission) }
         .then(
             argument("target", player())
                 .then(
