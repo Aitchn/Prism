@@ -5,6 +5,8 @@ import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
+import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.Recipe
 import org.bukkit.persistence.PersistentDataContainer
@@ -53,5 +55,8 @@ abstract class PrismItem {
 
         return item
     }
+
+    open fun onBlockPlace(event: BlockPlaceEvent) {}
+    open fun onBlockBreak(event: BlockBreakEvent) {}
 
 }

@@ -1,5 +1,6 @@
 package io.aitchn.prism.core.item.compressed.cobblestone
 
+import io.aitchn.prism.PrismIndex
 import io.aitchn.prism.api.PrismItem
 import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.api.util.add
@@ -8,6 +9,8 @@ import io.aitchn.prism.api.util.stackOf
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
+import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.Recipe
 import org.bukkit.inventory.ShapedRecipe
@@ -41,4 +44,14 @@ object CompressedCobblestone: PrismItem() {
             category = CraftingBookCategory.MISC
         }
     )
+
+    override fun onBlockPlace(event: BlockPlaceEvent) {
+        PrismUtil.setBlockFlag(PrismUtil.BLOCK_ID, event.block, id)
+        PrismIndex.add(event.block)
+    }
+
+    override fun onBlockBreak(event: BlockBreakEvent) {
+        val loc = event.block.location
+        loc.world.dropItemNaturally(loc, build())
+    }
 }
