@@ -1,6 +1,7 @@
 package io.aitchn.prism
 
 import com.comphenix.protocol.ProtocolLibrary
+import com.jeff_media.customblockdata.CustomBlockData
 import io.aitchn.prism.core.command.GiveCommand
 import io.aitchn.prism.core.command.ItemModelCommand
 import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestone
@@ -43,6 +44,7 @@ class Prism : JavaPlugin() {
         instance = this
 
         register()
+        CustomBlockData.registerListener(this)
 
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
             event.registrar().register(PrismCommandRegistry.buildRoot())

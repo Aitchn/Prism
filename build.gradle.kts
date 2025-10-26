@@ -4,7 +4,7 @@ plugins {
     id("xyz.jpenilla.run-paper") version "3.0.1"
 }
 
-group = "io.aitchn"
+group = "io.aitchn.prism"
 version = "0.0.1"
 
 repositories {
@@ -18,6 +18,7 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("com.jeff-media:custom-block-data:2.2.5")
 }
 
 tasks {
@@ -33,6 +34,10 @@ kotlin {
 
 tasks.build {
     dependsOn("shadowJar")
+}
+
+tasks.shadowJar {
+    relocate("com.jeff_media.customblockdata", "io.aitchn.prism.lib.customblockdata")
 }
 
 tasks.processResources {
