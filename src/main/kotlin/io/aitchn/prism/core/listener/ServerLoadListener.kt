@@ -6,12 +6,10 @@ import io.aitchn.prism.PrismIndex
 import io.aitchn.prism.api.PrismBlockItem
 import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.core.registry.PrismItemRegistry
-import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.block.Block
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
-import org.bukkit.event.block.BlockDropItemEvent
 import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.world.ChunkLoadEvent
 import org.bukkit.event.world.ChunkUnloadEvent
@@ -69,7 +67,6 @@ object ServerLoadListener: Listener {
                     customBlockAmount ++
                 }
                 customBlocks.forEach { bukkitEvent.blockList().remove(it) }
-                Bukkit.getLogger().info { "CustomBlockExplodeEvent 本次炸毀: $customBlockAmount 全部炸毀 ${bukkitEvent.blockList().size}" }
             }
         }
     }

@@ -1,12 +1,8 @@
 package io.aitchn.prism
 
-import org.bukkit.Bukkit
 import org.bukkit.Chunk
-import org.bukkit.Particle
 import org.bukkit.block.Block
-import org.bukkit.plugin.java.JavaPlugin
-import org.bukkit.scheduler.BukkitRunnable
-import java.util.UUID
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 object PrismIndex {

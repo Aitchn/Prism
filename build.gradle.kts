@@ -15,7 +15,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.8-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.10-R0.1-SNAPSHOT")
     compileOnly("net.dmulloy2:ProtocolLib:5.4.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("com.jeff-media:custom-block-data:2.2.5")
@@ -23,7 +23,7 @@ dependencies {
 
 tasks {
     runServer {
-        minecraftVersion("1.21.8")
+        minecraftVersion("1.21.10")
     }
 }
 
