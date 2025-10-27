@@ -11,6 +11,7 @@ import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
 import io.aitchn.prism.core.item.compressed.gold.CompressedGold
 import io.aitchn.prism.core.item.compressed.iron.CompressedIron
 import io.aitchn.prism.core.listener.BlockListener
+import io.aitchn.prism.core.listener.CraftListener
 import io.aitchn.prism.core.listener.ItemsViewListener
 import io.aitchn.prism.core.listener.ServerLoadListener
 import io.aitchn.prism.core.registry.PrismCommandRegistry
@@ -53,6 +54,7 @@ class Prism : JavaPlugin() {
 
         server.pluginManager.registerEvents(ServerLoadListener, this)
         server.pluginManager.registerEvents(BlockListener, this)
+        server.pluginManager.registerEvents(CraftListener, this)
 
         ProtocolLibrary.getProtocolManager().addPacketListener(ItemsViewListener)
 

@@ -24,6 +24,11 @@ object PrismUtil {
         data.set(id, PersistentDataType.STRING, value.asString())
     }
 
+    fun clearBlockFlag(block: Block) {
+        val data = CustomBlockData(block, Prism.instance)
+        data.clear()
+    }
+
     fun getBlockFlag(id: Key, block: Block): String? {
         val data = CustomBlockData(block, Prism.instance)
         return data.get(id.conversion(), PersistentDataType.STRING)

@@ -32,4 +32,8 @@ object PrismItemRegistry {
         }
         return id?.let { getItem(Key.key(it)) }
     }
+
+    fun hasItem(id: Key): Boolean = items.any { it.id == id }
+    fun hasItem(id: String): Boolean = items.any { it.id.toString() == id }
+    fun hasItem(item: ItemStack): Boolean = getItem(item) != null
 }

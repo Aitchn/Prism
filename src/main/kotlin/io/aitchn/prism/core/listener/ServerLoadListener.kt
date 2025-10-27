@@ -6,8 +6,13 @@ import io.aitchn.prism.PrismIndex
 import io.aitchn.prism.api.PrismBlockItem
 import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.core.registry.PrismItemRegistry
+import org.bukkit.Bukkit
+import org.bukkit.Material
+import org.bukkit.block.Block
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import org.bukkit.event.block.BlockDropItemEvent
+import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.world.ChunkLoadEvent
 import org.bukkit.event.world.ChunkUnloadEvent
 import org.bukkit.persistence.PersistentDataType
@@ -49,6 +54,23 @@ object ServerLoadListener: Listener {
     @EventHandler
     fun onCustomBlockDataRemove(event: CustomBlockDataRemoveEvent) {
         val id = event.customBlockData.get(PrismUtil.BLOCK_ID, PersistentDataType.STRING)?: return
-        (PrismItemRegistry.getItem(id) as? PrismBlockItem)?.block?.onCustomBlockDataRemove(event.block, event.customBlockData)
+        val item = PrismItemRegistry.getItem(id)
+        (item as? PrismBlockItem)?.block?.onCustomBlockDataRemove(event.block, event.customBlockData)
+        when (val bukkitEvent = event.bukkitEvent) {
+            is EntityExplodeEvent -> {
+                val customBlocks = mutableListOf<Block>()
+                var customBlockAmount = 0
+                bukkitEvent.blockList().forEach { block ->
+                    val id = PrismUtil.getBlockFlag(PrismUtil.BLOCK_ID, block) ?: return@forEach
+                    val item = PrismItemRegistry.getItem(id) ?: return@forEach
+                    block.world.dropItemNaturally(block.location, item.build())
+                    PrismUtil.clearBlockFlag(block)
+                    block.type = Material.AIR
+                    customBlockAmount ++
+                }
+                customBlocks.forEach { bukkitEvent.blockList().remove(it) }
+                Bukkit.getLogger().info { "CustomBlockExplodeEvent 本次炸毀: $customBlockAmount 全部炸毀 ${bukkitEvent.blockList().size}" }
+            }
+        }
     }
 }
