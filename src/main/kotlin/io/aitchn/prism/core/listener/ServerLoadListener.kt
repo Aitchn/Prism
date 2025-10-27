@@ -3,11 +3,14 @@ package io.aitchn.prism.core.listener
 import com.jeff_media.customblockdata.events.CustomBlockDataMoveEvent
 import com.jeff_media.customblockdata.events.CustomBlockDataRemoveEvent
 import io.aitchn.prism.PrismIndex
+import io.aitchn.prism.api.PrismBlockItem
 import io.aitchn.prism.api.util.PrismUtil
+import io.aitchn.prism.core.registry.PrismItemRegistry
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.world.ChunkLoadEvent
 import org.bukkit.event.world.ChunkUnloadEvent
+import org.bukkit.persistence.PersistentDataType
 
 object ServerLoadListener: Listener {
 
@@ -20,9 +23,8 @@ object ServerLoadListener: Listener {
                 for (y in chunk.world.minHeight until chunk.world.maxHeight) {
                     val block = chunk.getBlock(x, y, z)
                     if (block.isEmpty) continue
-                    if (PrismUtil.hasBlockFlag(PrismUtil.BLOCK_ID, block)) {
-                        PrismIndex.add(block)
-                    }
+                    val id = PrismUtil.getBlockFlag(PrismUtil.BLOCK_ID, block) ?: continue
+                    (PrismItemRegistry.getItem(id) as? PrismBlockItem)?.block?.onChunkLoad(block)
                 }
             }
         }
@@ -33,18 +35,20 @@ object ServerLoadListener: Listener {
         val chunk = event.chunk
         PrismIndex.allIn(chunk).forEach { bp ->
             val block = chunk.world.getBlockAt(bp.x, bp.y, bp.z)
-            PrismIndex.remove(block)
+            val id = PrismUtil.getBlockFlag(PrismUtil.BLOCK_ID, block) ?: return@forEach
+            (PrismItemRegistry.getItem(id) as? PrismBlockItem)?.block?.onChunkUnload(block)
         }
     }
 
     @EventHandler
     fun onCustomBlockDataMove(event: CustomBlockDataMoveEvent) {
-        PrismIndex.remove(event.block)
-        PrismIndex.add(event.blockTo)
+        val id = event.customBlockData.get(PrismUtil.BLOCK_ID, PersistentDataType.STRING)?: return
+        (PrismItemRegistry.getItem(id) as? PrismBlockItem)?.block?.onCustomBlockDataMove(event.block, event.blockTo, event.customBlockData)
     }
 
     @EventHandler
     fun onCustomBlockDataRemove(event: CustomBlockDataRemoveEvent) {
-        PrismIndex.remove(event.block)
+        val id = event.customBlockData.get(PrismUtil.BLOCK_ID, PersistentDataType.STRING)?: return
+        (PrismItemRegistry.getItem(id) as? PrismBlockItem)?.block?.onCustomBlockDataRemove(event.block, event.customBlockData)
     }
 }

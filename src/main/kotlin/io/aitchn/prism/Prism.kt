@@ -4,7 +4,7 @@ import com.comphenix.protocol.ProtocolLibrary
 import com.jeff_media.customblockdata.CustomBlockData
 import io.aitchn.prism.core.command.GiveCommand
 import io.aitchn.prism.core.command.ItemModelCommand
-import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestone
+import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestoneItem
 import io.aitchn.prism.core.item.compressed.cobblestone.DoubleCompressedCobblestone
 import io.aitchn.prism.core.item.compressed.copper.CompressedCopper
 import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
@@ -27,7 +27,7 @@ class Prism : JavaPlugin() {
 
     private fun register() {
         PrismItemRegistry.register(
-            CompressedCobblestone,
+            CompressedCobblestoneItem,
             DoubleCompressedCobblestone,
             CompressedIron,
             CompressedCopper,

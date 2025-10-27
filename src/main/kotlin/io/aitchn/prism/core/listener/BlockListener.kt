@@ -1,6 +1,7 @@
 package io.aitchn.prism.core.listener
 
-import io.aitchn.prism.Prism
+import io.aitchn.prism.api.PrismBlock
+import io.aitchn.prism.api.PrismBlockItem
 import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.core.registry.PrismItemRegistry
 import org.bukkit.event.EventHandler
@@ -13,15 +14,15 @@ object BlockListener: Listener {
     @EventHandler
     fun onBlockPlace(event: BlockPlaceEvent) {
         val item = event.itemInHand
-        val prismItem = PrismItemRegistry.getItem(item) ?: return
-        prismItem.onBlockPlace(event)
+        (PrismItemRegistry.getItem(item) as? PrismBlockItem)
+            ?.onBlockPlace(event)
     }
 
     @EventHandler
     fun onBlockBreak(event: BlockBreakEvent) {
         val block = event.block
-        val id = PrismUtil.getBlockFlag(PrismUtil.BLOCK_ID, block) ?: return
-        val prismItem = PrismItemRegistry.getItem(id) ?: return
-        prismItem.onBlockBreak(event)
+        val id = PrismUtil.getBlockFlag(PrismBlock.BLOCK_ID, block) ?: return
+        (PrismItemRegistry.getItem(id) as? PrismBlockItem)
+            ?.onBlockBreak(event)
     }
 }

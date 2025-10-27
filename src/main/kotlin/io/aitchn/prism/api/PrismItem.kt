@@ -55,8 +55,4 @@ abstract class PrismItem {
 
         return item
     }
-
-    open fun onBlockPlace(event: BlockPlaceEvent) {}
-    open fun onBlockBreak(event: BlockBreakEvent) {}
-
 }

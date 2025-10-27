@@ -1,7 +1,7 @@
 package io.aitchn.prism.core.item.compressed.cobblestone
 
-import io.aitchn.prism.PrismIndex
-import io.aitchn.prism.api.PrismItem
+import io.aitchn.prism.api.PrismBlock
+import io.aitchn.prism.api.PrismBlockItem
 import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.api.util.add
 import io.aitchn.prism.api.util.conversion
@@ -9,19 +9,18 @@ import io.aitchn.prism.api.util.stackOf
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
-import org.bukkit.event.block.BlockBreakEvent
-import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.Recipe
 import org.bukkit.inventory.ShapedRecipe
 import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.inventory.recipe.CraftingBookCategory
 
-object CompressedCobblestone: PrismItem() {
+object CompressedCobblestoneItem: PrismBlockItem() {
     override val id: Key = PrismUtil.key("compressed_cobblestone")
     override val name: Component = Component.translatable("item.prism.compressed_cobblestone", "Compressed Cobblestone")
     override val material: Material = Material.COBBLESTONE
     override val itemModel: Key = PrismUtil.key("item/compressed_cobblestone")
+    override val block: PrismBlock = object: PrismBlock() {}
 
     override val recipes: List<Recipe> = listOf(
         // 鵝卵石 -> 壓縮
@@ -44,14 +43,4 @@ object CompressedCobblestone: PrismItem() {
             category = CraftingBookCategory.MISC
         }
     )
-
-    override fun onBlockPlace(event: BlockPlaceEvent) {
-        PrismUtil.setBlockFlag(PrismUtil.BLOCK_ID, event.block, id)
-        PrismIndex.add(event.block)
-    }
-
-    override fun onBlockBreak(event: BlockBreakEvent) {
-        val loc = event.block.location
-        loc.world.dropItemNaturally(loc, build())
-    }
 }
