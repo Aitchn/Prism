@@ -10,6 +10,12 @@ import io.aitchn.prism.core.item.compressed.copper.CompressedCopper
 import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
 import io.aitchn.prism.core.item.compressed.gold.CompressedGold
 import io.aitchn.prism.core.item.compressed.iron.CompressedIron
+import io.aitchn.prism.core.item.furnace.CopperFurnaceBlockItem
+import io.aitchn.prism.core.item.furnace.DiamondFurnaceBlockItem
+import io.aitchn.prism.core.item.furnace.EmeraldFurnaceBlockItem
+import io.aitchn.prism.core.item.furnace.GoldFurnaceBlockItem
+import io.aitchn.prism.core.item.furnace.IronFurnaceBlockItem
+import io.aitchn.prism.core.item.furnace.NetheriteFurnaceBlockItem
 import io.aitchn.prism.core.listener.BlockListener
 import io.aitchn.prism.core.listener.CraftListener
 import io.aitchn.prism.core.listener.ItemsViewListener
@@ -28,12 +34,20 @@ class Prism : JavaPlugin() {
 
     private fun register() {
         PrismItemRegistry.register(
+            // 壓縮方塊
             CompressedCobblestoneItem,
             DoubleCompressedCobblestone,
             CompressedIron,
             CompressedCopper,
             CompressedEmerald,
-            CompressedGold
+            CompressedGold,
+            // 熔爐
+            CopperFurnaceBlockItem,
+            IronFurnaceBlockItem,
+            GoldFurnaceBlockItem,
+            EmeraldFurnaceBlockItem,
+            DiamondFurnaceBlockItem,
+            NetheriteFurnaceBlockItem
         )
 
         PrismCommandRegistry.register(
