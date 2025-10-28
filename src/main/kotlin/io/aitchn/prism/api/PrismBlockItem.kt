@@ -1,6 +1,7 @@
 package io.aitchn.prism.api
 
 import io.aitchn.prism.api.util.PrismUtil
+import org.bukkit.block.Container
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
 
@@ -13,9 +14,22 @@ abstract class PrismBlockItem : PrismItem() {
     }
 
     fun onBlockBreak(event: BlockBreakEvent) {
-        val loc = event.block.location
+        val block = event.block
+        val loc = block.location
+        val world = loc.world
         event.isDropItems = false
+
+        val state = block.state
+        if (state is Container) {
+            val inv = state.inventory
+            for (item in inv.contents) {
+                if (item == null) continue
+                world.dropItemNaturally(loc, item)
+            }
+            inv.clear()
+        }
+
         loc.world.dropItemNaturally(loc, build())
-        block.onBreak(event)
+        this.block.onBreak(event)
     }
 }
