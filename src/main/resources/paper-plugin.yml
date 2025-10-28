@@ -1,5 +1,5 @@
 name: Prism
-version: '0.0.1'
+version: '0.0.2'
 main: io.aitchn.prism.Prism
 api-version: '1.21.10'
 authors: [ Aitchn ]
