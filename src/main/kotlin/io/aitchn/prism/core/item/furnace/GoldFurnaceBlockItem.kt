@@ -4,7 +4,6 @@ import io.aitchn.prism.api.PrismBlock
 import io.aitchn.prism.api.PrismBlockItem
 import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.api.util.conversion
-import io.aitchn.prism.core.block.furnace.CopperFurnaceBlock
 import io.aitchn.prism.core.block.furnace.GoldFurnaceBlock
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
