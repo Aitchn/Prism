@@ -16,6 +16,7 @@ import io.aitchn.prism.core.item.furnace.EmeraldFurnaceBlockItem
 import io.aitchn.prism.core.item.furnace.GoldFurnaceBlockItem
 import io.aitchn.prism.core.item.furnace.IronFurnaceBlockItem
 import io.aitchn.prism.core.item.furnace.NetheriteFurnaceBlockItem
+import io.aitchn.prism.core.item.hopper.CopperHopperBlockItem
 import io.aitchn.prism.core.listener.BlockListener
 import io.aitchn.prism.core.listener.CraftListener
 import io.aitchn.prism.core.listener.ItemsViewListener
@@ -41,13 +42,17 @@ class Prism : JavaPlugin() {
             CompressedCopper,
             CompressedEmerald,
             CompressedGold,
+
             // 熔爐
             CopperFurnaceBlockItem,
             IronFurnaceBlockItem,
             GoldFurnaceBlockItem,
             EmeraldFurnaceBlockItem,
             DiamondFurnaceBlockItem,
-            NetheriteFurnaceBlockItem
+            NetheriteFurnaceBlockItem,
+
+            // 漏斗
+            CopperHopperBlockItem
         )
 
         PrismCommandRegistry.register(

@@ -4,6 +4,7 @@ import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
+import org.bukkit.event.inventory.InventoryMoveItemEvent
 import org.bukkit.persistence.PersistentDataContainer
 
 abstract class PrismBlock {
@@ -18,4 +19,7 @@ abstract class PrismBlock {
 
     open fun onPlace(event: BlockPlaceEvent) {}
     open fun onBreak(event: BlockBreakEvent) {}
+
+    // 漏斗使用
+    open fun onInventoryMoveItem(event: InventoryMoveItemEvent, block: Block) {}
 }
