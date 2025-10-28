@@ -10,7 +10,9 @@ import net.kyori.adventure.text.Component
 import org.bukkit.Material
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.Recipe
+import org.bukkit.inventory.RecipeChoice
 import org.bukkit.inventory.ShapedRecipe
+import org.bukkit.inventory.SmithingTransformRecipe
 
 object NetheriteFurnaceBlockItem: PrismBlockItem() {
     override val block: PrismBlock = NetheriteFurnaceBlock
@@ -19,11 +21,12 @@ object NetheriteFurnaceBlockItem: PrismBlockItem() {
     override val material: Material = Material.FURNACE
 
     override val recipes: List<Recipe> = listOf(
-        ShapedRecipe(id.conversion(), build()).apply {
-            shape("NNN", "NFN", "NNN")
-            setIngredient('N', ItemStack(Material.NETHERITE_INGOT))
-            setIngredient('F', DiamondFurnaceBlockItem.build())
-            group = id.asString()
-        }
+        SmithingTransformRecipe(
+            id.conversion(),
+            build(),
+            RecipeChoice.ExactChoice(ItemStack(Material.NETHERITE_UPGRADE_SMITHING_TEMPLATE)),
+            RecipeChoice.ExactChoice(DiamondFurnaceBlockItem.build()),
+            RecipeChoice.ExactChoice(ItemStack(Material.NETHERITE_INGOT))
+        )
     )
 }
