@@ -12,6 +12,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.inventory.InventoryMoveItemEvent
+import org.bukkit.event.player.PlayerInteractEvent
 
 object BlockListener: Listener {
 
@@ -41,6 +42,21 @@ object BlockListener: Listener {
             }
             is HopperMinecart -> {
             }
+        }
+    }
+
+    @EventHandler
+    fun onPlayerInteract(event: PlayerInteractEvent) {
+        val prismItem = event.item?.let {PrismItemRegistry.getItem(it)}
+        val prismBlock = event.clickedBlock?.let {
+            val id = PrismUtil.getBlockFlag(PrismBlock.BLOCK_ID, it)?: return@let null
+            (PrismItemRegistry.getItem(id) as? PrismBlockItem)?.block
+        }
+
+        if (event.player.isSneaking) {
+            event.player.sendMessage("你正在蹲下互動")
+        } else {
+            event.player.sendMessage("你正在互動")
         }
     }
 }
