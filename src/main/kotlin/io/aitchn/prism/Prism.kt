@@ -4,6 +4,7 @@ import com.comphenix.protocol.ProtocolLibrary
 import com.jeff_media.customblockdata.CustomBlockData
 import io.aitchn.prism.core.command.GiveCommand
 import io.aitchn.prism.core.command.ItemModelCommand
+import io.aitchn.prism.core.item.TestChest
 import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestoneItem
 import io.aitchn.prism.core.item.compressed.cobblestone.DoubleCompressedCobblestone
 import io.aitchn.prism.core.item.compressed.copper.CompressedCopper
@@ -17,6 +18,12 @@ import io.aitchn.prism.core.item.furnace.GoldFurnaceBlockItem
 import io.aitchn.prism.core.item.furnace.IronFurnaceBlockItem
 import io.aitchn.prism.core.item.furnace.NetheriteFurnaceBlockItem
 import io.aitchn.prism.core.item.hopper.CopperHopperBlockItem
+import io.aitchn.prism.core.item.hopper.DiamondHopperBlockItem
+import io.aitchn.prism.core.item.hopper.DirtHopperBlockItem
+import io.aitchn.prism.core.item.hopper.EmeraldHopperBlockItem
+import io.aitchn.prism.core.item.hopper.GoldHopperBlockItem
+import io.aitchn.prism.core.item.hopper.IronHopperBlockItem
+import io.aitchn.prism.core.item.hopper.NetheriteHopperBlockItem
 import io.aitchn.prism.core.listener.BlockListener
 import io.aitchn.prism.core.listener.CraftListener
 import io.aitchn.prism.core.listener.ItemsViewListener
@@ -52,7 +59,13 @@ class Prism : JavaPlugin() {
             NetheriteFurnaceBlockItem,
 
             // 漏斗
-            CopperHopperBlockItem
+            DirtHopperBlockItem,
+            CopperHopperBlockItem,
+            IronHopperBlockItem,
+            GoldHopperBlockItem,
+            EmeraldHopperBlockItem,
+            DiamondHopperBlockItem,
+            NetheriteHopperBlockItem,
         )
 
         PrismCommandRegistry.register(

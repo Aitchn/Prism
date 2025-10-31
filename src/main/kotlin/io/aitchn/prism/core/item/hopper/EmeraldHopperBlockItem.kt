@@ -10,30 +10,31 @@ import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.block.Block
+import org.bukkit.block.Hopper
 import org.bukkit.event.inventory.InventoryMoveItemEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.Recipe
 import org.bukkit.inventory.ShapedRecipe
 
-object CopperHopperBlockItem: PrismBlockItem() {
+object EmeraldHopperBlockItem: PrismBlockItem() {
     override val block: PrismBlock = object: PrismBlock() {
         override fun onInventoryMoveItem(event: InventoryMoveItemEvent, block: Block) {
             Bukkit.getScheduler().runTask(Prism.instance, Runnable {
-                val hopper = block.state as? org.bukkit.block.Hopper ?: return@Runnable
-                hopper.transferCooldown = 6
+                val hopper = block.state as? Hopper ?: return@Runnable
+                hopper.transferCooldown = 3
                 hopper.update()
             })
         }
     }
-    override val id: Key = PrismUtil.key("copper_hopper")
-    override val name: Component = Component.translatable("item.prism.copper_hopper", "Copper Hopper")
+    override val id: Key = PrismUtil.key("emerald_hopper")
+    override val name: Component = Component.translatable("item.prism.emerald_hopper", "Emerald Hopper")
     override val material: Material = Material.HOPPER
 
     override val recipes: List<Recipe> = listOf(
         ShapedRecipe(id.conversion(), build()).apply {
-            shape("CCC", "CHC", "CCC")
-            setIngredient('C', ItemStack(Material.COPPER_INGOT))
-            setIngredient('H', ItemStack(Material.HOPPER))
+            shape("EEE", "EHE", "EEE")
+            setIngredient('E', ItemStack(Material.EMERALD))
+            setIngredient('H', GoldHopperBlockItem.build())
             group = id.asString()
         }
     )
