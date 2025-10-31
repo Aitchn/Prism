@@ -8,6 +8,8 @@ import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.core.registry.PrismItemRegistry
 import org.bukkit.Material
 import org.bukkit.block.Block
+import org.bukkit.block.Chest
+import org.bukkit.block.Container
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityExplodeEvent
@@ -61,6 +63,22 @@ object ServerLoadListener: Listener {
                 bukkitEvent.blockList().forEach { block ->
                     val id = PrismUtil.getBlockFlag(PrismUtil.BLOCK_ID, block) ?: return@forEach
                     val item = PrismItemRegistry.getItem(id) ?: return@forEach
+
+                    (block.state as? Container)?.let { container ->
+                        when (container) {
+                            is Chest -> {
+                                container.blockInventory.forEach { itemStack ->
+                                    block.world.dropItemNaturally(block.location, itemStack)
+                                }
+                            }
+                            else -> {
+                                container.inventory.forEach { itemStack ->
+                                    block.world.dropItemNaturally(block.location, itemStack)
+                                }
+                            }
+                        }
+                    }
+
                     block.world.dropItemNaturally(block.location, item.build())
                     PrismUtil.clearBlockFlag(block)
                     block.type = Material.AIR
