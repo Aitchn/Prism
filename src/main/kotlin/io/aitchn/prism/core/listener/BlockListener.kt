@@ -55,6 +55,7 @@ object BlockListener: Listener {
 
         if (event.player.isSneaking) {
             event.player.sendMessage("你正在蹲下互動")
+            prismBlock?.onPlayerInteract(event)
         } else {
             event.player.sendMessage("你正在互動")
         }
