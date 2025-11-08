@@ -4,13 +4,13 @@ import com.comphenix.protocol.ProtocolLibrary
 import com.jeff_media.customblockdata.CustomBlockData
 import io.aitchn.prism.core.command.GiveCommand
 import io.aitchn.prism.core.command.ItemModelCommand
-import io.aitchn.prism.core.item.TestChest
 import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestoneItem
 import io.aitchn.prism.core.item.compressed.cobblestone.DoubleCompressedCobblestone
 import io.aitchn.prism.core.item.compressed.copper.CompressedCopper
 import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
 import io.aitchn.prism.core.item.compressed.gold.CompressedGold
 import io.aitchn.prism.core.item.compressed.iron.CompressedIron
+import io.aitchn.prism.core.item.drawer.DrawerBlockItem
 import io.aitchn.prism.core.item.furnace.CopperFurnaceBlockItem
 import io.aitchn.prism.core.item.furnace.DiamondFurnaceBlockItem
 import io.aitchn.prism.core.item.furnace.EmeraldFurnaceBlockItem
@@ -66,6 +66,8 @@ class Prism : JavaPlugin() {
             EmeraldHopperBlockItem,
             DiamondHopperBlockItem,
             NetheriteHopperBlockItem,
+
+            DrawerBlockItem
         )
 
         PrismCommandRegistry.register(
