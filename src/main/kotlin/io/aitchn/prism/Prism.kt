@@ -4,12 +4,12 @@ import com.comphenix.protocol.ProtocolLibrary
 import com.jeff_media.customblockdata.CustomBlockData
 import io.aitchn.prism.core.command.GiveCommand
 import io.aitchn.prism.core.command.ItemModelCommand
-import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestoneItem
-import io.aitchn.prism.core.item.compressed.cobblestone.DoubleCompressedCobblestone
-import io.aitchn.prism.core.item.compressed.copper.CompressedCopper
-import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
-import io.aitchn.prism.core.item.compressed.gold.CompressedGold
-import io.aitchn.prism.core.item.compressed.iron.CompressedIron
+import io.aitchn.prism.core.item.compressed.cobblestone.CompressedCobblestoneBlockItem
+import io.aitchn.prism.core.item.compressed.cobblestone.DoubleCompressedCobblestoneBlockItem
+import io.aitchn.prism.core.item.compressed.copper.CompressedCopperItem
+import io.aitchn.prism.core.item.compressed.emerald.CompressedEmeraldItem
+import io.aitchn.prism.core.item.compressed.gold.CompressedGoldItem
+import io.aitchn.prism.core.item.compressed.iron.CompressedIronItem
 import io.aitchn.prism.core.item.drawer.DrawerBlockItem
 import io.aitchn.prism.core.item.furnace.CopperFurnaceBlockItem
 import io.aitchn.prism.core.item.furnace.DiamondFurnaceBlockItem
@@ -43,12 +43,12 @@ class Prism : JavaPlugin() {
     private fun register() {
         PrismItemRegistry.register(
             // 壓縮方塊
-            CompressedCobblestoneItem,
-            DoubleCompressedCobblestone,
-            CompressedIron,
-            CompressedCopper,
-            CompressedEmerald,
-            CompressedGold,
+            CompressedCobblestoneBlockItem,
+            DoubleCompressedCobblestoneBlockItem,
+            CompressedIronItem,
+            CompressedCopperItem,
+            CompressedEmeraldItem,
+            CompressedGoldItem,
 
             // 熔爐
             CopperFurnaceBlockItem,

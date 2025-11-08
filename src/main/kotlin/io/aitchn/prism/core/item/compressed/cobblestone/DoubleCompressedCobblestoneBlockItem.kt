@@ -11,7 +11,7 @@ import org.bukkit.inventory.Recipe
 import org.bukkit.inventory.ShapedRecipe
 import org.bukkit.inventory.recipe.CraftingBookCategory
 
-object DoubleCompressedCobblestone: PrismBlockItem() {
+object DoubleCompressedCobblestoneBlockItem: PrismBlockItem() {
     override val id: Key = Key.key("prism", "double_compressed_cobblestone")
     override val name: Component = Component.translatable("item.prism.double_compressed_cobblestone", "Double Compressed Cobblestone")
     override val material: Material = Material.COBBLESTONE
@@ -20,7 +20,7 @@ object DoubleCompressedCobblestone: PrismBlockItem() {
     override val recipes: List<Recipe> = listOf(
         ShapedRecipe(id.add("craft").conversion(), build()).apply {
             shape("CCC", "CCC", "CCC")
-            setIngredient('C', CompressedCobblestoneItem.build())
+            setIngredient('C', CompressedCobblestoneBlockItem.build())
             group = id.asString()
             category = CraftingBookCategory.MISC
         }

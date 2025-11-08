@@ -5,7 +5,6 @@ import io.aitchn.prism.api.util.PrismUtil
 import io.aitchn.prism.api.util.add
 import io.aitchn.prism.api.util.conversion
 import io.aitchn.prism.api.util.stackOf
-import io.aitchn.prism.core.item.compressed.emerald.CompressedEmerald
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
 import org.bukkit.Material
@@ -15,7 +14,7 @@ import org.bukkit.inventory.ShapedRecipe
 import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.inventory.recipe.CraftingBookCategory
 
-object CompressedIron: PrismItem() {
+object CompressedIronItem: PrismItem() {
     override val id: Key = PrismUtil.key("compressed_iron")
     override val name: Component = Component.translatable("item.prism.compressed_iron", "Compressed Iron")
     override val material: Material = Material.IRON_INGOT

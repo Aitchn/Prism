@@ -15,7 +15,7 @@ import org.bukkit.inventory.ShapedRecipe
 import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.inventory.recipe.CraftingBookCategory
 
-object CompressedCobblestoneItem: PrismBlockItem() {
+object CompressedCobblestoneBlockItem: PrismBlockItem() {
     override val id: Key = PrismUtil.key("compressed_cobblestone")
     override val name: Component = Component.translatable("item.prism.compressed_cobblestone", "Compressed Cobblestone")
     override val material: Material = Material.COBBLESTONE
@@ -32,7 +32,7 @@ object CompressedCobblestoneItem: PrismBlockItem() {
         },
         // 二重壓縮 -> 壓縮
         ShapelessRecipe(id.add("uncraft").conversion(), build().stackOf(9)).apply {
-            addIngredient(DoubleCompressedCobblestone.build())
+            addIngredient(DoubleCompressedCobblestoneBlockItem.build())
             group = id.asString()
             category = CraftingBookCategory.MISC
         },

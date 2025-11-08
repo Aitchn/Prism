@@ -1,4 +1,4 @@
-package io.aitchn.prism.core.item.compressed.emerald
+package io.aitchn.prism.core.item.compressed.gold
 
 import io.aitchn.prism.api.PrismItem
 import io.aitchn.prism.api.util.PrismUtil
@@ -14,21 +14,21 @@ import org.bukkit.inventory.ShapedRecipe
 import org.bukkit.inventory.ShapelessRecipe
 import org.bukkit.inventory.recipe.CraftingBookCategory
 
-object CompressedEmerald: PrismItem() {
-    override val id: Key = PrismUtil.key("compressed_emerald")
-    override val name: Component = Component.translatable("item.prism.compressed_emerald", "Compressed Emerald")
-    override val material: Material = Material.EMERALD
+object CompressedGoldItem: PrismItem() {
+    override val id: Key = PrismUtil.key("compressed_gold")
+    override val name: Component = Component.translatable("item.prism.compressed_gold", "Compressed Gold")
+    override val material: Material = Material.GOLD_INGOT
 
     override val recipes: List<Recipe> = listOf(
         ShapedRecipe(id.add("craft").conversion(), build()).apply {
             shape("CCC", "CCC", "CCC")
-            setIngredient('C', ItemStack(Material.EMERALD_BLOCK))
+            setIngredient('C', ItemStack(Material.GOLD_BLOCK))
             group = id.asString()
             category = CraftingBookCategory.MISC
         },
-        ShapelessRecipe(id.add("uncraft").conversion(), ItemStack(Material.EMERALD_BLOCK).stackOf(9)).apply {
+        ShapelessRecipe(id.add("uncraft").conversion(), ItemStack(Material.GOLD_BLOCK).stackOf(9)).apply {
             addIngredient(build())
-            group = "prism:emerald_block"
+            group = "prism:gold_block"
             category = CraftingBookCategory.MISC
         }
     )
