@@ -58,29 +58,23 @@ object PrismUtil {
         val data = block.blockData as? Directional
             ?: error("Block is not directional")
 
-        val center = block.location.add(0.5, 0.5, 0.5)
+        val center = getBlockCenter(block)
         val dir = data.facing.direction.normalize()
 
-        val offset = 0.01
-        return center.add(dir.multiply(offset))
+        val outward = 0.5 + 0.01 // 真的推到方塊外
+        val upOffset = if (data.facing == BlockFace.UP || data.facing == BlockFace.DOWN) 0.0 else 0.2
+
+        return center.add(dir.multiply(outward)).add(0.0, upOffset, 0.0)
     }
 
     fun getDisplayFrontOffset(block: Block): Vector3f {
-        val data = block.blockData as? Directional
-            ?: error("Block is not directional")
-        val facing = data.facing
-        val dir = facing.direction.normalize()
-        val outward = 0.01 + 0.5f
-        val offset = Vector3f(
-            (dir.x * outward).toFloat(),
-            (dir.y * outward).toFloat(),
-            (dir.z * outward).toFloat()
-        )
+        val center = getBlockCenter(block)
+        val front = getDisplayFrontLocation(block)
 
-        if (facing != BlockFace.UP && facing != BlockFace.DOWN) {
-            offset.y += 0.1f
-        }
+        val dx = (front.x - center.x).toFloat()
+        val dy = (front.y - center.y).toFloat()
+        val dz = (front.z - center.z).toFloat()
 
-        return offset
+        return Vector3f(dx, dy, dz)
     }
 }
