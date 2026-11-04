@@ -37,7 +37,9 @@ public final class ModTestHarness {
     }
 
     public static @NotNull ModTestHarness load(@NotNull String namespace, @NotNull PrismMod mod, @NotNull ContentSource source) {
-        ModManager manager = new ModManager(key -> key.namespace().equals(PrismKey.MINECRAFT_NAMESPACE));
+        ModManager manager = new ModManager(
+                key -> key.namespace().equals(PrismKey.MINECRAFT_NAMESPACE),
+                key -> key.namespace().equals(PrismKey.MINECRAFT_NAMESPACE));
         ModReport report = manager.activate(
                 new ModCandidate(namespace, namespace, "prism", source, mod, Logger.getLogger("prism-test")));
         return new ModTestHarness(manager, report);
@@ -49,6 +51,10 @@ public final class ModTestHarness {
 
     public @NotNull ModManager manager() {
         return manager;
+    }
+
+    public @NotNull com.aitchn.prism.api.content.BlockDefinition block(@NotNull String key) {
+        return manager.blocks().require(PrismKey.parse(key));
     }
 
     public @NotNull ItemDefinition item(@NotNull String key) {

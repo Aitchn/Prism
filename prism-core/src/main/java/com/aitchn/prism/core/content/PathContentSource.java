@@ -42,6 +42,11 @@ public final class PathContentSource implements ContentSource {
         return Files.readString(resolve(path), StandardCharsets.UTF_8);
     }
 
+    @Override
+    public byte @NotNull [] readBytes(@NotNull String path) throws IOException {
+        return Files.readAllBytes(resolve(path));
+    }
+
     private Path resolve(String path) {
         Path resolved = root.resolve(path).normalize();
         if (!resolved.startsWith(root.normalize())) {

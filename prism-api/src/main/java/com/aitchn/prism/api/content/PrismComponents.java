@@ -23,7 +23,27 @@ public final class PrismComponents {
                 return new MaxStackSize(size);
             });
 
+    /**
+     * The model an item or block is drawn with, as a resource-pack model id such as {@code mymod:item/ruby}.
+     * Default when absent: {@code <namespace>:item/<key value>} for items and {@code <namespace>:block/<key value>}
+     * for blocks. Scalar form: {@code prism:model: "mymod:item/ruby"}.
+     */
+    public static final ComponentType<Model> MODEL = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "model"),
+            Model.class,
+            section -> new Model(section.requireKey("value")));
+
+    /** Makes an item place a custom block when used on a block face. Scalar form: {@code prism:places_block: ns:block}. */
+    public static final ComponentType<PlacesBlock> PLACES_BLOCK = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "places_block"),
+            PlacesBlock.class,
+            section -> new PlacesBlock(section.requireKey("value")));
+
     private PrismComponents() {}
+
+    public record Model(PrismKey model) {}
+
+    public record PlacesBlock(PrismKey block) {}
 
     public record DisplayName(String miniMessage) {}
 

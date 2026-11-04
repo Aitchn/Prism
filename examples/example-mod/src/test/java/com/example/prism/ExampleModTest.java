@@ -36,6 +36,15 @@ class ExampleModTest {
     }
 
     @Test
+    void blockAndItsPlacingItemLoad() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        assertEquals("minecraft:barrier", harness.block("examplemod:ruby_block").carrier().toString());
+        assertTrue(harness.item("examplemod:ruby_block").components()
+                .has(PrismComponents.PLACES_BLOCK));
+    }
+
+    @Test
     void healBehaviorRestoresHealthAndCancelsVanillaAction() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         ItemDefinition ruby = harness.item("examplemod:ruby");

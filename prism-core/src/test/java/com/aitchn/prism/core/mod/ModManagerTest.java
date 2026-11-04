@@ -64,7 +64,7 @@ class ModManagerTest {
     }
 
     private static ModManager manager() {
-        return new ModManager(key -> key.namespace().equals("minecraft"));
+        return new ModManager(key -> key.namespace().equals("minecraft"), key -> key.namespace().equals("minecraft"));
     }
 
     private static final String RUBY = """
@@ -185,7 +185,7 @@ class ModManagerTest {
                 (proxy, method, args) -> method.getName().equals("getUniqueId") ? new UUID(0, 1) : null);
 
         boolean[] owned = {true};
-        var dispatcher = new BehaviorDispatcher(manager.items(), p -> owned[0], Logger.getLogger("test"));
+        var dispatcher = new BehaviorDispatcher(manager.items(), manager.blocks(), p -> owned[0], l -> owned[0], Logger.getLogger("test"));
         PrismKey ruby = new PrismKey("testmod", "ruby");
 
         assertEquals(1, dispatcher.dispatchItemUse(ruby, player, def -> null));
@@ -194,5 +194,28 @@ class ModManagerTest {
         owned[0] = false;
         assertEquals(0, dispatcher.dispatchItemUse(ruby, player, def -> null), "wrong thread must not run behaviors");
         assertEquals(1, HEAL_CALLS.get());
+    }
+
+    @Test
+    void blocksAreLoadedWithDropAndPlaceComponent() {
+        ModManager manager = manager();
+        var report = manager.activate(candidate("TestMod", "testmod", new MemoryContentSource()
+                .put("prism/items/ruby_block.yml",
+                        "base: paper\ncomponents:\n  prism:places_block: testmod:ruby_block\n  prism:model: testmod:item/ruby\n")
+                .put("prism/blocks/ruby_block.yml",
+                        "base: barrier\ndrop: ruby_block\ncomponents:\n  prism:model: testmod:block/ruby_block\n")
+                .put("assets/testmod/textures/item/ruby.png", new byte[] {1, 2, 3}), new TestMod()));
+        assertTrue(report.active(), report.problems().toString());
+        var block = manager.blocks().require(new PrismKey("testmod", "ruby_block"));
+        assertEquals(new PrismKey("minecraft", "barrier"), block.carrier());
+        assertEquals(new PrismKey("testmod", "ruby_block"), block.drop().orElseThrow());
+        var item = manager.items().require(new PrismKey("testmod", "ruby_block"));
+        assertEquals(new PrismKey("testmod", "ruby_block"),
+                item.components().get(PrismComponents.PLACES_BLOCK).orElseThrow().block());
+        assertEquals(1, report.blockCount());
+        assertEquals(3, manager.assets().get("TestMod").get("assets/testmod/textures/item/ruby.png").length);
+        manager.deactivate("TestMod");
+        assertEquals(0, manager.blocks().size());
+        assertTrue(manager.assets().isEmpty());
     }
 }

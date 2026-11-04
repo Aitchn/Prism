@@ -24,10 +24,12 @@ final class BukkitItemService implements ItemService {
 
     private final NamespacedKey identityKey;
     private final Registry<ItemDefinition> definitions;
+    private final Appearance appearance;
 
-    BukkitItemService(Plugin prism, Registry<ItemDefinition> definitions) {
+    BukkitItemService(Plugin prism, Registry<ItemDefinition> definitions, Appearance appearance) {
         this.identityKey = new NamespacedKey(prism, "item");
         this.definitions = definitions;
+        this.appearance = appearance;
     }
 
     @Override
@@ -50,6 +52,10 @@ final class BukkitItemService implements ItemService {
         meta.getPersistentDataContainer().set(identityKey, PersistentDataType.STRING, definition.key().toString());
         definition.components().get(PrismComponents.DISPLAY_NAME).ifPresent(name ->
                 meta.itemName(MiniMessage.miniMessage().deserialize(name.miniMessage())));
+        if (appearance.hasItem(definition.key())) {
+            // item_model is also what Geyser keys its Bedrock custom items on, so one component serves both editions.
+            Keys.bukkit(definition.key()).ifPresent(meta::setItemModel);
+        }
         definition.components().get(PrismComponents.MAX_STACK_SIZE).ifPresent(size ->
                 meta.setMaxStackSize(size.value()));
     }

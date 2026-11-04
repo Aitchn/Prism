@@ -1,0 +1,14 @@
+# Prism configuration.
+pack:
+  # Build the resource pack from all mods and send it to players.
+  enabled: true
+  # Address the built-in web server listens on, and its port. Open this port in your firewall.
+  bind: 0.0.0.0
+  port: 8765
+  # The address players use to reach this server's web server, for example play.example.com.
+  # Leave empty to use server-ip from server.properties, then 127.0.0.1 (only fine for local testing).
+  public-host: ""
+  # Kick players who decline the pack.
+  required: false
+  # Message shown in the pack prompt (MiniMessage).
+  prompt: "<gray>This server uses a custom content pack."

@@ -13,4 +13,6 @@ public interface ContentSource {
     boolean exists(@NotNull String path) throws IOException;
 
     @NotNull String readText(@NotNull String path) throws IOException;
+
+    byte @NotNull [] readBytes(@NotNull String path) throws IOException;
 }

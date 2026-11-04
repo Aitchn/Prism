@@ -3,6 +3,7 @@ package com.aitchn.prism.core.mod;
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.content.Behavior;
 import com.aitchn.prism.api.content.BehaviorFactory;
+import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.BehaviorType;
 import com.aitchn.prism.api.content.ComponentDecoder;
 import com.aitchn.prism.api.content.ComponentType;
@@ -12,7 +13,7 @@ import com.aitchn.prism.api.mod.ContentView;
 import com.aitchn.prism.api.mod.ModContext;
 import com.aitchn.prism.api.registry.Registry;
 import com.aitchn.prism.api.registry.RegistrySnapshot;
-import com.aitchn.prism.core.content.ItemContentLoader;
+import com.aitchn.prism.core.content.ContentLoader;
 import com.aitchn.prism.core.content.Problem;
 import com.aitchn.prism.core.content.TypeLookup;
 import com.aitchn.prism.core.registry.MutableRegistry;
@@ -37,20 +38,35 @@ public final class ModManager {
     private final MutableRegistry<ComponentType<?>> componentTypes = new MutableRegistry<>();
     private final MutableRegistry<BehaviorType<? extends Behavior>> behaviorTypes = new MutableRegistry<>();
     private final MutableRegistry<ItemDefinition> items = new MutableRegistry<>();
+    private final MutableRegistry<BlockDefinition> blocks = new MutableRegistry<>();
+    private final Map<String, Map<String, byte[]>> assets = new LinkedHashMap<>();
     private final Map<String, ModCandidate> active = new HashMap<>();
     private final Map<String, String> namespaceOwners = new HashMap<>();
     private final Map<String, ModReport> reports = new LinkedHashMap<>();
     private final Predicate<PrismKey> baseItemExists;
+    private final Predicate<PrismKey> carrierBlockExists;
 
-    public ModManager(@NotNull Predicate<PrismKey> baseItemExists) {
+    public ModManager(@NotNull Predicate<PrismKey> baseItemExists, @NotNull Predicate<PrismKey> carrierBlockExists) {
         this.baseItemExists = Objects.requireNonNull(baseItemExists, "baseItemExists");
+        this.carrierBlockExists = Objects.requireNonNull(carrierBlockExists, "carrierBlockExists");
         componentTypes.publish(BUILTIN_OWNER, Map.of(
                 PrismComponents.DISPLAY_NAME.key(), PrismComponents.DISPLAY_NAME,
-                PrismComponents.MAX_STACK_SIZE.key(), PrismComponents.MAX_STACK_SIZE));
+                PrismComponents.MAX_STACK_SIZE.key(), PrismComponents.MAX_STACK_SIZE,
+                PrismComponents.MODEL.key(), PrismComponents.MODEL,
+                PrismComponents.PLACES_BLOCK.key(), PrismComponents.PLACES_BLOCK));
     }
 
     public @NotNull Registry<ItemDefinition> items() {
         return items;
+    }
+
+    public @NotNull Registry<BlockDefinition> blocks() {
+        return blocks;
+    }
+
+    /** Resource-pack files (path to bytes) of every active mod, in activation order. Paths start with {@code assets/}. */
+    public synchronized @NotNull Map<String, Map<String, byte[]>> assets() {
+        return java.util.Collections.unmodifiableMap(new LinkedHashMap<>(assets));
     }
 
     public @NotNull Registry<ComponentType<?>> componentTypes() {
@@ -96,10 +112,12 @@ public final class ModManager {
             problems.add(new Problem("", "onInitialize threw " + e));
         }
         problems.addAll(staging.problems);
-        Map<PrismKey, ItemDefinition> loaded = Map.of();
+        ContentLoader.Loaded loaded = new ContentLoader.Loaded(Map.of(), Map.of());
+        Map<String, byte[]> modAssets = Map.of();
         if (problems.isEmpty()) {
-            loaded = new ItemContentLoader(staging, baseItemExists)
+            loaded = new ContentLoader(staging, baseItemExists, carrierBlockExists)
                     .load(mod.content(), mod.contentRoot(), mod.namespace(), mod.id(), problems);
+            modAssets = readAssets(mod, problems);
         }
         if (!problems.isEmpty()) {
             return fail(mod, problems);
@@ -108,23 +126,25 @@ public final class ModManager {
         try {
             componentTypes.publish(mod.id(), staging.components);
             behaviorTypes.publish(mod.id(), staging.behaviors);
-            items.publish(mod.id(), loaded);
+            items.publish(mod.id(), loaded.items());
+            blocks.publish(mod.id(), loaded.blocks());
         } catch (IllegalStateException e) {
             rollback(mod.id());
             problems.add(new Problem("", e.getMessage()));
             return fail(mod, problems);
         }
         active.put(mod.id(), mod);
+        assets.put(mod.id(), modAssets);
         namespaceOwners.put(mod.namespace(), mod.id());
 
         try {
-            mod.entry().onContentLoaded(new View(ownItems(mod.id())));
+            mod.entry().onContentLoaded(new View(ownItems(mod.id()), ownBlocks(mod.id())));
         } catch (RuntimeException e) {
             deactivateInternal(mod.id(), false);
             problems.add(new Problem("", "onContentLoaded threw " + e));
             return fail(mod, problems);
         }
-        ModReport report = new ModReport(mod.id(), ModReport.Status.ACTIVE, List.of(), loaded.size());
+        ModReport report = new ModReport(mod.id(), ModReport.Status.ACTIVE, List.of(), loaded.items().size(), loaded.blocks().size());
         reports.put(mod.id(), report);
         return report;
     }
@@ -141,6 +161,7 @@ public final class ModManager {
             return;
         }
         namespaceOwners.remove(mod.namespace(), id);
+        assets.remove(id);
         rollback(id);
         if (notify) {
             try {
@@ -153,6 +174,7 @@ public final class ModManager {
 
     private void rollback(String id) {
         items.unregisterOwner(id);
+        blocks.unregisterOwner(id);
         behaviorTypes.unregisterOwner(id);
         componentTypes.unregisterOwner(id);
     }
@@ -169,8 +191,33 @@ public final class ModManager {
         return view.snapshot();
     }
 
+    private RegistrySnapshot<BlockDefinition> ownBlocks(String id) {
+        Map<PrismKey, BlockDefinition> own = new LinkedHashMap<>();
+        for (PrismKey key : blocks.keys()) {
+            if (blocks.ownerOf(key).filter(id::equals).isPresent()) {
+                blocks.get(key).ifPresent(definition -> own.put(key, definition));
+            }
+        }
+        MutableRegistry<BlockDefinition> view = new MutableRegistry<>();
+        view.publish(id, own);
+        return view.snapshot();
+    }
+
+    /** Pack assets live in the jar under {@code assets/}; they are read into memory once, never extracted. */
+    private static Map<String, byte[]> readAssets(ModCandidate mod, List<Problem> problems) {
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        try {
+            for (String path : mod.content().list("assets")) {
+                files.put(path, mod.content().readBytes(path));
+            }
+        } catch (java.io.IOException e) {
+            problems.add(new Problem("assets", "cannot read pack assets: " + e.getMessage()));
+        }
+        return files;
+    }
+
     private ModReport fail(ModCandidate mod, List<Problem> problems) {
-        ModReport report = new ModReport(mod.id(), ModReport.Status.FAILED, List.copyOf(problems), 0);
+        ModReport report = new ModReport(mod.id(), ModReport.Status.FAILED, List.copyOf(problems), 0, 0);
         reports.put(mod.id(), report);
         return report;
     }
@@ -180,7 +227,8 @@ public final class ModManager {
         return fail(mod, problems);
     }
 
-    private record View(RegistrySnapshot<ItemDefinition> items) implements ContentView {}
+    private record View(RegistrySnapshot<ItemDefinition> items, RegistrySnapshot<BlockDefinition> blocks)
+            implements ContentView {}
 
     /** Registrations staged during onInitialize; visible to the loader before anything is published. */
     private final class Staging implements ModContext, TypeLookup {

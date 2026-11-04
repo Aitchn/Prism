@@ -29,10 +29,12 @@ final class ModLifecycle implements ModRegistrar, Listener {
 
     private final Plugin prism;
     private final ModManager manager;
+    private final Runnable onContentChanged;
 
-    ModLifecycle(Plugin prism, ModManager manager) {
+    ModLifecycle(Plugin prism, ModManager manager, Runnable onContentChanged) {
         this.prism = prism;
         this.manager = manager;
+        this.onContentChanged = onContentChanged;
     }
 
     @Override
@@ -60,7 +62,10 @@ final class ModLifecycle implements ModRegistrar, Listener {
 
     @EventHandler
     public void onDisable(PluginDisableEvent event) {
-        manager.deactivate(event.getPlugin().getName());
+        if (manager.isActive(event.getPlugin().getName())) {
+            manager.deactivate(event.getPlugin().getName());
+            onContentChanged.run();
+        }
     }
 
     private void activate(Plugin plugin, PrismMod mod) {
@@ -80,7 +85,8 @@ final class ModLifecycle implements ModRegistrar, Listener {
             ModReport report = manager.activate(
                     new ModCandidate(id, namespace, root, jar.source(), mod, plugin.getLogger()));
             if (report.active()) {
-                prism.getLogger().info("PRISM_MOD_ACTIVE " + id + " items=" + report.itemCount());
+                prism.getLogger().info("PRISM_MOD_ACTIVE " + id + " items=" + report.itemCount() + " blocks=" + report.blockCount());
+                onContentChanged.run();
             } else {
                 prism.getLogger().severe("PRISM_MOD_FAILED " + id + " (nothing was registered):");
                 report.problems().forEach(problem -> prism.getLogger().severe("  " + problem));
