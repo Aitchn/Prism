@@ -5,6 +5,7 @@ import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.platform.PlatformInfo;
 import com.aitchn.prism.core.mod.ModManager;
+import com.aitchn.prism.pack.BedrockPackBuilder;
 import com.aitchn.prism.pack.JavaPackBuilder;
 import com.aitchn.prism.pack.PackFormats;
 import com.aitchn.prism.pack.PackServer;
@@ -103,6 +104,11 @@ final class PackManager implements Listener {
             JavaPackBuilder.Result result = JavaPackBuilder.build(input());
             result.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
             publish(PACK_ID, "PRISM_PACK_READY", result.sha1(), result.zip(), result.fileCount());
+            BedrockPackBuilder.Result bedrock = BedrockPackBuilder.build(bedrockInput());
+            bedrock.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
+            ensureServer().publishBedrock(bedrock.sha1(), bedrock.mcpack(), bedrock.mappings());
+            plugin.getLogger().info("PRISM_BEDROCK_PACK_READY sha1=" + bedrock.sha1() + " items="
+                    + bedrock.itemsWithIcon().size() + " bytes=" + bedrock.mcpack().length);
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().severe("PRISM_PACK_FAIL " + e);
         }
@@ -168,11 +174,20 @@ final class PackManager implements Listener {
         return serverIp.isBlank() ? "127.0.0.1" : serverIp;
     }
 
-    private JavaPackBuilder.Input input() {
+    private List<ItemDefinition> itemList() {
         List<ItemDefinition> items = new ArrayList<>();
         for (PrismKey key : mods.items().keys()) {
             mods.items().get(key).ifPresent(items::add);
         }
+        return items;
+    }
+
+    private BedrockPackBuilder.Input bedrockInput() {
+        return new BedrockPackBuilder.Input(mods.assets(), itemList(), "Prism Bedrock content");
+    }
+
+    private JavaPackBuilder.Input input() {
+        List<ItemDefinition> items = itemList();
         List<BlockDefinition> blocks = new ArrayList<>();
         for (PrismKey key : mods.blocks().keys()) {
             mods.blocks().get(key).ifPresent(blocks::add);

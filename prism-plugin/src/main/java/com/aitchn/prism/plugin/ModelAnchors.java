@@ -12,10 +12,14 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.server.ServerLoadEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.event.world.EntitiesUnloadEvent;
 import org.bukkit.persistence.PersistentDataType;
@@ -98,15 +102,42 @@ final class ModelAnchors implements Listener {
         }
     }
 
+    /**
+     * Chunks (spawn chunks in particular) that loaded before this plugin enabled never produced an
+     * {@link EntitiesLoadEvent} for us, so once the server is up every already-loaded chunk is scanned, on the
+     * thread that owns it. Attaching is idempotent, so a repeated scan (for example after /reload) is harmless.
+     */
+    @EventHandler
+    public void onServerLoad(ServerLoadEvent event) {
+        for (World world : org.bukkit.Bukkit.getWorlds()) {
+            for (Chunk chunk : world.getLoadedChunks()) {
+                int x = chunk.getX();
+                int z = chunk.getZ();
+                scheduler.runAt(new Location(world, (x << 4) + 8, world.getMinHeight(), (z << 4) + 8), () -> {
+                    if (!world.isChunkLoaded(x, z)) {
+                        return;
+                    }
+                    for (Entity entity : world.getChunkAt(x, z).getEntities()) {
+                        attachIfMarked(entity);
+                    }
+                });
+            }
+        }
+    }
+
+    private void attachIfMarked(Entity entity) {
+        if (entity instanceof ItemDisplay) {
+            String raw = entity.getPersistentDataContainer().get(markerKey, PersistentDataType.STRING);
+            if (raw != null) {
+                attach(entity, PrismKey.parse(raw));
+            }
+        }
+    }
+
     @EventHandler
     public void onEntitiesLoad(EntitiesLoadEvent event) {
         for (Entity entity : event.getEntities()) {
-            if (entity instanceof ItemDisplay) {
-                String raw = entity.getPersistentDataContainer().get(markerKey, PersistentDataType.STRING);
-                if (raw != null) {
-                    attach(entity, PrismKey.parse(raw));
-                }
-            }
+            attachIfMarked(entity);
         }
     }
 

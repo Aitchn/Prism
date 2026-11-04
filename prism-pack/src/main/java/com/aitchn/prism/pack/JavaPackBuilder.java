@@ -170,7 +170,7 @@ public final class JavaPackBuilder {
         return JsonWriter.write(root);
     }
 
-    private static byte[] zip(Map<String, byte[]> files) {
+    static byte[] zip(Map<String, byte[]> files) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ZipOutputStream out = new ZipOutputStream(bytes)) {
             out.setLevel(Deflater.BEST_COMPRESSION);
@@ -187,7 +187,7 @@ public final class JavaPackBuilder {
         return bytes.toByteArray();
     }
 
-    private static String sha1(byte[] data) {
+    static String sha1(byte[] data) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(data));
         } catch (NoSuchAlgorithmException e) {

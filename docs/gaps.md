@@ -20,3 +20,12 @@ promise. Update it when a milestone closes a gap or finds a new one.
 | World | ore/flora generation, structures | open |
 | Entities | custom mobs, BetterModel animations | M5 |
 | Network scale | storage networks with many thousands of items need async-safe indexes | open |
+
+## Found in M3 (Bedrock)
+
+- Bedrock registration with Geyser (event on the same server, extension on a proxy) is not implemented yet; only the
+  pack, mappings and HTTP distribution exist (M3b).
+- No Bedrock form/menu abstraction yet. Mods that need GUIs (AE2 terminals, Mekanism machines) need one `Menu` API
+  with a container renderer for Java and a form renderer for Bedrock.
+- Bedrock items are flat icons: no dynamic state and no 3D item models. Machines or tools that change their look
+  with state need a separate item per state on Bedrock.
