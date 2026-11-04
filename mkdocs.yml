@@ -1,0 +1,18 @@
+site_name: Prism
+site_url: https://aitchn.github.io/Prism/
+repo_url: https://github.com/Aitchn/Prism
+docs_dir: docs
+theme:
+  name: material
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          default: true
+          name: English
+          build: true
+        - locale: zh-TW
+          name: 繁體中文
+          build: true

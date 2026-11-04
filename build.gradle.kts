@@ -20,6 +20,30 @@ subprojects {
             withSourcesJar()
         }
 
+        // Only the modules creators compile against are published: the API, the runtime core and the test kit.
+        if (path in setOf(":prism-api", ":prism-core", ":prism-testkit")) {
+            apply(plugin = "maven-publish")
+            extensions.configure<PublishingExtension> {
+                publications {
+                    create<MavenPublication>("maven") {
+                        from(components["java"])
+                        pom {
+                            name = project.name
+                            description = project.description
+                            url = "https://github.com/Aitchn/Prism"
+                            licenses {
+                                license {
+                                    name = "MIT"
+                                    url = "https://opensource.org/licenses/MIT"
+                                }
+                            }
+                            scm { url = "https://github.com/Aitchn/Prism" }
+                        }
+                    }
+                }
+            }
+        }
+
         tasks.withType<JavaCompile>().configureEach {
             options.release = 25
             options.encoding = "UTF-8"
