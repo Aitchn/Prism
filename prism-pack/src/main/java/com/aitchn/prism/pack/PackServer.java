@@ -11,16 +11,17 @@ import java.util.concurrent.Executors;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Serves packs at immutable URLs {@code /<sha1>.zip}. Old hashes stay available so a client that is still
- * downloading an earlier build is not cut off; only the newest few are kept.
+ * Serves packs at immutable URLs {@code /<sha1>.zip}. Each named slot (for example Prism's own pack, or BetterModel's)
+ * keeps its current and previous build, so a client still downloading an earlier build is not cut off and a pack
+ * that is advertised never disappears because another slot changed.
  */
 public final class PackServer implements AutoCloseable {
 
-    private static final int KEEP = 4;
+    private static final int KEEP_PER_SLOT = 2;
 
     private final HttpServer server;
     private final Map<String, byte[]> packs = new ConcurrentHashMap<>();
-    private final java.util.Deque<String> order = new java.util.ArrayDeque<>();
+    private final Map<String, java.util.Deque<String>> slots = new java.util.HashMap<>();
 
     /** @param port 0 picks a free port; see {@link #port()} */
     public PackServer(@NotNull String bindAddress, int port) throws IOException {
@@ -41,14 +42,18 @@ public final class PackServer implements AutoCloseable {
         return server.getAddress().getPort();
     }
 
-    /** Makes {@code zip} available as {@code /<sha1>.zip}. */
-    public synchronized void publish(@NotNull String sha1, byte @NotNull [] zip) {
-        if (packs.put(sha1, zip) == null) {
-            order.addLast(sha1);
-            while (order.size() > KEEP) {
-                packs.remove(order.removeFirst());
-            }
+    /** Makes {@code zip} available as {@code /<sha1>.zip} and makes it the current build of {@code slot}. */
+    public synchronized void publish(@NotNull String slot, @NotNull String sha1, byte @NotNull [] zip) {
+        packs.put(sha1, zip);
+        java.util.Deque<String> history = slots.computeIfAbsent(slot, k -> new java.util.ArrayDeque<>());
+        history.remove(sha1);
+        history.addFirst(sha1);
+        while (history.size() > KEEP_PER_SLOT) {
+            history.removeLast();
         }
+        java.util.Set<String> keep = new java.util.HashSet<>();
+        slots.values().forEach(keep::addAll);
+        packs.keySet().retainAll(keep);
     }
 
     private void handle(HttpExchange exchange) throws IOException {

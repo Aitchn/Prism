@@ -10,12 +10,15 @@ import com.aitchn.prism.pack.PackFormats;
 import com.aitchn.prism.pack.PackServer;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import net.kyori.adventure.resource.ResourcePackInfo;
+import net.kyori.adventure.resource.ResourcePackRequest;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -110,6 +113,9 @@ final class PackManager implements Listener {
      * client are supported since 1.20.3; Prism does not merge them.
      */
     void publishExternal(String name, byte[] zip) {
+        if (!config.getBoolean("pack.enabled", true)) {
+            return;
+        }
         try {
             String sha1 = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-1").digest(zip));
             publish(UUID.nameUUIDFromBytes(("prism:external:" + name).getBytes(StandardCharsets.UTF_8)),
@@ -120,7 +126,7 @@ final class PackManager implements Listener {
     }
 
     private void publish(UUID id, String marker, String sha1, byte[] zip, int files) throws IOException {
-        ensureServer().publish(sha1, zip);
+        ensureServer().publish(id.toString(), sha1, zip);
         String url = "http://" + publicHost() + ":" + config.getInt("pack.port", 8765) + "/" + sha1 + ".zip";
         packs.put(id, new Published(url, HexFormat.of().parseHex(sha1), sha1));
         plugin.getLogger().info(marker + " sha1=" + sha1 + (files >= 0 ? " files=" + files : "")
@@ -142,7 +148,15 @@ final class PackManager implements Listener {
     private void send(Player player) {
         Component prompt = MiniMessage.miniMessage().deserialize(config.getString("pack.prompt", ""));
         boolean required = config.getBoolean("pack.required", false);
-        packs.forEach((id, pack) -> player.setResourcePack(id, pack.url(), pack.hash(), prompt, required));
+        if (packs.isEmpty()) {
+            return;
+        }
+        // One request with every pack: the single-pack setResourcePack overload clears previously sent packs.
+        List<ResourcePackInfo> infos = new ArrayList<>();
+        packs.forEach((id, pack) -> infos.add(ResourcePackInfo.resourcePackInfo(
+                id, URI.create(pack.url()), pack.sha1())));
+        player.sendResourcePacks(ResourcePackRequest.resourcePackRequest()
+                .packs(infos).prompt(prompt).required(required).replace(true).build());
     }
 
     private String publicHost() {

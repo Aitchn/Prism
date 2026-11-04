@@ -43,7 +43,7 @@ final class ModelAnchors implements Listener {
 
     /** BetterModel's name for a Prism model key. Also the file name (without extension) written by the sync. */
     static String modelName(PrismKey model) {
-        return "prism_" + model.namespace() + "_" + model.value().replace('/', '_');
+        return com.aitchn.prism.core.mod.ModelNames.betterModelName(model);
     }
 
     static Optional<PrismKey> modelOf(BlockDefinition definition) {
