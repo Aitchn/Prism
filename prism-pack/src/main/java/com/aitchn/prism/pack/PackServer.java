@@ -56,9 +56,52 @@ public final class PackServer implements AutoCloseable {
         packs.keySet().retainAll(keep);
     }
 
+    private record BedrockContent(String sha1, byte[] mcpack, byte[] mappings) {}
+
+    private volatile BedrockContent bedrock;
+
+    /**
+     * Makes the Bedrock content available to a Geyser extension on another machine: {@code /bedrock/manifest.json}
+     * names the current hash, {@code /bedrock/<sha1>.mcpack} and {@code /bedrock/<sha1>.json} are immutable.
+     */
+    public void publishBedrock(@NotNull String sha1, byte @NotNull [] mcpack, @NotNull String mappings) {
+        bedrock = new BedrockContent(sha1, mcpack, mappings.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private boolean handleBedrock(HttpExchange exchange, String path) throws IOException {
+        BedrockContent content = bedrock;
+        if (content == null || !exchange.getRequestMethod().equals("GET")) {
+            return false;
+        }
+        byte[] body = null;
+        String type = "application/json";
+        if (path.equals("/bedrock/manifest.json")) {
+            body = ("{\"sha1\":\"" + content.sha1() + "\",\"mcpack\":\"/bedrock/" + content.sha1()
+                    + ".mcpack\",\"mappings\":\"/bedrock/" + content.sha1() + ".json\"}")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        } else if (path.equals("/bedrock/" + content.sha1() + ".mcpack")) {
+            body = content.mcpack();
+            type = "application/zip";
+        } else if (path.equals("/bedrock/" + content.sha1() + ".json")) {
+            body = content.mappings();
+        }
+        if (body == null) {
+            return false;
+        }
+        exchange.getResponseHeaders().add("Content-Type", type);
+        exchange.sendResponseHeaders(200, body.length);
+        try (OutputStream out = exchange.getResponseBody()) {
+            out.write(body);
+        }
+        return true;
+    }
+
     private void handle(HttpExchange exchange) throws IOException {
         try (exchange) {
             String path = exchange.getRequestURI().getPath();
+            if (path.startsWith("/bedrock/") && handleBedrock(exchange, path)) {
+                return;
+            }
             byte[] zip = null;
             if (path.startsWith("/") && path.endsWith(".zip")) {
                 zip = packs.get(path.substring(1, path.length() - 4));

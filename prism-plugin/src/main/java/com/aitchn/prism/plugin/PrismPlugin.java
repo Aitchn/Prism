@@ -4,6 +4,7 @@ import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.platform.MinecraftVersion;
 import com.aitchn.prism.api.platform.PlatformInfo;
 import com.aitchn.prism.api.platform.PlatformKind;
+import com.aitchn.prism.core.client.Profiles;
 import com.aitchn.prism.core.PrismRuntime;
 import com.aitchn.prism.core.StartupReport;
 import com.aitchn.prism.core.mod.BehaviorDispatcher;
@@ -56,7 +57,7 @@ public final class PrismPlugin extends JavaPlugin {
         BehaviorDispatcher dispatcher = new BehaviorDispatcher(
                 mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
                 location -> scheduler.isOwnedByCurrentThread(location), getLogger());
-        Prism.install(lifecycle, items, blocks);
+        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())));
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
         getServer().getPluginManager().registerEvents(
