@@ -218,4 +218,17 @@ class ModManagerTest {
         assertEquals(0, manager.blocks().size());
         assertTrue(manager.assets().isEmpty());
     }
+
+    @Test
+    void bbmodelsAreCollectedByKeyAndReleasedOnDeactivate() {
+        ModManager manager = manager();
+        manager.activate(candidate("TestMod", "testmod", new MemoryContentSource()
+                .put("prism/models/turret.bbmodel", "{}")
+                .put("prism/models/guns/rifle.bbmodel", "{}")
+                .put("prism/models/readme.txt", "x"), new TestMod()));
+        assertEquals(2, manager.models().size());
+        assertTrue(manager.models().containsKey(new PrismKey("testmod", "guns/rifle")));
+        manager.deactivate("TestMod");
+        assertTrue(manager.models().isEmpty());
+    }
 }

@@ -1,0 +1,4 @@
+# Drawn by an animated Blockbench model: prism/models/turret.bbmodel (served through BetterModel).
+base: minecraft:barrier
+components:
+  prism:model_ref: examplemod:turret

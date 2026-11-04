@@ -10,12 +10,15 @@ import com.aitchn.prism.pack.PackFormats;
 import com.aitchn.prism.pack.PackServer;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import net.kyori.adventure.resource.ResourcePackInfo;
+import net.kyori.adventure.resource.ResourcePackRequest;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -45,7 +48,7 @@ final class PackManager implements Listener {
     private final AtomicBoolean buildQueued = new AtomicBoolean();
     private volatile boolean serverStarted;
     private volatile PackServer server;
-    private volatile Published current;
+    private final java.util.Map<UUID, Published> packs = new java.util.concurrent.ConcurrentHashMap<>();
 
     private record Published(String url, byte[] hash, String sha1) {}
 
@@ -99,17 +102,37 @@ final class PackManager implements Listener {
         try {
             JavaPackBuilder.Result result = JavaPackBuilder.build(input());
             result.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
-            PackServer running = ensureServer();
-            running.publish(result.sha1(), result.zip());
-            String url = "http://" + publicHost() + ":" + config.getInt("pack.port", 8765) + "/" + result.sha1() + ".zip";
-            current = new Published(url, HexFormat.of().parseHex(result.sha1()), result.sha1());
-            plugin.getLogger().info("PRISM_PACK_READY sha1=" + result.sha1() + " files=" + result.fileCount()
-                    + " bytes=" + result.zip().length + " url=" + url);
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                scheduler.runOn(player, () -> send(player), null);
-            }
+            publish(PACK_ID, "PRISM_PACK_READY", result.sha1(), result.zip(), result.fileCount());
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().severe("PRISM_PACK_FAIL " + e);
+        }
+    }
+
+    /**
+     * Serves and sends a pack built by someone else (BetterModel's own pack) next to Prism's. Several packs per
+     * client are supported since 1.20.3; Prism does not merge them.
+     */
+    void publishExternal(String name, byte[] zip) {
+        if (!config.getBoolean("pack.enabled", true)) {
+            return;
+        }
+        try {
+            String sha1 = HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-1").digest(zip));
+            publish(UUID.nameUUIDFromBytes(("prism:external:" + name).getBytes(StandardCharsets.UTF_8)),
+                    "PRISM_EXTERNAL_PACK_READY name=" + name, sha1, zip, -1);
+        } catch (IOException | java.security.NoSuchAlgorithmException | RuntimeException e) {
+            plugin.getLogger().severe("PRISM_PACK_FAIL " + name + " " + e);
+        }
+    }
+
+    private void publish(UUID id, String marker, String sha1, byte[] zip, int files) throws IOException {
+        ensureServer().publish(id.toString(), sha1, zip);
+        String url = "http://" + publicHost() + ":" + config.getInt("pack.port", 8765) + "/" + sha1 + ".zip";
+        packs.put(id, new Published(url, HexFormat.of().parseHex(sha1), sha1));
+        plugin.getLogger().info(marker + " sha1=" + sha1 + (files >= 0 ? " files=" + files : "")
+                + " bytes=" + zip.length + " url=" + url);
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            scheduler.runOn(player, () -> send(player), null);
         }
     }
 
@@ -123,12 +146,17 @@ final class PackManager implements Listener {
     }
 
     private void send(Player player) {
-        Published pack = current;
-        if (pack == null) {
+        Component prompt = MiniMessage.miniMessage().deserialize(config.getString("pack.prompt", ""));
+        boolean required = config.getBoolean("pack.required", false);
+        if (packs.isEmpty()) {
             return;
         }
-        Component prompt = MiniMessage.miniMessage().deserialize(config.getString("pack.prompt", ""));
-        player.setResourcePack(PACK_ID, pack.url(), pack.hash(), prompt, config.getBoolean("pack.required", false));
+        // One request with every pack: the single-pack setResourcePack overload clears previously sent packs.
+        List<ResourcePackInfo> infos = new ArrayList<>();
+        packs.forEach((id, pack) -> infos.add(ResourcePackInfo.resourcePackInfo(
+                id, URI.create(pack.url()), pack.sha1())));
+        player.sendResourcePacks(ResourcePackRequest.resourcePackRequest()
+                .packs(infos).prompt(prompt).required(required).replace(true).build());
     }
 
     private String publicHost() {

@@ -28,8 +28,15 @@ Purpur, without a client mod and without PacketEvents-level complexity where a s
   whose item model is `<ns>:block/<value>`. The display is saved with its chunk, so no Prism database exists and
   restarts keep every block. Its persistent data holds the block key. Break, explosion and piston events are handled;
   pistons refuse to move custom blocks.
-- **BetterModel** keeps its own pack and model folder; Prism sends its pack next to it (several packs per client
-  are supported since 1.20.3) and does not merge them. The bridge for complex models follows as M2b.
+- **BetterModel** (M2b): a block with `prism:model_ref` is drawn by an animated Blockbench model. BetterModel only
+  reads models from `plugins/BetterModel/models`, so Prism keeps generated, Prism-owned copies of every active mod's
+  `prism/models/*.bbmodel` there (`prism_<ns>_<name>.bbmodel`, rewritten only when different, deleted when the mod
+  goes away). This is the single exception to "mod content is never copied to the server folder" and it exists
+  because of BetterModel's loader; mod authors never touch it. BetterModel is reloaded only when a file changed, its
+  `build.zip` is served and sent next to Prism's pack (several packs per client since 1.20.3), and the packs are not
+  merged. The BetterModel instance is not persistent: the block's anchor display entity is, and the instance is
+  re-created when the anchor's chunk loads or the models reload, and closed when the chunk unloads. Only
+  `prism-model` touches BetterModel types.
 
 ## Consequences
 

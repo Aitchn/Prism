@@ -143,7 +143,7 @@ class JavaPackBuilderTest {
     void serverServesPacksByHashOnly() throws Exception {
         try (PackServer server = new PackServer("127.0.0.1", 0)) {
             server.start();
-            server.publish("abc123", new byte[] {1, 2, 3});
+            server.publish("main", "abc123", new byte[] {1, 2, 3});
             HttpClient client = HttpClient.newHttpClient();
             String base = "http://127.0.0.1:" + server.port();
             var ok = client.send(HttpRequest.newBuilder(URI.create(base + "/abc123.zip")).build(),
@@ -153,6 +153,27 @@ class JavaPackBuilderTest {
             var missing = client.send(HttpRequest.newBuilder(URI.create(base + "/nope.zip")).build(),
                     HttpResponse.BodyHandlers.ofByteArray());
             assertEquals(404, missing.statusCode());
+        }
+    }
+
+    @Test
+    void aChangingSlotNeverEvictsAnotherSlotsPack() throws Exception {
+        try (PackServer server = new PackServer("127.0.0.1", 0)) {
+            server.start();
+            server.publish("model", "keepme", new byte[] {9});
+            for (int i = 0; i < 6; i++) {
+                server.publish("main", "build" + i, new byte[] {(byte) i});
+            }
+            HttpClient client = HttpClient.newHttpClient();
+            String base = "http://127.0.0.1:" + server.port();
+            assertEquals(200, client.send(HttpRequest.newBuilder(URI.create(base + "/keepme.zip")).build(),
+                    HttpResponse.BodyHandlers.ofByteArray()).statusCode());
+            assertEquals(200, client.send(HttpRequest.newBuilder(URI.create(base + "/build5.zip")).build(),
+                    HttpResponse.BodyHandlers.ofByteArray()).statusCode());
+            assertEquals(200, client.send(HttpRequest.newBuilder(URI.create(base + "/build4.zip")).build(),
+                    HttpResponse.BodyHandlers.ofByteArray()).statusCode());
+            assertEquals(404, client.send(HttpRequest.newBuilder(URI.create(base + "/build0.zip")).build(),
+                    HttpResponse.BodyHandlers.ofByteArray()).statusCode());
         }
     }
 }

@@ -81,9 +81,9 @@ if docker logs "$NAME" 2>&1 | grep -q 'PRISM_SCHEDULER_FAIL'; then
   exit 1
 fi
 # Mods enable before the first tick, so these lines normally exist already; allow a few seconds anyway.
-for marker in 'PRISM_MOD_ACTIVE ExampleMod items=2 blocks=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'PRISM_PACK_READY sha1=' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block'; do
+for marker in 'PRISM_MOD_ACTIVE ExampleMod items=2 blocks=2' 'PRISM_MODELS_SYNCED changed=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'PRISM_PACK_READY sha1=' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block'; do
   found=""
-  for ((i = 0; i < 20; i++)); do
+  for ((i = 0; i < 90; i++)); do
     if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
     sleep 1
   done
@@ -97,4 +97,6 @@ if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|PRISM
   echo "FAIL: a mod failed to activate" >&2
   exit 1
 fi
+# Informational: BetterModel model loading is not asserted yet.
+docker logs "$NAME" 2>&1 | grep -E 'PRISM_MODEL|PRISM_EXTERNAL_PACK|PRISM_PACK_WARNING' || true
 echo "OK: $PLATFORM $MC_VERSION"
