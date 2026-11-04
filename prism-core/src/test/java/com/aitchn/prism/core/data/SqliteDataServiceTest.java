@@ -44,6 +44,16 @@ class SqliteDataServiceTest {
     }
 
     @Test
+    void prefixWithSupplementaryCharacters() throws Exception {
+        try (var service = new SqliteDataService(null)) {
+            var store = service.store("mod");
+            store.put("\uD83D\uDE00/one", "1");
+            store.put("\uD83D\uDE01/two", "2");
+            assertEquals(List.of("\uD83D\uDE00/one"), store.keys("\uD83D\uDE00/"));
+        }
+    }
+
+    @Test
     void survivesReopen(@TempDir Path dir) throws Exception {
         Path file = dir.resolve("data.db");
         try (var service = new SqliteDataService(file)) {

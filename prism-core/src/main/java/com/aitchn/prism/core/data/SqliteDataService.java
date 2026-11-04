@@ -113,7 +113,8 @@ public final class SqliteDataService implements DataService, AutoCloseable {
                 try (PreparedStatement s = connection.prepareStatement(
                         "SELECT k FROM kv WHERE ns=? AND substr(k, 1, ?)=? ORDER BY k")) {
                     s.setString(1, namespace);
-                    s.setInt(2, prefix.length());
+                    // SQLite's substr counts characters (code points), not UTF-16 units
+                    s.setInt(2, prefix.codePointCount(0, prefix.length()));
                     s.setString(3, prefix);
                     List<String> keys = new ArrayList<>();
                     try (ResultSet rs = s.executeQuery()) {
