@@ -1,0 +1,9 @@
+# Key: examplemod:ruby  (namespace = lower-cased plugin name, value = this file's path without extension)
+base: minecraft:paper
+components:
+  prism:display_name: "<red>Ruby"
+  prism:max_stack_size: 16
+  examplemod:tier: 2
+behaviors:
+  - type: examplemod:heal
+    amount: 4

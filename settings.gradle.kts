@@ -12,6 +12,7 @@ include(
     "prism-pack",
     "prism-plugin",
     "prism-testkit",
+    "examples:example-mod",
 )
 
 dependencyResolutionManagement {

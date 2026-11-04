@@ -18,6 +18,9 @@ EXPECTED="$(echo "$PLATFORM" | tr '[:lower:]' '[:upper:]')"
 
 rm -rf "$WORK" && mkdir -p "$WORK/plugins"
 cp "$PRISM_JAR" "$WORK/plugins/Prism.jar"
+# The example mod proves the whole path: discovery, YAML validation, registration and item creation on a real server.
+EXAMPLE_JAR="${EXAMPLE_MOD_JAR:-$(ls "$ROOT"/examples/example-mod/build/libs/*.jar | grep -v -- '-sources' | head -n1)}"
+cp "$EXAMPLE_JAR" "$WORK/plugins/ExampleMod.jar"
 
 download_server() {
   case "$PLATFORM" in
@@ -75,6 +78,23 @@ if ! grep -q "platform=$EXPECTED " <<<"$ready"; then
 fi
 if docker logs "$NAME" 2>&1 | grep -q 'PRISM_SCHEDULER_FAIL'; then
   echo "FAIL: scheduler self check reported a failure" >&2
+  exit 1
+fi
+# Mods enable before the first tick, so these lines normally exist already; allow a few seconds anyway.
+for marker in 'PRISM_MOD_ACTIVE ExampleMod items=1' 'EXAMPLE_ITEM_OK examplemod:ruby'; do
+  found=""
+  for ((i = 0; i < 20; i++)); do
+    if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
+    sleep 1
+  done
+  if [[ -z "$found" ]]; then
+    echo "FAIL: expected log line not seen: $marker" >&2
+    docker logs "$NAME" 2>&1 | grep -E 'PRISM_|EXAMPLE_|ExampleMod' >&2 || true
+    exit 1
+  fi
+done
+if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL'; then
+  echo "FAIL: a mod failed to activate" >&2
   exit 1
 fi
 echo "OK: $PLATFORM $MC_VERSION"

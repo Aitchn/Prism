@@ -1,0 +1,20 @@
+# API gaps against large-mod workloads
+
+The maintainers plan to test Prism by rebuilding mod-sized systems (a flora-magic mod, a storage-network mod and a
+machines/energy mod) as plain plugins. This file tracks what the API cannot express yet. It is a working list, not a
+promise. Update it when a milestone closes a gap or finds a new one.
+
+| Area | Needed | Status |
+|---|---|---|
+| Items | definitions, components, use behavior | M1 done |
+| Items | more events (hit, equip, tick in inventory), item tooltips, durability, cooldowns | open |
+| Blocks | definitions, place/break/interact behaviors, display-entity appearance | M2 |
+| Block state | per-block persistent data, chunk-safe, versioned | M2 (blocks) / M5 (DataStore) |
+| Ticking | block entities that tick on the right Folia region | open; needs a `Tickable` capability on `PlatformScheduler` |
+| Multiblocks | structure patterns, formed/unformed events, cross-region requests | open |
+| Transport | item, fluid, energy and network capabilities between neighbours | open; needs a capability lookup API on blocks |
+| GUI | `Menu` abstraction with slots, Java container + Bedrock form | M3 |
+| Recipes | machine and crafting recipes as registry content | open |
+| World | ore/flora generation, structures | open |
+| Entities | custom mobs, BetterModel animations | M5 |
+| Network scale | storage networks with many thousands of items need async-safe indexes | open |
