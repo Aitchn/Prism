@@ -1,0 +1,24 @@
+[versions]
+# Compile target for the Bukkit API. Compatibility with newer Minecraft versions is handled at runtime through
+# PlatformInfo / Feature flags, not by bumping this on every release. Dynamic on purpose until the first
+# milestone that needs a reproducible API snapshot (see docs/adr/0002-platform-abstraction.md).
+paper-api = "26.2.build.+"
+packetevents = "2.13.0"
+bettermodel = "3.6.0"
+jetbrains-annotations = "26.1.0"
+junit = "5.13.4"
+archunit = "1.5.1"
+shadow = "9.6.1"
+
+[libraries]
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper-api" }
+packetevents-spigot = { module = "com.github.retrooper:packetevents-spigot", version.ref = "packetevents" }
+bettermodel-api = { module = "io.github.toxicity188:bettermodel-bukkit-api", version.ref = "bettermodel" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
