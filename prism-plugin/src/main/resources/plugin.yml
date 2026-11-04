@@ -1,0 +1,16 @@
+name: Prism
+version: '${version}'
+main: com.aitchn.prism.plugin.PrismPlugin
+api-version: '1.21.4'
+description: Server-side content platform. Players only need a resource pack.
+author: Aitchn
+website: https://github.com/Aitchn/Prism
+folia-supported: true
+load: POSTWORLD
+depend:
+  - packetevents
+  - BetterModel
+softdepend:
+  - Geyser-Spigot
+  - floodgate
+  - PlaceholderAPI
