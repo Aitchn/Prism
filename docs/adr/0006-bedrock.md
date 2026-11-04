@@ -30,3 +30,9 @@ usable for them, and mods need a way to adapt when a client cannot show somethin
 - Bedrock players see flat item icons and the carrier block plus display entities for blocks; this is a documented
   degradation, queryable through `ClientProfile`.
 - The Bedrock pack is rebuilt together with the Java pack on every content change.
+
+## Menus (M3b)
+
+`Prism.menus().open(player, MenuSpec, handler)` shows a list of buttons. The first renderer is a chest container,
+used for Java and for Bedrock (Geyser translates containers). A native Bedrock form renderer will reuse `MenuSpec`;
+it is not built yet because it needs Floodgate/Cumulus on the compile classpath.

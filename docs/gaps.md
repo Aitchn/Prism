@@ -25,7 +25,7 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 - Bedrock registration with Geyser (event on the same server, extension on a proxy) is not implemented yet; only the
   pack, mappings and HTTP distribution exist (M3b).
-- No Bedrock form/menu abstraction yet. Mods that need GUIs (AE2 terminals, Mekanism machines) need one `Menu` API
-  with a container renderer for Java and a form renderer for Bedrock.
+- `MenuSpec` covers button lists only (chest renderer, Bedrock via Geyser's container translation). Machine and
+  terminal GUIs (AE2, Mekanism) need slots, live updates, text input and a native Bedrock form renderer.
 - Bedrock items are flat icons: no dynamic state and no 3D item models. Machines or tools that change their look
   with state need a separate item per state on Bedrock.
