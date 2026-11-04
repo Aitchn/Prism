@@ -83,8 +83,13 @@ final class ChestMenus implements MenuService, Listener {
         }
         int slot = event.getSlot();
         if (slot >= 0 && slot < holder.ids.size()) {
-            event.getWhoClicked().closeInventory();
-            holder.handler.accept(holder.ids.get(slot));
+            // Closing or opening inventories inside the click transaction is unsafe; run after the event.
+            Player player = (Player) event.getWhoClicked();
+            String id = holder.ids.get(slot);
+            scheduler.runOn(player, () -> {
+                player.closeInventory();
+                holder.handler.accept(id);
+            }, null);
         }
     }
 
