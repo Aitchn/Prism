@@ -8,8 +8,10 @@ promise. Update it when a milestone closes a gap or finds a new one.
 |---|---|---|
 | Items | definitions, components, use behavior | M1 done |
 | Items | more events (hit, equip, tick in inventory), item tooltips, durability, cooldowns | open |
-| Blocks | definitions, place/break/interact behaviors, display-entity appearance | M2 |
-| Block state | per-block persistent data, chunk-safe, versioned | M2 (blocks) / M5 (DataStore) |
+| Blocks | definitions, place/break/interact behaviors, display-entity appearance | M2 done |
+| Blocks | block states/rotation from placement, hardness and tool rules, sounds, light, redstone | open |
+| Blocks | very large counts (one display entity per block) | open; NativeStateBackend in M5 |
+| Block state | per-block persistent data, chunk-safe, versioned | open; carrier + display give identity only |
 | Ticking | block entities that tick on the right Folia region | open; needs a `Tickable` capability on `PlatformScheduler` |
 | Multiblocks | structure patterns, formed/unformed events, cross-region requests | open |
 | Transport | item, fluid, energy and network capabilities between neighbours | open; needs a capability lookup API on blocks |

@@ -1,5 +1,6 @@
 package com.aitchn.prism.api.mod;
 
+import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.registry.RegistrySnapshot;
 import org.jetbrains.annotations.NotNull;
@@ -8,4 +9,6 @@ import org.jetbrains.annotations.NotNull;
 public interface ContentView {
 
     @NotNull RegistrySnapshot<ItemDefinition> items();
+
+    @NotNull RegistrySnapshot<BlockDefinition> blocks();
 }

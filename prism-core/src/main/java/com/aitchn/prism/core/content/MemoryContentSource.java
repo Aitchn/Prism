@@ -8,10 +8,15 @@ import org.jetbrains.annotations.NotNull;
 /** In-memory content, for tests that need no files. */
 public final class MemoryContentSource implements ContentSource {
 
-    private final Map<String, String> files = new TreeMap<>();
+    private final Map<String, byte[]> files = new TreeMap<>();
 
     public @NotNull MemoryContentSource put(@NotNull String path, @NotNull String text) {
-        files.put(path, text);
+        files.put(path, text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return this;
+    }
+
+    public @NotNull MemoryContentSource put(@NotNull String path, byte @NotNull [] data) {
+        files.put(path, data.clone());
         return this;
     }
 
@@ -28,10 +33,15 @@ public final class MemoryContentSource implements ContentSource {
 
     @Override
     public @NotNull String readText(@NotNull String path) throws java.io.IOException {
-        String text = files.get(path);
-        if (text == null) {
+        return new String(readBytes(path), java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public byte @NotNull [] readBytes(@NotNull String path) throws java.io.IOException {
+        byte[] data = files.get(path);
+        if (data == null) {
             throw new java.io.FileNotFoundException(path);
         }
-        return text;
+        return data.clone();
     }
 }

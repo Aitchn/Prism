@@ -1,5 +1,6 @@
 package com.aitchn.prism.api;
 
+import com.aitchn.prism.api.block.BlockService;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.mod.ModRegistrar;
 import java.util.Objects;
@@ -21,6 +22,10 @@ public final class Prism {
         return current().items();
     }
 
+    public static @NotNull BlockService blocks() {
+        return current().blocks();
+    }
+
     private static Services current() {
         Services current = services;
         if (current == null) {
@@ -31,8 +36,9 @@ public final class Prism {
 
     /** Installed by the Prism plugin only. */
     @ApiStatus.Internal
-    public static void install(@NotNull ModRegistrar mods, @NotNull ItemService items) {
-        services = new Services(Objects.requireNonNull(mods), Objects.requireNonNull(items));
+    public static void install(@NotNull ModRegistrar mods, @NotNull ItemService items, @NotNull BlockService blocks) {
+        services = new Services(
+                Objects.requireNonNull(mods), Objects.requireNonNull(items), Objects.requireNonNull(blocks));
     }
 
     @ApiStatus.Internal
@@ -40,5 +46,5 @@ public final class Prism {
         services = null;
     }
 
-    private record Services(ModRegistrar mods, ItemService items) {}
+    private record Services(ModRegistrar mods, ItemService items, BlockService blocks) {}
 }

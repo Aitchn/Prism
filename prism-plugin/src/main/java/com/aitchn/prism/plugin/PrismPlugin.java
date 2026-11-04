@@ -21,6 +21,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class PrismPlugin extends JavaPlugin {
 
     private PrismRuntime runtime;
+    private PackManager packManager;
 
     @Override
     public void onEnable() {
@@ -38,15 +39,28 @@ public final class PrismPlugin extends JavaPlugin {
         PlatformScheduler scheduler = info.kind() == PlatformKind.FOLIA
                 ? new FoliaPlatformScheduler(this)
                 : new PaperPlatformScheduler(this);
-        ModManager mods = new ModManager(VanillaItems::exists);
+        saveDefaultConfig();
+        ModManager mods = new ModManager(VanillaItems::exists, VanillaItems::blockExists);
+        Appearance appearance = new Appearance();
         runtime = new PrismRuntime(info, scheduler, mods);
-        BukkitItemService items = new BukkitItemService(this, mods.items());
-        ModLifecycle lifecycle = new ModLifecycle(this, mods);
+        BukkitItemService items = new BukkitItemService(this, mods.items(), appearance);
+        DisplayEntityBackend blocks = new DisplayEntityBackend(this, mods.blocks(), items, appearance);
+        packManager = new PackManager(this, mods, scheduler, info, appearance, getConfig());
+        ModLifecycle lifecycle = new ModLifecycle(this, mods, packManager::contentChanged);
         BehaviorDispatcher dispatcher = new BehaviorDispatcher(
-                mods.items(), player -> scheduler.isOwnedByCurrentThread(player), getLogger());
-        Prism.install(lifecycle, items);
+                mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
+                location -> scheduler.isOwnedByCurrentThread(location), getLogger());
+        Prism.install(lifecycle, items, blocks);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
+        getServer().getPluginManager().registerEvents(
+                new BlockListener(items, blocks, mods.items(), mods.blocks(), dispatcher), this);
+        getServer().getPluginManager().registerEvents(packManager, this);
+        String selfTest = System.getProperty("prism.selftest");
+        if (selfTest != null) {
+            getServer().getPluginManager().registerEvents(
+                    new BlockSelfTest(selfTest, blocks, scheduler, getLogger()), this);
+        }
         getServer().getServicesManager().register(PlatformInfo.class, info, this, ServicePriority.Normal);
 
         StartupReport.render(info, getPluginMeta().getVersion()).forEach(getLogger()::info);
@@ -59,6 +73,9 @@ public final class PrismPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (packManager != null) {
+            packManager.shutdown();
+        }
         Prism.uninstall();
         getServer().getServicesManager().unregisterAll(this);
         runtime = null;
