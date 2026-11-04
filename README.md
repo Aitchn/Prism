@@ -8,9 +8,10 @@ pack**, on Java and on Bedrock (through Geyser).
 Plugin (Prism.jar)  ->  Prism (API + runtime)  ->  Mod (a plugin written by a creator)
 ```
 
-> **Status: M0, project skeleton.** The build, platform detection, scheduler abstraction and smoke tests exist;
-> there is no content model yet. See the [roadmap](docs/plans/architecture-and-roadmap.md) (Traditional Chinese
-> planning draft) and the [ADRs](docs/adr/README.md).
+> **Status: 0.1.0-SNAPSHOT preview.** Items, blocks, BetterModel models and the resource pack pipeline are exercised by
+> CI on Paper, Folia and Purpur. Bedrock support (pack, mappings, menus) is built but not verified on a real client,
+> and Geyser registration is not implemented yet. Docs: [English](docs/en/index.md), [繁體中文](docs/zh-TW/index.md);
+> [roadmap](docs/plans/architecture-and-roadmap.md), [known gaps](docs/gaps.md), [ADRs](docs/adr/README.md).
 
 ## What works today
 
