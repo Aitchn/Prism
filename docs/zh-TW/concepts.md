@@ -12,6 +12,9 @@
 
 **方塊。** 原版載體方塊（如 `barrier`）加上負責繪製模型的持久顯示實體，重啟不需要資料庫。
 
+**原生方塊（實驗性）。** 在 Prism 的 `config.yml` 設定 `blocks.backend: native`，改以音符盒狀態而非顯示實體繪製方塊
+（最多 799 個、不支援 BetterModel 模型；見 ADR-0005）。
+
 **模型。** 方塊可用 Blockbench 動畫模型：`prism:model_ref: <ns>:<name>` 加上 jar 內的 `prism/models/<name>.bbmodel`，
 由 BetterModel 呈現（Prism 唯一會寫檔的地方，因為 BetterModel 只讀自己的資料夾）。
 

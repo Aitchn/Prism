@@ -4,6 +4,8 @@ import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.platform.MinecraftVersion;
 import com.aitchn.prism.api.platform.PlatformInfo;
 import com.aitchn.prism.api.platform.PlatformKind;
+import com.aitchn.prism.api.block.BlockService;
+import com.aitchn.prism.core.block.StateAllocator;
 import com.aitchn.prism.core.client.Profiles;
 import com.aitchn.prism.core.data.SqliteDataService;
 import com.aitchn.prism.core.PrismRuntime;
@@ -67,13 +69,22 @@ public final class PrismPlugin extends JavaPlugin {
         } catch (java.sql.SQLException | RuntimeException e) {
             throw new IllegalStateException("cannot open Prism's data store", e);
         }
+        StateAllocator allocator = new StateAllocator(data.store("prism"));
+        boolean nativeBlocks = "native".equalsIgnoreCase(getConfig().getString("blocks.backend", "display"));
+        BlockService activeBlocks = nativeBlocks
+                ? new NativeStateBackend(mods.blocks(), items, allocator, getLogger()) : blocks;
+        if (nativeBlocks) {
+            packManager.useNativeStates(allocator);
+            getServer().getPluginManager().registerEvents(new NativeStateListener(activeBlocks), this);
+            getLogger().info("PRISM_BLOCK_BACKEND native");
+        }
         ChestMenus menus = new ChestMenus(items, scheduler);
-        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus, data);
+        Prism.install(lifecycle, items, activeBlocks, new Profiles(BedrockDetector.create(getLogger())), menus, data);
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
         getServer().getPluginManager().registerEvents(
-                new BlockListener(items, blocks, mods.items(), mods.blocks(), dispatcher), this);
+                new BlockListener(items, activeBlocks, mods.items(), mods.blocks(), dispatcher), this);
         getServer().getPluginManager().registerEvents(packManager, this);
         getServer().getPluginManager().registerEvents(anchors, this);
         getServer().getPluginManager().registerEvents(modelSync, this);
@@ -84,7 +95,12 @@ public final class PrismPlugin extends JavaPlugin {
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {
             getServer().getPluginManager().registerEvents(
-                    new BlockSelfTest(selfTest, blocks, scheduler, getLogger()), this);
+                    new BlockSelfTest("BLOCK", selfTest, blocks, scheduler, getLogger()), this);
+        }
+        String nativeSelfTest = System.getProperty("prism.selftest.native");
+        if (nativeSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new BlockSelfTest("NATIVE", nativeSelfTest,
+                    new NativeStateBackend(mods.blocks(), items, allocator, getLogger()), scheduler, getLogger()), this);
         }
         getServer().getServicesManager().register(PlatformInfo.class, info, this, ServicePriority.Normal);
 

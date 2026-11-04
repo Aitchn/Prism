@@ -15,6 +15,9 @@ is the `item_model` component pointing at a generated item definition.
 **Blocks.** A vanilla carrier block (for example `barrier`) plus a persistent display entity that draws the model.
 Blocks survive restarts without a database.
 
+**Native blocks (experimental).** Set `blocks.backend: native` in Prism's `config.yml` to draw blocks as note block
+states instead of display entities (max 799 blocks, no BetterModel models; see ADR-0005).
+
 **Models.** A block can use an animated Blockbench model: `prism:model_ref: <ns>:<name>` plus
 `prism/models/<name>.bbmodel` in your jar. Prism hands the model to BetterModel (the one place Prism writes files,
 because BetterModel only reads from its own folder).

@@ -34,3 +34,10 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 - `DataStore` is a string key-value store. Machines and networks (AE2, Mekanism) need transactional multi-key writes,
   per-chunk or per-block attachment with automatic cleanup on unload/removal, and async access; none exist yet.
+
+## Found in M5 (native-state blocks)
+
+- `NativeStateBackend` (config `blocks.backend: native`) draws custom blocks as note block states: no entities, 799
+  blocks max, no BetterModel models, and a player-made note block with an allocated state is read as that block.
+  It is experimental: CI proves place/identify/remove on Paper, Folia and Purpur, but the look on a real Java client
+  and on Bedrock (Geyser) has not been verified. Other state families (mushroom blocks, tripwire) would raise the cap.

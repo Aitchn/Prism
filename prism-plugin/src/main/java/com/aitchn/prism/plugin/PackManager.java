@@ -6,7 +6,9 @@ import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.platform.PlatformInfo;
 import com.aitchn.prism.core.mod.ModManager;
 import com.aitchn.prism.pack.BedrockPackBuilder;
+import com.aitchn.prism.core.block.StateAllocator;
 import com.aitchn.prism.pack.JavaPackBuilder;
+import com.aitchn.prism.pack.NativeBlockstates;
 import com.aitchn.prism.pack.PackFormats;
 import com.aitchn.prism.pack.PackServer;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
@@ -15,7 +17,10 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.kyori.adventure.resource.ResourcePackInfo;
@@ -49,6 +54,7 @@ final class PackManager implements Listener {
     private final AtomicBoolean buildQueued = new AtomicBoolean();
     private volatile boolean serverStarted;
     private volatile PackServer server;
+    private volatile StateAllocator nativeStates;
     private final java.util.Map<UUID, Published> packs = new java.util.concurrent.ConcurrentHashMap<>();
 
     private record Published(String url, byte[] hash, String sha1) {}
@@ -61,6 +67,11 @@ final class PackManager implements Listener {
         this.platform = platform;
         this.appearance = appearance;
         this.config = config;
+    }
+
+    /** Switches on the native-state block backend: the pack then carries a note_block blockstates file. */
+    void useNativeStates(StateAllocator allocator) {
+        this.nativeStates = allocator;
     }
 
     /** Re-resolves appearance now, and schedules a zip build once the server has started. */
@@ -196,6 +207,18 @@ final class PackManager implements Listener {
         if (format <= 0) {
             format = PackFormats.forVersion(platform.minecraftVersion()).number();
         }
-        return new JavaPackBuilder.Input(mods.assets(), items, blocks, format, "Prism content pack");
+        Map<String, Map<String, byte[]>> assets = mods.assets();
+        StateAllocator states = nativeStates;
+        if (states != null) {
+            JavaPackBuilder.Input plain = new JavaPackBuilder.Input(assets, items, blocks, format, "Prism content pack");
+            Set<PrismKey> drawn = JavaPackBuilder.resolve(plain).blocksWithAppearance();
+            for (BlockDefinition block : blocks) {
+                states.allocate(block.key());
+            }
+            assets = new LinkedHashMap<>(assets);
+            assets.put("prism:native", Map.of(NativeBlockstates.PATH,
+                    NativeBlockstates.noteBlock(states.assignments(), drawn).getBytes(StandardCharsets.UTF_8)));
+        }
+        return new JavaPackBuilder.Input(assets, items, blocks, format, "Prism content pack");
     }
 }

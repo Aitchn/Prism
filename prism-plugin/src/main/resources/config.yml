@@ -12,3 +12,10 @@ pack:
   required: false
   # Message shown in the pack prompt (MiniMessage).
   prompt: "<gray>This server uses a custom content pack."
+
+blocks:
+  # How custom blocks are drawn.
+  #   display: a carrier block plus a display entity (default; supports BetterModel models).
+  #   native:  a note block state drawn by the resource pack (no entities; 799 blocks max; EXPERIMENTAL, not verified
+  #            on a real client; player-placed note blocks with an allocated state are read as that custom block).
+  backend: display

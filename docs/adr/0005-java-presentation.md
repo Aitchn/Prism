@@ -46,3 +46,13 @@ Purpur, without a client mod and without PacketEvents-level complexity where a s
 - One display entity per block is fine for decorative blocks and machines, not for millions of blocks; this is
   recorded in [gaps](../gaps.md).
 - The HTTP server needs an open port; operators who use a CDN can disable it and host the zip themselves later.
+
+## Native-state blocks (M5, experimental)
+
+An opt-in second block backend (`blocks.backend: native`). Each custom block is assigned one of the 799 usable note
+block states by `StateAllocator`, persisted in the DataStore so assignments survive restarts and mod changes (a state
+is never reused). The pack carries a generated `assets/minecraft/blockstates/note_block.json` that lists all 800
+states, mapping allocated blocks to `<ns>:block/<value>` and everything else to the vanilla model. A listener
+cancels tuning, neighbor-driven instrument changes and note playback for custom states. Rejected for v1 as the
+default because of the collision with player-made note blocks and the state cap; `DisplayEntityBackend` stays the
+default and the only backend that supports BetterModel models.

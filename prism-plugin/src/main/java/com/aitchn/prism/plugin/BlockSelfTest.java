@@ -17,12 +17,14 @@ import org.bukkit.event.server.ServerLoadEvent;
  */
 final class BlockSelfTest implements Listener {
 
+    private final String label;
     private final String blockKey;
     private final BlockService blocks;
     private final PlatformScheduler scheduler;
     private final Logger log;
 
-    BlockSelfTest(String blockKey, BlockService blocks, PlatformScheduler scheduler, Logger log) {
+    BlockSelfTest(String label, String blockKey, BlockService blocks, PlatformScheduler scheduler, Logger log) {
+        this.label = label;
         this.blockKey = blockKey;
         this.blocks = blocks;
         this.scheduler = scheduler;
@@ -32,7 +34,7 @@ final class BlockSelfTest implements Listener {
     @EventHandler
     public void onServerLoad(ServerLoadEvent event) {
         if (Bukkit.getWorlds().isEmpty()) {
-            log.severe("PRISM_BLOCK_SELFTEST_FAIL no world");
+            log.severe("PRISM_" + label + "_SELFTEST_FAIL no world");
             return;
         }
         PrismKey key = PrismKey.parse(blockKey);
@@ -43,10 +45,10 @@ final class BlockSelfTest implements Listener {
                 boolean identified = placed && blocks.identify(at.getBlock()).filter(key::equals).isPresent();
                 boolean removed = identified && blocks.remove(at.getBlock(), false);
                 boolean gone = removed && blocks.identify(at.getBlock()).isEmpty();
-                log.info((gone ? "PRISM_BLOCK_SELFTEST_OK " : "PRISM_BLOCK_SELFTEST_FAIL ") + key
+                log.info((gone ? "PRISM_" + label + "_SELFTEST_OK " : "PRISM_" + label + "_SELFTEST_FAIL ") + key
                         + " placed=" + placed + " identified=" + identified + " removed=" + removed + " gone=" + gone);
             } catch (RuntimeException e) {
-                log.severe("PRISM_BLOCK_SELFTEST_FAIL " + e);
+                log.severe("PRISM_" + label + "_SELFTEST_FAIL " + e);
             }
         });
     }
