@@ -24,6 +24,11 @@ jobs:
           name: Prism-jar
           path: prism-plugin/build/libs/Prism-*.jar
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Example-mod-jar
+          path: examples/example-mod/build/libs/examples-example-mod-*.jar
+          if-no-files-found: error
 
   smoke:
     needs: build
@@ -39,6 +44,10 @@ jobs:
         with:
           name: Prism-jar
           path: prism-plugin/build/libs
+      - uses: actions/download-artifact@v4
+        with:
+          name: Example-mod-jar
+          path: examples/example-mod/build/libs
       - run: smoke-test/run.sh ${{ matrix.platform }} ${{ matrix.minecraft }}
       - if: always()
         uses: actions/upload-artifact@v4

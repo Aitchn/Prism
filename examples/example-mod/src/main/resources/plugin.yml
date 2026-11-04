@@ -1,0 +1,7 @@
+name: ExampleMod
+version: '${version}'
+main: com.example.prism.ExampleMod
+api-version: '1.21.4'
+folia-supported: true
+depend:
+  - Prism
