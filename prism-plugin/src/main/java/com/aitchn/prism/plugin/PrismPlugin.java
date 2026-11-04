@@ -57,7 +57,9 @@ public final class PrismPlugin extends JavaPlugin {
         BehaviorDispatcher dispatcher = new BehaviorDispatcher(
                 mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
                 location -> scheduler.isOwnedByCurrentThread(location), getLogger());
-        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())));
+        ChestMenus menus = new ChestMenus(items, scheduler);
+        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus);
+        getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
         getServer().getPluginManager().registerEvents(
