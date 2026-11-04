@@ -21,6 +21,9 @@ because BetterModel only reads from its own folder).
 
 **Menus.** `Prism.menus().open(player, MenuSpec, handler)` shows a list of buttons.
 
+**Data.** `Prism.data().store("examplemod")` is a persistent string key-value store per namespace (SQLite file
+`plugins/Prism/data.db`). Calls block on disk, so batch writes and keep them off hot paths.
+
 **Clients.** `Prism.clients().profile(player)` tells you the edition and what the client can show.
 
 **Folia.** Behaviors run on the thread that owns the player or location. Use Prism's scheduler abstraction, not the

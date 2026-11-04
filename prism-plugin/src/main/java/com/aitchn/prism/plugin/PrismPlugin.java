@@ -5,6 +5,7 @@ import com.aitchn.prism.api.platform.MinecraftVersion;
 import com.aitchn.prism.api.platform.PlatformInfo;
 import com.aitchn.prism.api.platform.PlatformKind;
 import com.aitchn.prism.core.client.Profiles;
+import com.aitchn.prism.core.data.SqliteDataService;
 import com.aitchn.prism.core.PrismRuntime;
 import com.aitchn.prism.core.StartupReport;
 import com.aitchn.prism.core.mod.BehaviorDispatcher;
@@ -24,6 +25,7 @@ public final class PrismPlugin extends JavaPlugin {
 
     private PrismRuntime runtime;
     private PackManager packManager;
+    private SqliteDataService data;
 
     @Override
     public void onEnable() {
@@ -57,8 +59,16 @@ public final class PrismPlugin extends JavaPlugin {
         BehaviorDispatcher dispatcher = new BehaviorDispatcher(
                 mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
                 location -> scheduler.isOwnedByCurrentThread(location), getLogger());
+        try {
+            getDataFolder().mkdirs();
+            data = new SqliteDataService(getDataFolder().toPath().resolve("data.db"));
+            data.store("prism").put("last-start", String.valueOf(System.currentTimeMillis()));
+            getLogger().info("PRISM_DATA_OK");
+        } catch (java.sql.SQLException | RuntimeException e) {
+            throw new IllegalStateException("cannot open Prism's data store", e);
+        }
         ChestMenus menus = new ChestMenus(items, scheduler);
-        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus);
+        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus, data);
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
@@ -88,6 +98,9 @@ public final class PrismPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (data != null) {
+            data.close();
+        }
         if (packManager != null) {
             packManager.shutdown();
         }

@@ -29,3 +29,8 @@ promise. Update it when a milestone closes a gap or finds a new one.
   terminal GUIs (AE2, Mekanism) need slots, live updates, text input and a native Bedrock form renderer.
 - Bedrock items are flat icons: no dynamic state and no 3D item models. Machines or tools that change their look
   with state need a separate item per state on Bedrock.
+
+## Found in M5 (data)
+
+- `DataStore` is a string key-value store. Machines and networks (AE2, Mekanism) need transactional multi-key writes,
+  per-chunk or per-block attachment with automatic cleanup on unload/removal, and async access; none exist yet.
