@@ -17,6 +17,9 @@
 
 **選單。** `Prism.menus().open(player, MenuSpec, handler)` 顯示按鈕清單。
 
+**資料。** `Prism.data().store("examplemod")` 提供各命名空間獨立的持久化字串鍵值儲存（SQLite 檔
+`plugins/Prism/data.db`）。呼叫會讀寫磁碟，請批次寫入並避開高頻路徑。
+
 **客戶端。** `Prism.clients().profile(player)` 回報版本（Java/基岩）與客戶端能力。
 
 **Folia。** 行為在擁有該玩家或位置的執行緒上執行；延後的工作請用 Prism 的排程抽象，不要用 Bukkit 排程器。

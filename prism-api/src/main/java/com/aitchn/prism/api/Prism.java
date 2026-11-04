@@ -2,6 +2,7 @@ package com.aitchn.prism.api;
 
 import com.aitchn.prism.api.block.BlockService;
 import com.aitchn.prism.api.client.ClientService;
+import com.aitchn.prism.api.data.DataService;
 import com.aitchn.prism.api.menu.MenuService;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.mod.ModRegistrar;
@@ -36,6 +37,10 @@ public final class Prism {
         return current().menus();
     }
 
+    public static @NotNull DataService data() {
+        return current().data();
+    }
+
     private static Services current() {
         Services current = services;
         if (current == null) {
@@ -51,9 +56,11 @@ public final class Prism {
             @NotNull ItemService items,
             @NotNull BlockService blocks,
             @NotNull ClientService clients,
-            @NotNull MenuService menus) {
+            @NotNull MenuService menus,
+            @NotNull DataService data) {
         services = new Services(Objects.requireNonNull(mods), Objects.requireNonNull(items),
-                Objects.requireNonNull(blocks), Objects.requireNonNull(clients), Objects.requireNonNull(menus));
+                Objects.requireNonNull(blocks), Objects.requireNonNull(clients), Objects.requireNonNull(menus),
+                Objects.requireNonNull(data));
     }
 
     @ApiStatus.Internal
@@ -62,5 +69,5 @@ public final class Prism {
     }
 
     private record Services(ModRegistrar mods, ItemService items, BlockService blocks, ClientService clients,
-            MenuService menus) {}
+            MenuService menus, DataService data) {}
 }
