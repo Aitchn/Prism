@@ -20,8 +20,8 @@ subprojects {
             withSourcesJar()
         }
 
-        // Only the modules creators compile against are published: the API, the runtime core and the test kit.
-        if (path in setOf(":prism-api", ":prism-core", ":prism-testkit")) {
+        // Only the modules creators compile against are published: the API, the runtime core, the platform SPI that core exposes, and the test kit.
+        if (path in setOf(":prism-api", ":prism-core", ":prism-platform:spi", ":prism-testkit")) {
             apply(plugin = "maven-publish")
             extensions.configure<PublishingExtension> {
                 publications {

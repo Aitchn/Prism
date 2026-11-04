@@ -53,7 +53,9 @@ interface such as `ItemUseBehavior`.
 ## 5. Test without a server
 
 ```java
-var harness = ModTestHarness.load("examplemod", new ExampleMod(), Path.of("src/main/resources"));
+// A JavaPlugin cannot be constructed outside a server, so register your types from a plain PrismMod
+// (the example does this in ExampleModTest) and share the registration code with your plugin class.
+var harness = ModTestHarness.load("examplemod", new TestMod(), Path.of("src/main/resources"));
 assertTrue(harness.report().active(), harness.report().problems().toString());
 ```
 

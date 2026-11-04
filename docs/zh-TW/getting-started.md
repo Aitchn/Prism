@@ -51,7 +51,9 @@ public final class ExampleMod extends JavaPlugin implements PrismMod {
 ## 5. 不開伺服器的測試
 
 ```java
-var harness = ModTestHarness.load("examplemod", new ExampleMod(), Path.of("src/main/resources"));
+// JavaPlugin 無法在伺服器外建立，請用只實作 PrismMod 的類別註冊型別
+// （範例的 ExampleModTest 即如此），並與插件主類別共用註冊程式碼。
+var harness = ModTestHarness.load("examplemod", new TestMod(), Path.of("src/main/resources"));
 assertTrue(harness.report().active(), harness.report().problems().toString());
 ```
 
