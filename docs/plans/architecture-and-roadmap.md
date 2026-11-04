@@ -44,7 +44,7 @@ Sonnet 5.5 對 Prism-old 做了唯讀稽核，重點如下（細節見 Prism-old
 4. 「YAML 宣告 → Java 處理器」的 capability-interface 行為模型，內建與外掛走同一套註冊表。
 5. **身份與呈現分離**：伺服器上的 ItemStack 只帶身份，每個觀看者看到的外觀在出站時決定；Java 與 Bedrock 各有明確的呈現分支，沒有隱式 fallback。
 6. 客戶端能力偵測（`ClientCapability`）以利優雅降級。
-7. 內容包 `pack.yml`（requires / capabilities / 條件式內容）與兩階段啟動。
+7. 內容包的 requires / capabilities / 條件式內容概念與兩階段啟動（但不再落地到伺服器資料夾）。
 8. 以真實內容 fixture 做不需伺服器的測試，加上只依賴 API jar 的外部驗證外掛。
 9. 以內容雜湊命名的材質包建置目錄與不可變 URL。
 
@@ -123,7 +123,7 @@ public interface PrismMod {
 }
 ```
 
-- Mod jar 內含 `prism-mod.json`：`id`、`version`、`entrypoints`、`depends`（含 `prism-api` 版本範圍）、`content`（內容包路徑）。
+- Mod 的身份來自 Bukkit 插件本身（名稱、版本、depend）；`prism-mod.json` 為選填覆寫（見 §5.3）。
 - 階段：`DISCOVER → INITIALIZE(註冊型別) → LOAD(讀 YAML) → VALIDATE → FREEZE(發布快照) → ACTIVATE(客戶端註冊、材質包編譯) → RUNNING`。
 - 一個 Mod 驗證失敗，整個 Mod 不啟用（沿用舊版「不部分綁定」原則），但不影響其他 Mod。
 - 所有註冊都綁定 owner（Mod），卸載時整組移除。
@@ -132,8 +132,10 @@ public interface PrismMod {
 
 創作者**還是在寫 Plugin**，只是依賴 Prism 取得「模組等級」的能力。Prism 不另創 Mod 格式、不自製 loader。
 
-- 創作者寫一個 Paper 插件，`plugin.yml` 中 `depend: [Prism]`，jar 內附 `prism-mod.json`（只放 namespace、內容包路徑、需要的 Prism API 版本與能力）與內容包。
-- 進入點：主類別實作 `PrismMod`，或在 `onEnable` 呼叫 `Prism.mods().register(this, initializer)`。Prism 監聽 `PluginEnableEvent` 並在 jar 內找到 `prism-mod.json` 時接管該插件的內容生命週期（§5.2）。
+- 創作者寫一個 Paper 插件，`plugin.yml` 中 `depend: [Prism]`。**內容包放在 jar 的 resources 內**（預設路徑 `prism/`），Prism 直接從 classpath 讀取，**不會**把內容解壓或複製到伺服器資料夾（舊版 `prism_register/<ns>/` 的外部註冊目錄被廢除，實測幾乎沒人用到卻每次都要清理）。
+- **零設定預設值**：namespace 預設為插件名稱小寫，內容路徑預設為 `prism/`。只有要覆寫時才在 jar 內放一個選填的 `prism-mod.json`（namespace、內容路徑、需要的 Prism API 版本範圍與能力）。
+- 進入點：主類別實作 `PrismMod`，或在 `onEnable` 呼叫 `Prism.mods().register(this, initializer)`。Prism 監聽 `PluginEnableEvent` 並在 jar 內找到 `prism/` 或 `prism-mod.json` 時接管該插件的內容生命週期（§5.2）。
+- 伺服器管理員若要覆寫某個 Mod 的內容（例如改配方），走 Mod 自己的 config，不走 Prism 的外部註冊目錄。這類「覆寫層」若社群有需求再以選用功能加入。
 - 好處：class loading、`folia-supported` 旗標、指令與權限都由 Paper 處理；創作者原本會的 Bukkit 知識全部沿用；一個插件可以同時用 Prism 與其他插件 API。
 - 代價：Prism 無法隔離壞掉的 Mod 的 class loading，只能隔離其內容（驗證失敗整組不啟用）。
 - `plugins/Prism/mods/` 專屬 loader 不在路線圖上，除非社群明確需要。
@@ -250,7 +252,7 @@ interface PlatformInfo { PlatformKind kind(); boolean isRegionized(); String bra
 |---|---|---|---|
 | 1 | 文件語言 | 程式碼與 API 文件英文；使用者文件中英雙語 | §7 文件站 i18n |
 | 2 | 授權 | MIT | §7 |
-| 3 | Mod 載入方式 | Mod 仍是 Bukkit 插件，依賴 Prism；不另創格式 | §5.3 |
+| 3 | Mod 載入方式 | Mod 仍是 Bukkit 插件，依賴 Prism；不另創格式；內容只放 jar 內，不再落地到伺服器的外部註冊目錄；namespace 與內容路徑零設定 | §5.2、§5.3 |
 | 4 | Minecraft 版本 | 先做 26.3，不寫死版本；舊版本以功能矩陣降級 | §3 原則 3、§6.1 |
 | 5 | 封包 / 模型層 | 硬依賴 PacketEvents（封包）與 BetterModel（模型） | §4、§5.6、§6.2 |
 | 6 | Geyser 代理拓撲 | v1 支援 | §6.3、M3 |
