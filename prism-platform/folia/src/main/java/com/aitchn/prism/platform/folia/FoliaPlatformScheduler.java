@@ -34,7 +34,12 @@ public final class FoliaPlatformScheduler implements PlatformScheduler {
 
     @Override
     public void runOn(@NotNull Entity entity, @NotNull Runnable task, @Nullable Runnable retired) {
-        entity.getScheduler().run(plugin, t -> task.run(), retired);
+        var submitted = entity.getScheduler().run(plugin, t -> task.run(), retired);
+        if (submitted == null && retired != null) {
+            // The entity was already removed: Folia neither runs the task nor calls `retired`. Report it on the
+            // global thread so the callback stays asynchronous, like the Paper implementation.
+            runGlobal(retired);
+        }
     }
 
     @Override
