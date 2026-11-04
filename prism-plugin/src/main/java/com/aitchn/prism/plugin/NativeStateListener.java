@@ -23,7 +23,9 @@ final class NativeStateListener implements Listener {
         this.blocks = blocks;
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    // HIGHEST: denying block use also cancels the event, so it must come after Prism's own NORMAL dispatch
+    // (BlockListener, ItemListener), which skip cancelled events.
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getClickedBlock() == null || event.getClickedBlock().getType() != Material.NOTE_BLOCK) {
             return;

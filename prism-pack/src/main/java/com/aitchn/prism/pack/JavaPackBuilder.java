@@ -69,6 +69,12 @@ public final class JavaPackBuilder {
                 resolved.itemsWithAppearance(), resolved.blocksWithAppearance());
     }
 
+    /** The block model a block is drawn with: its {@code prism:model} component, else {@code <ns>:block/<value>}. */
+    public static @NotNull PrismKey blockModel(@NotNull BlockDefinition block) {
+        return block.components().get(PrismComponents.MODEL).map(PrismComponents.Model::model)
+                .orElseGet(() -> new PrismKey(block.key().namespace(), "block/" + block.key().value()));
+    }
+
     /** Merges assets and generates definitions and models, without compressing anything. */
     public static @NotNull Resolved resolve(@NotNull Input input) {
         List<String> warnings = new ArrayList<>();
@@ -101,8 +107,7 @@ public final class JavaPackBuilder {
             }
         }
         for (BlockDefinition block : input.blocks()) {
-            PrismKey model = block.components().get(PrismComponents.MODEL).map(PrismComponents.Model::model)
-                    .orElseGet(() -> new PrismKey(block.key().namespace(), "block/" + block.key().value()));
+            PrismKey model = blockModel(block);
             String definitionPath =
                     "assets/" + block.key().namespace() + "/items/block/" + block.key().value() + ".json";
             if (generate(files, warnings, "block " + block.key(), definitionPath, model, "minecraft:block/cube_all",

@@ -212,12 +212,16 @@ final class PackManager implements Listener {
         if (states != null) {
             JavaPackBuilder.Input plain = new JavaPackBuilder.Input(assets, items, blocks, format, "Prism content pack");
             Set<PrismKey> drawn = JavaPackBuilder.resolve(plain).blocksWithAppearance();
+            Map<PrismKey, PrismKey> models = new LinkedHashMap<>();
             for (BlockDefinition block : blocks) {
                 states.allocate(block.key());
+                if (drawn.contains(block.key())) {
+                    models.put(block.key(), JavaPackBuilder.blockModel(block));
+                }
             }
             assets = new LinkedHashMap<>(assets);
             assets.put("prism:native", Map.of(NativeBlockstates.PATH,
-                    NativeBlockstates.noteBlock(states.assignments(), drawn).getBytes(StandardCharsets.UTF_8)));
+                    NativeBlockstates.noteBlock(states.assignments(), models).getBytes(StandardCharsets.UTF_8)));
         }
         return new JavaPackBuilder.Input(assets, items, blocks, format, "Prism content pack");
     }
