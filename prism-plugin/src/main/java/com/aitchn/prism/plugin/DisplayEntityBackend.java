@@ -30,9 +30,12 @@ final class DisplayEntityBackend implements BlockService {
     private final Registry<BlockDefinition> definitions;
     private final ItemService items;
     private final Appearance appearance;
+    private final ModelAnchors anchors;
 
-    DisplayEntityBackend(Plugin prism, Registry<BlockDefinition> definitions, ItemService items, Appearance appearance) {
+    DisplayEntityBackend(Plugin prism, Registry<BlockDefinition> definitions, ItemService items, Appearance appearance,
+            ModelAnchors anchors) {
         this.markerKey = new NamespacedKey(prism, "block");
+        this.anchors = anchors;
         this.definitions = definitions;
         this.items = items;
         this.appearance = appearance;
@@ -52,17 +55,21 @@ final class DisplayEntityBackend implements BlockService {
         }
         block.setType(carrier.get(), false);
         Location center = block.getLocation().add(0.5, 0.5, 0.5);
-        block.getWorld().spawn(center, ItemDisplay.class, display -> {
+        boolean modelled = ModelAnchors.modelOf(definition).isPresent();
+        ItemDisplay anchor = block.getWorld().spawn(center, ItemDisplay.class, display -> {
             display.setPersistent(true);
             display.setBillboard(Display.Billboard.FIXED);
             display.getPersistentDataContainer().set(markerKey, PersistentDataType.STRING, key.toString());
-            if (appearance.hasBlock(key)) {
+            if (!modelled && appearance.hasBlock(key)) {
                 ItemStack shown = new ItemStack(Material.PAPER);
                 shown.editMeta(meta -> Keys.bukkit(new PrismKey(key.namespace(), "block/" + key.value()))
                         .ifPresent(meta::setItemModel));
                 display.setItemStack(shown);
             }
         });
+        if (modelled) {
+            anchors.attach(anchor, key);
+        }
         return true;
     }
 
@@ -91,6 +98,7 @@ final class DisplayEntityBackend implements BlockService {
         Location center = block.getLocation().add(0.5, 0.5, 0.5);
         for (ItemDisplay display : block.getWorld().getNearbyEntitiesByType(ItemDisplay.class, center, SEARCH_RADIUS)) {
             if (display.getPersistentDataContainer().has(markerKey, PersistentDataType.STRING)) {
+                anchors.detach(display.getUniqueId());
                 display.remove();
             }
         }

@@ -14,6 +14,7 @@ import com.aitchn.prism.platform.spi.PlatformDetector;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import com.aitchn.prism.platform.spi.UnsupportedPlatformException;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -44,9 +45,14 @@ public final class PrismPlugin extends JavaPlugin {
         Appearance appearance = new Appearance();
         runtime = new PrismRuntime(info, scheduler, mods);
         BukkitItemService items = new BukkitItemService(this, mods.items(), appearance);
-        DisplayEntityBackend blocks = new DisplayEntityBackend(this, mods.blocks(), items, appearance);
+        ModelAnchors anchors = new ModelAnchors(new NamespacedKey(this, "block"), mods.blocks(), scheduler, getLogger());
+        DisplayEntityBackend blocks = new DisplayEntityBackend(this, mods.blocks(), items, appearance, anchors);
         packManager = new PackManager(this, mods, scheduler, info, appearance, getConfig());
-        ModLifecycle lifecycle = new ModLifecycle(this, mods, packManager::contentChanged);
+        ModelSync modelSync = new ModelSync(this, mods, scheduler, packManager, anchors);
+        ModLifecycle lifecycle = new ModLifecycle(this, mods, () -> {
+            packManager.contentChanged();
+            modelSync.contentChanged();
+        });
         BehaviorDispatcher dispatcher = new BehaviorDispatcher(
                 mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
                 location -> scheduler.isOwnedByCurrentThread(location), getLogger());
@@ -56,6 +62,12 @@ public final class PrismPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new BlockListener(items, blocks, mods.items(), mods.blocks(), dispatcher), this);
         getServer().getPluginManager().registerEvents(packManager, this);
+        getServer().getPluginManager().registerEvents(anchors, this);
+        getServer().getPluginManager().registerEvents(modelSync, this);
+        String modelSelfTest = System.getProperty("prism.selftest.model");
+        if (modelSelfTest != null) {
+            modelSync.selfTest(blocks, com.aitchn.prism.api.PrismKey.parse(modelSelfTest));
+        }
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {
             getServer().getPluginManager().registerEvents(

@@ -40,6 +40,7 @@ public final class ModManager {
     private final MutableRegistry<ItemDefinition> items = new MutableRegistry<>();
     private final MutableRegistry<BlockDefinition> blocks = new MutableRegistry<>();
     private final Map<String, Map<String, byte[]>> assets = new LinkedHashMap<>();
+    private final Map<String, Map<PrismKey, byte[]>> models = new LinkedHashMap<>();
     private final Map<String, ModCandidate> active = new HashMap<>();
     private final Map<String, String> namespaceOwners = new HashMap<>();
     private final Map<String, ModReport> reports = new LinkedHashMap<>();
@@ -53,7 +54,8 @@ public final class ModManager {
                 PrismComponents.DISPLAY_NAME.key(), PrismComponents.DISPLAY_NAME,
                 PrismComponents.MAX_STACK_SIZE.key(), PrismComponents.MAX_STACK_SIZE,
                 PrismComponents.MODEL.key(), PrismComponents.MODEL,
-                PrismComponents.PLACES_BLOCK.key(), PrismComponents.PLACES_BLOCK));
+                PrismComponents.PLACES_BLOCK.key(), PrismComponents.PLACES_BLOCK,
+                PrismComponents.MODEL_REF.key(), PrismComponents.MODEL_REF));
     }
 
     public @NotNull Registry<ItemDefinition> items() {
@@ -67,6 +69,16 @@ public final class ModManager {
     /** Resource-pack files (path to bytes) of every active mod, in activation order. Paths start with {@code assets/}. */
     public synchronized @NotNull Map<String, Map<String, byte[]>> assets() {
         return java.util.Collections.unmodifiableMap(new LinkedHashMap<>(assets));
+    }
+
+    /**
+     * Blockbench models ({@code <root>/models/**.bbmodel}) of every active mod, keyed by model key. The key value is
+     * the file path below {@code models/} without extension.
+     */
+    public synchronized @NotNull Map<PrismKey, byte[]> models() {
+        Map<PrismKey, byte[]> all = new LinkedHashMap<>();
+        models.values().forEach(all::putAll);
+        return java.util.Collections.unmodifiableMap(all);
     }
 
     public @NotNull Registry<ComponentType<?>> componentTypes() {
@@ -114,10 +126,12 @@ public final class ModManager {
         problems.addAll(staging.problems);
         ContentLoader.Loaded loaded = new ContentLoader.Loaded(Map.of(), Map.of());
         Map<String, byte[]> modAssets = Map.of();
+        Map<PrismKey, byte[]> modModels = Map.of();
         if (problems.isEmpty()) {
             loaded = new ContentLoader(staging, baseItemExists, carrierBlockExists)
                     .load(mod.content(), mod.contentRoot(), mod.namespace(), mod.id(), problems);
             modAssets = readAssets(mod, problems);
+            modModels = readModels(mod, problems);
         }
         if (!problems.isEmpty()) {
             return fail(mod, problems);
@@ -135,6 +149,7 @@ public final class ModManager {
         }
         active.put(mod.id(), mod);
         assets.put(mod.id(), modAssets);
+        models.put(mod.id(), modModels);
         namespaceOwners.put(mod.namespace(), mod.id());
 
         try {
@@ -162,6 +177,7 @@ public final class ModManager {
         }
         namespaceOwners.remove(mod.namespace(), id);
         assets.remove(id);
+        models.remove(id);
         rollback(id);
         if (notify) {
             try {
@@ -212,6 +228,26 @@ public final class ModManager {
             }
         } catch (java.io.IOException e) {
             problems.add(new Problem("assets", "cannot read pack assets: " + e.getMessage()));
+        }
+        return files;
+    }
+
+    private static Map<PrismKey, byte[]> readModels(ModCandidate mod, List<Problem> problems) {
+        Map<PrismKey, byte[]> files = new LinkedHashMap<>();
+        String dir = mod.contentRoot() + "/models";
+        try {
+            for (String path : mod.content().list(dir)) {
+                if (path.endsWith(".bbmodel")) {
+                    String value = path.substring(dir.length() + 1, path.length() - ".bbmodel".length());
+                    try {
+                        files.put(new PrismKey(mod.namespace(), value), mod.content().readBytes(path));
+                    } catch (IllegalArgumentException e) {
+                        problems.add(new Problem(path, "file name is not a valid key: " + e.getMessage()));
+                    }
+                }
+            }
+        } catch (java.io.IOException e) {
+            problems.add(new Problem(dir, "cannot read models: " + e.getMessage()));
         }
         return files;
     }

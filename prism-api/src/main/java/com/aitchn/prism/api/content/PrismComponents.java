@@ -39,7 +39,18 @@ public final class PrismComponents {
             PlacesBlock.class,
             section -> new PlacesBlock(section.requireKey("value")));
 
+    /**
+     * Draws a block with an animated Blockbench model from {@code prism/models/<value>.bbmodel} of the declaring mod
+     * instead of a flat item model. Scalar form: {@code prism:model_ref: mymod:turret}.
+     */
+    public static final ComponentType<ModelRef> MODEL_REF = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "model_ref"),
+            ModelRef.class,
+            section -> new ModelRef(section.requireKey("value")));
+
     private PrismComponents() {}
+
+    public record ModelRef(PrismKey model) {}
 
     public record Model(PrismKey model) {}
 
