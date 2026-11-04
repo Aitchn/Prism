@@ -2,7 +2,8 @@ package com.aitchn.prism.model;
 
 import java.util.function.Consumer;
 import kr.toxicity.model.api.BetterModel;
-import kr.toxicity.model.api.BetterModelPlugin;
+import kr.toxicity.model.api.BetterModelPlatform;
+import kr.toxicity.model.api.bukkit.platform.BukkitAdapter;
 import kr.toxicity.model.api.tracker.Tracker;
 import org.bukkit.Location;
 import org.jetbrains.annotations.NotNull;
@@ -28,11 +29,11 @@ public final class BetterModelBridge {
      * @return a one-line description of the outcome, starting with {@code OK} or {@code FAILED}
      */
     public static @NotNull String reload() {
-        BetterModelPlugin.ReloadResult result = BetterModel.plugin().reload();
-        if (result instanceof BetterModelPlugin.ReloadResult.Success success) {
+        BetterModelPlatform.ReloadResult result = BetterModel.platform().reload();
+        if (result instanceof BetterModelPlatform.ReloadResult.Success success) {
             return "OK models=" + BetterModel.modelKeys().size() + " firstLoad=" + success.firstLoad();
         }
-        if (result instanceof BetterModelPlugin.ReloadResult.Failure failure) {
+        if (result instanceof BetterModelPlatform.ReloadResult.Failure failure) {
             return "FAILED " + failure.throwable();
         }
         return "FAILED unknown result " + result;
@@ -48,13 +49,13 @@ public final class BetterModelBridge {
         if (renderer == null) {
             return null;
         }
-        Tracker tracker = renderer.create(location);
+        Tracker tracker = renderer.create(BukkitAdapter.adapt(location));
         return tracker::close;
     }
 
     /** Runs {@code onReload} after every BetterModel reload (including its own first load). */
     public static void onReloaded(@NotNull Consumer<String> onReload) {
-        BetterModel.plugin().addReloadEndHandler(result -> onReload.accept(
-                result instanceof BetterModelPlugin.ReloadResult.Success ? "OK" : "FAILED"));
+        BetterModel.platform().addReloadEndHandler(result -> onReload.accept(
+                result instanceof BetterModelPlatform.ReloadResult.Success ? "OK" : "FAILED"));
     }
 }
