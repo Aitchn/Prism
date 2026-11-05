@@ -68,7 +68,7 @@ final class BlockListener implements Listener {
         Optional<CustomBlock> custom = blocks.get(clicked);
         if (custom.isPresent() && !player.isSneaking()) {
             BlockEventContext ctx = new BlockEventContext(custom.get(), player, event.getBlockFace(),
-                    event.getClickedPosition(), EquipmentSlot.HAND);
+                    hit(event, clicked), EquipmentSlot.HAND);
             int ran = dispatcher.dispatchBlock(custom.get().key(), clicked.getLocation(), BlockInteractBehavior.class,
                     d -> ctx, (b, c) -> b.onInteract(c));
             if (ctx.isCancelled() || ran > 0) {
@@ -94,6 +94,12 @@ final class BlockListener implements Listener {
         if (placeFromItem(player, placed.get(), target, clicked) && player.getGameMode() != GameMode.CREATIVE) {
             held.subtract();
         }
+    }
+
+    /** Where the click landed, relative to the block's minimum corner. */
+    private static org.bukkit.util.Vector hit(PlayerInteractEvent event, Block block) {
+        var point = event.getInteractionPoint();
+        return point == null ? null : point.toVector().subtract(block.getLocation().toVector());
     }
 
     private boolean placeFromItem(Player player, PrismKey key, Block target, Block against) {
