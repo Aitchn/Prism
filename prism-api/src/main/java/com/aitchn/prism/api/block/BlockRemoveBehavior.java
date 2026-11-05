@@ -4,10 +4,11 @@ import com.aitchn.prism.api.content.Behavior;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Capability: runs just before {@link BlockService#remove} takes the block away, whatever the cause (player break,
- * explosion, a mod's own call). The block is still in the world during the call. Called on the thread that owns the
- * block's region.
+ * Capability: runs just before the block is removed, whatever the cause (player break, explosion, a mod's own
+ * {@link BlockService#remove}). The block and its data still exist during the call; drop contents here. It cannot
+ * be stopped; to keep a block from a player, use {@link BlockBreakBehavior}.
  */
 public interface BlockRemoveBehavior extends Behavior {
+
     void onRemove(@NotNull BlockContext context);
 }

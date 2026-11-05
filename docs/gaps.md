@@ -1,7 +1,8 @@
 # API gaps against large-mod workloads
 
 The maintainers plan to test Prism by rebuilding mod-sized systems (a flora-magic mod, a storage-network mod and a
-machines/energy mod) as plain plugins. This file tracks what the API cannot express yet. It is a working list, not a
+machines/energy mod) as plain plugins. This file tracks what the API cannot express yet. [platform-triage.md](platform-triage.md) decides, for every
+gap below, whether it belongs to Prism or to the mod. It is a working list, not a
 promise. Update it when a milestone closes a gap or finds a new one.
 
 | Area | Needed | Status |
@@ -12,10 +13,11 @@ promise. Update it when a milestone closes a gap or finds a new one.
 | Blocks | place/remove lifecycle behaviors | done (AE2 validation) |
 | Blocks | block states/rotation from placement, hardness and tool rules, sounds, light, redstone | open |
 | Blocks | very large counts (one display entity per block) | open; NativeStateBackend in M5 |
-| Block state | per-block persistent data, chunk-safe, versioned | open; carrier + display give identity only |
-| Ticking | block entities that tick on the right Folia region | open; needs a `Tickable` capability on `PlatformScheduler` |
+| Blocks | place/remove/load/neighbour lifecycle, facing, survival breaking | done (ADR-0007) |
+| Block state | per-block persistent data, chunk-safe | done (ADR-0007, `CustomBlock.data()`) |
+| Ticking | block entities that tick on the right Folia region | done (ADR-0007, `BlockTickBehavior`) |
 | Multiblocks | structure patterns, formed/unformed events, cross-region requests | open |
-| Transport | item, fluid, energy and network capabilities between neighbours | open; needs a capability lookup API on blocks |
+| Transport | capability lookup between neighbours | done (ADR-0007); resource types stay in mods (see platform-triage.md) |
 | GUI | `Menu` abstraction with slots, Java container + Bedrock form | M3 |
 | Recipes | machine and crafting recipes as registry content | open |
 | World | ore/flora generation, structures | open |

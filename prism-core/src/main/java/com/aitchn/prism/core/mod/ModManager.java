@@ -55,7 +55,9 @@ public final class ModManager {
                 PrismComponents.MAX_STACK_SIZE.key(), PrismComponents.MAX_STACK_SIZE,
                 PrismComponents.MODEL.key(), PrismComponents.MODEL,
                 PrismComponents.PLACES_BLOCK.key(), PrismComponents.PLACES_BLOCK,
-                PrismComponents.MODEL_REF.key(), PrismComponents.MODEL_REF));
+                PrismComponents.MODEL_REF.key(), PrismComponents.MODEL_REF,
+                PrismComponents.MINING.key(), PrismComponents.MINING,
+                PrismComponents.ROTATION.key(), PrismComponents.ROTATION));
     }
 
     public @NotNull Registry<ItemDefinition> items() {

@@ -49,16 +49,18 @@ public final class PrismPlugin extends JavaPlugin {
         runtime = new PrismRuntime(info, scheduler, mods);
         BukkitItemService items = new BukkitItemService(this, mods.items(), appearance);
         ModelAnchors anchors = new ModelAnchors(new NamespacedKey(this, "block"), mods.blocks(), scheduler, getLogger());
+        DisplayEntityBackend display = new DisplayEntityBackend(this, appearance, anchors);
+        packManager = new PackManager(this, mods, scheduler, info, appearance, getConfig());
+        ModelSync modelSync = new ModelSync(this, mods, scheduler, packManager, anchors);
         BehaviorDispatcher dispatcher = new BehaviorDispatcher(
                 mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
                 location -> scheduler.isOwnedByCurrentThread(location), getLogger());
-        DisplayEntityBackend blocks =
-                new DisplayEntityBackend(this, mods.blocks(), items, appearance, anchors, dispatcher);
-        packManager = new PackManager(this, mods, scheduler, info, appearance, getConfig());
-        ModelSync modelSync = new ModelSync(this, mods, scheduler, packManager, anchors);
+        PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, new BlockIndex(this), display,
+                dispatcher, scheduler, getLogger());
         ModLifecycle lifecycle = new ModLifecycle(this, mods, () -> {
             packManager.contentChanged();
             modelSync.contentChanged();
+            blocks.contentChanged();
         });
         try {
             getDataFolder().mkdirs();
@@ -69,18 +71,33 @@ public final class PrismPlugin extends JavaPlugin {
             throw new IllegalStateException("cannot open Prism's data store", e);
         }
         ChestMenus menus = new ChestMenus(items, scheduler);
-        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus, data);
+        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus, data,
+                new SchedulerAdapter(scheduler));
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
-        getServer().getPluginManager().registerEvents(
-                new BlockListener(items, blocks, mods.items(), mods.blocks(), dispatcher), this);
+        getServer().getPluginManager().registerEvents(blocks, this);
+        getServer().getPluginManager().registerEvents(new BlockListener(items, blocks, mods.items(), dispatcher), this);
+        getServer().getPluginManager().registerEvents(new DigListener(blocks, scheduler), this);
+        var command = getCommand("prism");
+        if (command != null) {
+            PrismCommand executor = new PrismCommand(mods.items(), items, menus, scheduler);
+            command.setExecutor(executor);
+            command.setTabCompleter(executor);
+        }
         getServer().getPluginManager().registerEvents(packManager, this);
         getServer().getPluginManager().registerEvents(anchors, this);
         getServer().getPluginManager().registerEvents(modelSync, this);
         String modelSelfTest = System.getProperty("prism.selftest.model");
         if (modelSelfTest != null) {
             modelSync.selfTest(blocks, com.aitchn.prism.api.PrismKey.parse(modelSelfTest));
+        }
+        String platformSelfTest = System.getProperty("prism.selftest.platform");
+        if (platformSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new PlatformSelfTest(this,
+                    com.aitchn.prism.api.PrismKey.parse(platformSelfTest),
+                    com.aitchn.prism.api.PrismKey.parse(System.getProperty("prism.selftest", platformSelfTest)),
+                    blocks, scheduler, getLogger()), this);
         }
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {
