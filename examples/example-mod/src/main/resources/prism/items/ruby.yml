@@ -9,3 +9,4 @@ components:
 behaviors:
   - type: examplemod:heal
     amount: 4
+  - type: examplemod:use_counter

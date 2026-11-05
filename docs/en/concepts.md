@@ -36,7 +36,7 @@ chest container, which Geyser shows to Bedrock players. Keep the items in your o
 
 **Item data and lore.** `Prism.items().editData(stack, data -> ...)` writes the stack's own persistent data and
 re-renders its lore. `prism:lore` holds static lines, and an `ItemLoreBehavior` adds lines computed from the stack.
-Both editions show the lore. `examplemod:ruby` counts its uses this way.
+Both editions show the lore. `examplemod:ruby` counts its uses this way (`UseCounterBehavior`).
 
 **Data.** `Prism.data().store("examplemod")` is a persistent string key-value store per namespace (SQLite file
 `plugins/Prism/data.db`). Calls block on disk, so batch writes and keep them off hot paths.

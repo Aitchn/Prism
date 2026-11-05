@@ -26,6 +26,7 @@ public final class ExampleMod extends JavaPlugin implements PrismMod {
         tier = context.registerComponent("tier", Tier.class, section -> new Tier(section.requireInt("value")));
         context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
         context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
+        context.registerBehavior("use_counter", UseCounterBehavior.class, UseCounterBehavior::fromYaml);
     }
 
     @Override
@@ -36,7 +37,7 @@ public final class ExampleMod extends JavaPlugin implements PrismMod {
                 () -> getLogger().severe("EXAMPLE_ITEM_FAIL examplemod:ruby is not registered"));
         // Per-stack data and dynamic lore: the smoke test looks for EXAMPLE_LORE_OK.
         Prism.items().create(new PrismKey("examplemod", "ruby"), 1).ifPresent(stack -> {
-            Prism.items().editData(stack, data -> data.set(HealBehavior.USES, PersistentDataType.INTEGER, 3));
+            Prism.items().editData(stack, data -> data.set(UseCounterBehavior.USES, PersistentDataType.INTEGER, 3));
             java.util.List<net.kyori.adventure.text.Component> lore = stack.lore();
             String text = lore == null ? "" : lore.stream()
                     .map(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()::serialize)

@@ -22,6 +22,7 @@ class ExampleModTest {
                     section -> new ExampleMod.Tier(section.requireInt("value")));
             context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
             context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
+            context.registerBehavior("use_counter", UseCounterBehavior.class, UseCounterBehavior::fromYaml);
         }
     }
 
@@ -33,7 +34,10 @@ class ExampleModTest {
         ItemDefinition ruby = harness.item("examplemod:ruby");
         assertEquals(2, ruby.components().get(ExampleMod.tier).orElseThrow().level());
         assertEquals("<red>Ruby", ruby.components().get(PrismComponents.DISPLAY_NAME).orElseThrow().miniMessage());
-        assertEquals(1, ruby.behaviors(ItemUseBehavior.class).size());
+        assertEquals(2, ruby.behaviors(ItemUseBehavior.class).size());
+        assertEquals(1, ruby.behaviors(com.aitchn.prism.api.item.ItemLoreBehavior.class).size());
+        assertEquals(java.util.List.of("<gray>Right click to heal"),
+                ruby.components().get(PrismComponents.LORE).orElseThrow().lines());
     }
 
     @Test
@@ -78,7 +82,7 @@ class ExampleModTest {
                             }
                             default -> null;
                         });
-        ruby.behaviors(ItemUseBehavior.class).forEach(behavior -> behavior.onUse(context));
+        ruby.behaviors(HealBehavior.class).forEach(behavior -> behavior.onUse(context));
 
         assertEquals(14.0, fake.health());
         assertTrue(cancelled[0]);
