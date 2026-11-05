@@ -48,7 +48,7 @@ final class PlatformSelfTest implements Listener {
             log.severe("PRISM_PLATFORM_SELFTEST_FAIL no world");
             return;
         }
-        Location at = Bukkit.getWorlds().get(0).getSpawnLocation().add(3, 0, 0);
+        Location at = Bukkit.getWorlds().get(0).getSpawnLocation().add(0, 0, 6); // clear of the block (0) and model (+3 x) self tests
         scheduler.runAt(at, () -> start(at.getBlock()));
     }
 
