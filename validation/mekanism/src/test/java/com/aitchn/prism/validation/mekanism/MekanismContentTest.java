@@ -155,15 +155,15 @@ class MekanismContentTest {
             }
             if (r.output() != null) {
                 assertNotNull(machine.output(), entry.id() + " produced nothing");
-                assertEquals(r.output().item().toString(), machine.output().id(), entry.id());
-                assertEquals(r.output().count(), machine.output().count(), entry.id());
+                assertEquals(r.output().item().toString(), machine.output().id(), entry.id().toString());
+                assertEquals(r.output().count(), machine.output().count(), entry.id().toString());
             }
             if (!r.chemicalOut().isEmpty()) {
-                assertEquals(r.chemicalOut().get(0).chemical(), machine.outTank().type(), entry.id());
-                assertEquals(r.chemicalOut().get(0).amount(), machine.outTank().amount(), entry.id());
+                assertEquals(r.chemicalOut().get(0).chemical(), machine.outTank().type(), entry.id().toString());
+                assertEquals(r.chemicalOut().get(0).amount(), machine.outTank().amount(), entry.id().toString());
             }
             if (r.chemicalOut().size() > 1) {
-                assertEquals(r.chemicalOut().get(1).chemical(), machine.outTank2().type(), entry.id());
+                assertEquals(r.chemicalOut().get(1).chemical(), machine.outTank2().type(), entry.id().toString());
             }
         }
     }
