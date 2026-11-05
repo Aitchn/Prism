@@ -1,6 +1,5 @@
-# Key: mekanism:solar_generator. Invisible carrier; the look is a placeholder texture (real art is never published).
+# Key: mekanism:solar_generator. Charges in daylight with open sky, keeps its energy in per-block data.
 base: minecraft:barrier
 drop: mekanism:solar_generator
 behaviors:
-  - type: mekanism:block
-    kind: solar
+  - type: mekanism:solar

@@ -1,0 +1,9 @@
+# The 4x step: ore plus a gas gives four shards. Mekanism uses hydrogen chloride; this rebuild has no
+# chlorine chain, so it uses hydrogen (from the electrolytic separator).
+type: mekanism:machine
+machine: chemical_injection_chamber
+input: mekanism:osmium_ore
+output: {item: mekanism:osmium_shard, count: 4}
+chemical_in: {chemical: hydrogen, amount: 1}
+ticks: 300
+energy: 50
