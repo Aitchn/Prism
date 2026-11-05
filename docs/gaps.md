@@ -107,8 +107,9 @@ it?":
    redraw a slot only when no click is waiting. Any machine GUI would need the same; a synchronous accept/reject hook
    or a documented helper would remove the guesswork. A tiny window remains where a machine consumes input in the same
    tick a player takes it (at most one operation's input).
-4. **No global timer in `PrismScheduler` (Prism, small).** There is `runGlobal` once, so the network loop reschedules
-   itself every tick. A `runGlobalTimer` would be cleaner.
+4. **No global timer in `PrismScheduler` (Prism, small).** There is only a one-shot `runGlobal`, and calling it from
+   inside itself runs in the same tick forever (it hung the smoke servers), so the plugin uses Bukkit's global region
+   timer directly. A `runGlobalTimer` in `PrismScheduler` would remove that.
 5. **Block look from neighbours (Prism, later, rows 13-14).** Cables are full cubes with one look. Cables that visibly
    connect need a look chosen from a neighbour mask and non-full hitboxes. Variants are named looks only.
 6. **Ore needs world generation (Prism, row 28).** Ore items are crafted as a stopgap so every item is obtainable.

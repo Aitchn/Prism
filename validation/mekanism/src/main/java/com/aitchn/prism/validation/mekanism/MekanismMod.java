@@ -30,7 +30,7 @@ public final class MekanismMod extends JavaPlugin implements PrismMod {
 
     @Override
     public void onEnable() {
-        Grid.get().start();
+        Grid.get().start(this);
         if (Boolean.getBoolean("mekanism.selftest")) {
             getServer().getPluginManager().registerEvents(new SelfTest(this), this);
         }

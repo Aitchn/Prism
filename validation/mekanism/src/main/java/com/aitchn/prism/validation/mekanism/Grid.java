@@ -69,7 +69,7 @@ final class Grid {
     private boolean topologyChanged = true;
     private long energyMoved;
     private long chemicalMoved;
-    private volatile boolean running;
+    private volatile io.papermc.paper.threadedregions.scheduler.ScheduledTask loop;
 
     static Grid get() {
         return INSTANCE;
@@ -103,27 +103,25 @@ final class Grid {
 
     // ---------------------------------------------------------------- network loop
 
-    void start() {
-        running = true;
-        Prism.scheduler().runGlobal(this::loop);
+    /**
+     * Starts the network loop on the global region thread. Prism's scheduler has no global timer, and rescheduling
+     * {@code runGlobal} from inside itself runs in the same tick forever, so this uses the platform timer directly.
+     */
+    void start(org.bukkit.plugin.Plugin plugin) {
+        stop();
+        loop = org.bukkit.Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
+            try {
+                tickNetworks();
+            } catch (RuntimeException e) {
+                LOG.log(Level.SEVERE, "Network tick failed", e);
+            }
+        }, 1, 1);
     }
 
     void stop() {
-        running = false;
-    }
-
-    private void loop() {
-        if (!running) {
-            return;
-        }
-        try {
-            tickNetworks();
-            Prism.scheduler().runGlobal(this::loop);
-        } catch (IllegalStateException e) {
-            running = false; // Prism is gone
-        } catch (RuntimeException e) {
-            LOG.log(Level.SEVERE, "Network tick failed", e);
-            Prism.scheduler().runGlobal(this::loop);
+        if (loop != null) {
+            loop.cancel();
+            loop = null;
         }
     }
 
