@@ -2,6 +2,7 @@ package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.content.BlockDefinition;
+import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.block.Facings;
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -24,7 +25,7 @@ import org.bukkit.plugin.Plugin;
  * (the block key in its persistent data) is still written so worlds from before the index can be migrated.
  * Everything here runs on the thread that owns the block's region.
  */
-final class DisplayEntityBackend {
+final class DisplayEntityBackend implements BlockAppearance {
 
     private static final double SEARCH_RADIUS = 0.3;
 
@@ -38,8 +39,8 @@ final class DisplayEntityBackend {
         this.appearance = appearance;
     }
 
-    /** Sets the carrier block and spawns the display. The spot must already be free. */
-    boolean spawn(Block block, BlockDefinition definition, BlockFace facing) {
+    @Override
+    public boolean spawn(Block block, BlockDefinition definition, BlockFace facing, String variant) {
         Optional<Material> carrier = VanillaItems.blockMaterial(definition.carrier());
         if (carrier.isEmpty()) {
             return false;
@@ -55,10 +56,7 @@ final class DisplayEntityBackend {
             display.setBillboard(Display.Billboard.FIXED);
             display.getPersistentDataContainer().set(markerKey, PersistentDataType.STRING, key.toString());
             if (!modelled && appearance.hasBlock(key)) {
-                ItemStack shown = new ItemStack(Material.PAPER);
-                shown.editMeta(meta -> Keys.bukkit(new PrismKey(key.namespace(), "block/" + key.value()))
-                        .ifPresent(meta::setItemModel));
-                display.setItemStack(shown);
+                display.setItemStack(shown(key, variant));
             }
         });
         if (modelled) {
@@ -67,14 +65,43 @@ final class DisplayEntityBackend {
         return true;
     }
 
-    /** Removes the display(s) and sets the carrier to air. */
-    void despawn(Block block) {
+    private static ItemStack shown(PrismKey key, String variant) {
+        ItemStack shown = new ItemStack(Material.PAPER);
+        shown.editMeta(meta -> Keys.bukkit(Appearances.itemModel(key, variant)).ifPresent(meta::setItemModel));
+        return shown;
+    }
+
+    @Override
+    public void update(Block block, BlockDefinition definition, BlockFace facing, String variant) {
+        if (ModelAnchors.modelOf(definition).isPresent() || !appearance.hasBlock(definition.key())) {
+            return;
+        }
+        for (ItemDisplay display : displays(block)) {
+            display.setItemStack(shown(definition.key(), variant));
+        }
+    }
+
+    @Override
+    public boolean draws(Block block) {
+        return !displays(block).isEmpty();
+    }
+
+    private java.util.List<ItemDisplay> displays(Block block) {
         Location center = block.getLocation().add(0.5, 0.5, 0.5);
+        java.util.List<ItemDisplay> found = new java.util.ArrayList<>();
         for (ItemDisplay display : block.getWorld().getNearbyEntitiesByType(ItemDisplay.class, center, SEARCH_RADIUS)) {
             if (display.getPersistentDataContainer().has(markerKey, PersistentDataType.STRING)) {
-                anchors.detach(display.getUniqueId());
-                display.remove();
+                found.add(display);
             }
+        }
+        return found;
+    }
+
+    @Override
+    public void despawn(Block block) {
+        for (ItemDisplay display : displays(block)) {
+            anchors.detach(display.getUniqueId());
+            display.remove();
         }
         block.setType(Material.AIR, false);
     }

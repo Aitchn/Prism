@@ -89,7 +89,39 @@ public final class PrismComponents {
                 };
             });
 
+    /**
+     * Named looks a block can switch between at runtime with {@code BlockService.setVariant}, for example
+     * {@code [idle, active]}. The first is the default. Variant {@code v} is drawn with model
+     * {@code <namespace>:block/<value>_<v>} (generated from a texture of the same name when there is no model JSON).
+     * Without this component a block has one unnamed look. Scalar form: {@code prism:variants: [idle, active]}.
+     */
+    public static final ComponentType<Variants> VARIANTS = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "variants"),
+            Variants.class,
+            section -> {
+                java.util.List<String> names = section.getStringList("value");
+                if (names.isEmpty()) {
+                    throw section.error("variants needs at least one name");
+                }
+                for (String name : names) {
+                    if (name.equals("true") || name.equals("false")) {
+                        throw section.error("variant name " + name + " came from an unquoted YAML boolean "
+                                + "(on, off, yes, no, true, false); quote it or pick another name");
+                    }
+                    if (!name.matches("[a-z0-9_]+")) {
+                        throw section.error("variant names must match [a-z0-9_]+, got " + name);
+                    }
+                }
+                if (names.stream().distinct().count() != names.size()) {
+                    throw section.error("variant names must be unique");
+                }
+                return new Variants(java.util.List.copyOf(names));
+            });
+
     private PrismComponents() {}
+
+    /** @see #VARIANTS */
+    public record Variants(java.util.List<String> names) {}
 
     /** @see #MINING */
     public record Mining(double hardness, String tool) {

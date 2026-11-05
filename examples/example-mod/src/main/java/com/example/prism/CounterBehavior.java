@@ -1,5 +1,6 @@
 package com.example.prism;
 
+import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockCapability;
 import com.aitchn.prism.api.block.BlockCapabilityProvider;
@@ -23,7 +24,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * A block that counts: one per {@code interval} ticks, stored in its per-block data so it survives restarts. It
- * counts neighbour changes too, shows both when right-clicked and offers its count to neighbours as a capability.
+ * counts neighbour changes too, offers its count to neighbours as a capability, and on right click switches between
+ * its {@code idle} and {@code active} looks and shows its numbers.
  */
 public record CounterBehavior(int interval) implements BlockPlaceBehavior, BlockTickBehavior, BlockNeighborBehavior,
         BlockInteractBehavior, BlockCapabilityProvider {
@@ -70,8 +72,11 @@ public record CounterBehavior(int interval) implements BlockPlaceBehavior, Block
         if (context.player() == null) {
             return;
         }
-        PersistentDataContainer data = context.custom().data();
-        context.player().sendActionBar(Component.text("Counter facing " + context.custom().facing()
+        CustomBlock custom = context.custom();
+        String next = "active".equals(custom.variant()) ? "idle" : "active";
+        Prism.blocks().setVariant(custom.block(), next);
+        PersistentDataContainer data = custom.data();
+        context.player().sendActionBar(Component.text("Counter " + next + ", facing " + custom.facing()
                 + ": " + data.getOrDefault(TICKS, PersistentDataType.INTEGER, 0) + " counts, "
                 + data.getOrDefault(NEIGHBORS, PersistentDataType.INTEGER, 0) + " neighbour changes"));
         context.cancel();
