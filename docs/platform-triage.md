@@ -69,3 +69,47 @@ must be checked by hand with a real Java client and a real Bedrock client throug
 - Breaking a custom block in survival: crack animation, timing, drops.
 - That blocks and items look right on Java (resource pack) and on Bedrock (Geyser pack and mappings).
 - Menus: clicking, dragging, shift-click, live refresh, on both editions.
+
+## Round 2 (2026-11-05): gaps found while growing the rebuilds to about 80%
+
+Sources: the Mekanism migration (`docs/gaps.md`, plan in the project's `mekanism-validation/scope-and-stages.md`)
+and the AE2 plan (`ae2/scope-plan.md`). Botania's report is still to come and will be added here. Same two rules:
+the theme test and "a player must be able to operate and see it".
+
+| # | Gap | Owner | Why | Player-facing result (Java / Bedrock) | Needed by |
+|---|---|---|---|---|---|
+| 31 | Block drops that carry the block's data; placement that reads the placing stack | Prism | Any block that keeps something: a chest keeping its contents, a charged battery, a tank | Break a machine, place it again, its contents and charge are back. The stack's lore shows what it carries on both editions | Mekanism stage 1 (energy cube, upgrades) |
+| 32 | An interact behavior that lets the click through | Prism | Any block that reacts to some clicks only, such as wrenchable cables you also build against | Clicking a cable with a block in hand places the block | Mekanism stage 3, AE2 stage 3 |
+| 33 | Synchronous slot click hook in `ContainerMenu` | Prism | Any GUI where the server also changes the slots (machines, factories, terminals) | No item flicker or double take when a machine and a player touch the same slot | Mekanism stage 1-4, AE2 stage 4 |
+| 34 | `PrismScheduler.runGlobalTimer` | Prism | Any server-wide clock (networks, daily resets) | none (correctness on Folia) | Mekanism now |
+| 35 | Slotless item handler capability (insert/extract by stack, with simulate), with an adapter for vanilla containers | Prism | Items are a vanilla resource every mod moves: pipes, hoppers-like blocks, storage buses. Unlike energy or mana, the unit is not a mod's design | Mods' pipes and buses move items into each other and into chests | AE2 stage 4, Mekanism stage 3 |
+| 36 | World generation of custom ore blocks (row 28) | Prism | Every mod with ores or flora | Find the ore in new chunks, mine it, get its drop, on both editions (note block carrier, so it is visible on Bedrock) | Mekanism stage 1, AE2 stage 2 |
+| 37 | Text input in menus (row 18) | Prism | Search boxes, amounts, names | Type a search term in a prompt; an anvil screen works on Java and Geyser shows it on Bedrock | AE2 stage 4 |
+| 38 | Looks chosen from neighbours (connected cables) and thin or no-collision carriers (rows 13/14) | Prism | Cables, pipes, fences, flowers in every tech or magic mod | A cable shows arms towards what it connects to; walk through flowers. Limited by the number of carrier states (see below) | Mekanism stage 3, AE2 stage 3 |
+| 39 | Generated connection variants in batches (one look per neighbour mask without writing 64 files) | Prism, with 38 | Same as 38; writing every mask by hand does not scale | none beyond 38 | AE2 stage 3 |
+| 40 | Structure (multiblock) pattern service (row 23) | Prism (mechanism only) | Formed structures exist in many mods (tanks, furnaces, altars); the pattern check on member change is the same everywhere | A structure forms when its last block is placed and unforms when one is broken | Mekanism stage 5 |
+| 40b | What a formed structure does (dynamic tank, induction matrix, ME controller rules) | **Plugin** | Theme-specific | n/a | |
+| 41 | Several parts on one block face (AE2 cable bus parts), per-part hit test | **Plugin**, with a Prism note | The part model (what a bus is, how parts stack) is AE2's design. Prism already gives the hit position (`BlockContext.hitPosition`) and per-block data; a part can be drawn only as a block look, so the state budget in 38 applies | Parts as looks of the cable block; clicking the face where a part sits reaches it | AE2 stage 3 |
+| 42 | Entity-free display of items moving through transporters | Prism (later, undecided) | Any visible item transport; display entities are invisible on Bedrock, so no edition-neutral solution exists yet | none yet | Mekanism stage 3, decide then |
+| 43 | Chunk move API (spatial IO) | Out of scope | Excluded from the 80% target by the AE2 plan | n/a | |
+
+**The carrier state budget (rows 38, 39, 41).** Bedrock can only see custom blocks drawn by real block states (Geyser
+cannot draw display entities). Every distinct look needs its own state. The note block gives 799 states for full
+cubes. More carriers can be added: the three mushroom blocks give 192 more full-cube states, and tripwire gives 128
+states with no collision and a thin outline (flowers, wires). A cable with 64 connection masks in several colours
+would use thousands of states, more than every carrier together. So connected looks are offered with a budget:
+- a mod declares which neighbours connect;
+- Prism computes the mask and maps it to a look;
+- a mod can reduce the masks it needs, for example straight, corner, junction and end with rotation, which is 5-10
+  looks instead of 64;
+- Prism reports in the log how many states each mod uses.
+Truly free shapes (64 masks x 16 colours) stay Java-only display looks, and the docs say so.
+
+### Order of work (round 2)
+
+1. **Small primitives** (31-34): drops and placement with data, click pass-through, synchronous slot hook,
+   `runGlobalTimer`. Mekanism stage 1 needs 31 and 34 now.
+2. **World generation** (36). Mekanism stage 1 and AE2 stage 2 need ore.
+3. **Item handler capability** (35) and **text input** (37).
+4. **Connected looks and carriers** (38, 39), then the **structure service** (40).
+5. Botania's rows, once reported.
