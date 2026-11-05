@@ -1,0 +1,7 @@
+# Key: mekanism:chemical_injection_chamber. Invisible carrier; the look is a placeholder texture (real art is never published).
+base: minecraft:barrier
+drop: mekanism:chemical_injection_chamber
+behaviors:
+  - type: mekanism:block
+    kind: machine
+    machine: chemical_injection_chamber

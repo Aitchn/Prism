@@ -13,6 +13,7 @@ include(
     "prism-plugin",
     "prism-testkit",
     "examples:example-mod",
+    "validation:mekanism",
 )
 
 dependencyResolutionManagement {
