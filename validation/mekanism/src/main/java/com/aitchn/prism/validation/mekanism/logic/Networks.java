@@ -247,6 +247,21 @@ public final class Networks {
             budget[move.network()] -= accepted;
             moved += accepted;
         }
+        // Shares a full destination could not take are offered to the others, so a nearly full
+        // consumer never starves the rest of the network.
+        for (Move move : moves) {
+            Chemical type = move.src().type();
+            if (type == null || budget[move.network()] <= 0) {
+                continue;
+            }
+            long possible = Math.min(budget[move.network()], move.src().drain(null, Long.MAX_VALUE, true));
+            long accepted = possible <= 0 ? 0 : move.dst().fill(type, possible, false);
+            if (accepted > 0) {
+                move.src().drain(null, accepted, false);
+                budget[move.network()] -= accepted;
+                moved += accepted;
+            }
+        }
         return moved;
     }
 
