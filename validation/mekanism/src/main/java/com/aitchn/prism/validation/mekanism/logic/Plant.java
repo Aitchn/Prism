@@ -63,13 +63,18 @@ public final class Plant {
         return pipeNets;
     }
 
-    /** One tick of cable and pipe transfer. Machines tick separately (each on its own block's schedule). */
-    public void tickNetworks() {
+    /** Recomputes the networks if a conduit or an endpoint appeared or went since the last call. */
+    public void rebuildIfNeeded() {
         if (topologyChanged) {
             cableNets = Networks.build(cables);
             pipeNets = Networks.build(pipes);
             topologyChanged = false;
         }
+    }
+
+    /** One tick of cable and pipe transfer. Machines tick separately (each on its own block's schedule). */
+    public void tickNetworks() {
+        rebuildIfNeeded();
         energyMoved = Networks.distributeEnergy(cableNets,
                 p -> solars.containsKey(p) ? solars.get(p).energy() : null,
                 p -> machines.containsKey(p) ? machines.get(p).energy() : null, CABLE_LIMIT);

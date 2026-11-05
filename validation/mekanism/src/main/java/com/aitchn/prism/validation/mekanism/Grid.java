@@ -388,7 +388,7 @@ final class Grid {
     String describeConduit(Block block) {
         Pos pos = pos(block);
         return locked(() -> {
-            rebuildIfNeeded();
+            plant.rebuildIfNeeded();
             Networks.Network cable = Networks.containing(plant.cableNets(), pos);
             if (cable != null) {
                 int generators = 0;
