@@ -13,6 +13,7 @@ import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.ServerLoadEvent;
+import org.bukkit.plugin.Plugin;
 
 /**
  * Optional startup check of ore generation, enabled with {@code -Dprism.selftest.ore=<block key>}; the smoke test
@@ -21,12 +22,14 @@ import org.bukkit.event.server.ServerLoadEvent;
  */
 final class OreSelfTest implements Listener {
 
+    private final Plugin prism;
     private final PrismKey key;
     private final PrismBlockService blocks;
     private final PlatformScheduler scheduler;
     private final Logger log;
 
-    OreSelfTest(PrismKey key, PrismBlockService blocks, PlatformScheduler scheduler, Logger log) {
+    OreSelfTest(Plugin prism, PrismKey key, PrismBlockService blocks, PlatformScheduler scheduler, Logger log) {
+        this.prism = prism;
         this.key = key;
         this.blocks = blocks;
         this.scheduler = scheduler;
@@ -49,7 +52,12 @@ final class OreSelfTest implements Listener {
                 log.severe("PRISM_ORE_SELFTEST_FAIL " + (error == null ? "no chunk" : error.toString()));
                 return;
             }
-            scheduler.runAt(center, () -> check(world, chunkX, chunkZ));
+            // Keep the chunk loaded and give the load event's generation a second to finish before looking: the
+            // future may complete before every load listener has run.
+            scheduler.runAt(center, () -> {
+                world.addPluginChunkTicket(chunkX, chunkZ, prism);
+                scheduler.runAtLater(center, () -> check(world, chunkX, chunkZ), 20);
+            });
         });
     }
 
@@ -66,6 +74,7 @@ final class OreSelfTest implements Listener {
             boolean ok = targets > 0 && visible;
             // What the ore could replace, to tell "no stone here" from "generation did not run".
             String sample = chunk.getBlock(8, -40, 8).getType() + "," + chunk.getBlock(8, -20, 8).getType();
+            world.removePluginChunkTicket(chunkX, chunkZ, prism);
             log.info((ok ? "PRISM_ORE_SELFTEST_OK " : "PRISM_ORE_SELFTEST_FAIL ") + key + " targets=" + targets
                     + " blocks=" + ores.size() + " noteBlocks=" + visible + " chunk=" + chunkX + "," + chunkZ + " sample=" + sample + " " + blocks.oreStats());
         } catch (RuntimeException e) {
