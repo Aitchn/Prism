@@ -46,6 +46,13 @@ public interface BlockService {
      */
     boolean remove(@NotNull Block block, boolean dropItem);
 
+    /**
+     * Switches the block to another of its {@code prism:variants} looks, for example from {@code idle} to
+     * {@code active}. Shown to Java and Bedrock players at once. Returns false if the block is not custom or has no
+     * such variant. Cheap when the variant does not change.
+     */
+    boolean setVariant(@NotNull Block block, @NotNull String variant);
+
     /** The currently registered definition of {@code key}. */
     @NotNull Optional<BlockDefinition> definition(@NotNull PrismKey key);
 

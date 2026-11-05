@@ -57,6 +57,11 @@ public final class ModTestHarness {
         return manager.blocks().require(PrismKey.parse(key));
     }
 
+    /** The loaded recipes, as {@code Prism.recipes()} would list them. */
+    public @NotNull com.aitchn.prism.api.recipe.RecipeService recipes() {
+        return new com.aitchn.prism.core.recipe.RegistryRecipes(manager().recipeTypes(), manager().recipes());
+    }
+
     public @NotNull ItemDefinition item(@NotNull String key) {
         return manager.items().require(PrismKey.parse(key));
     }

@@ -1,0 +1,5 @@
+# Furnace: smelt a redstone block into a ruby. Also: prism:blasting, prism:smoking, prism:campfire_cooking.
+type: prism:smelting
+input: minecraft:redstone_block
+result: examplemod:ruby
+experience: 0.7

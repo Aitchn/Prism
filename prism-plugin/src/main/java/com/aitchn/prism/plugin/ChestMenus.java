@@ -1,6 +1,7 @@
 package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.item.ItemService;
+import com.aitchn.prism.api.menu.ContainerMenu;
 import com.aitchn.prism.api.menu.MenuButton;
 import com.aitchn.prism.api.menu.MenuService;
 import com.aitchn.prism.api.menu.MenuSpec;
@@ -26,10 +27,22 @@ final class ChestMenus implements MenuService, Listener {
 
     private final ItemService items;
     private final PlatformScheduler scheduler;
+    private final ContainerMenus containers;
 
-    ChestMenus(ItemService items, PlatformScheduler scheduler) {
+    ChestMenus(ItemService items, PlatformScheduler scheduler, java.util.logging.Logger log) {
         this.items = items;
         this.scheduler = scheduler;
+        this.containers = new ContainerMenus(items, scheduler, log);
+    }
+
+    /** The listener behind {@link #open(Player, ContainerMenu)}; register it with the server. */
+    ContainerMenus containers() {
+        return containers;
+    }
+
+    @Override
+    public void open(@NotNull Player player, @NotNull ContainerMenu menu) {
+        containers.open(player, menu);
     }
 
     private static final class Holder implements InventoryHolder {

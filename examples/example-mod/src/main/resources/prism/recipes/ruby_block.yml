@@ -1,0 +1,9 @@
+# Crafting table: nine rubies make a ruby block. Key: examplemod:ruby_block (the recipe id, from the file name).
+type: prism:shaped
+pattern:
+  - "RRR"
+  - "RRR"
+  - "RRR"
+key:
+  R: examplemod:ruby
+result: examplemod:ruby_block

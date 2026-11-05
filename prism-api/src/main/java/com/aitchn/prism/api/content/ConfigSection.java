@@ -35,6 +35,9 @@ public interface ConfigSection {
 
     @NotNull Optional<ConfigSection> getSection(@NotNull String key) throws ContentException;
 
+    /** Whether {@code key} holds a mapping (as opposed to a scalar, a list or nothing). */
+    boolean isSection(@NotNull String key);
+
     @NotNull ConfigSection requireSection(@NotNull String key) throws ContentException;
 
     /** A list of mappings; a missing key is an empty list. */

@@ -1,0 +1,10 @@
+# Crafting table: custom and vanilla ingredients mixed. Tags work too, quoted: "#minecraft:planks".
+type: prism:shaped
+pattern:
+  - " R "
+  - "RCR"
+  - " R "
+key:
+  R: examplemod:ruby
+  C: minecraft:clock
+result: examplemod:ruby_counter

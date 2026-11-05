@@ -13,4 +13,6 @@ public interface TypeLookup {
     @NotNull Optional<ComponentType<?>> component(@NotNull PrismKey key);
 
     @NotNull Optional<BehaviorType<? extends Behavior>> behavior(@NotNull PrismKey key);
+
+    @NotNull Optional<com.aitchn.prism.api.recipe.RecipeType<?>> recipe(@NotNull PrismKey key);
 }

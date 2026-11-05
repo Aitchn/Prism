@@ -22,6 +22,8 @@ class ExampleModTest {
                     section -> new ExampleMod.Tier(section.requireInt("value")));
             context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
             context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
+            context.registerBehavior("use_counter", UseCounterBehavior.class, UseCounterBehavior::fromYaml);
+            ExampleMod.polishing = context.registerRecipeType("polishing", Polishing.class, Polishing::decode);
         }
     }
 
@@ -33,7 +35,10 @@ class ExampleModTest {
         ItemDefinition ruby = harness.item("examplemod:ruby");
         assertEquals(2, ruby.components().get(ExampleMod.tier).orElseThrow().level());
         assertEquals("<red>Ruby", ruby.components().get(PrismComponents.DISPLAY_NAME).orElseThrow().miniMessage());
-        assertEquals(1, ruby.behaviors(ItemUseBehavior.class).size());
+        assertEquals(2, ruby.behaviors(ItemUseBehavior.class).size());
+        assertEquals(1, ruby.behaviors(com.aitchn.prism.api.item.ItemLoreBehavior.class).size());
+        assertEquals(java.util.List.of("<gray>Right click to heal"),
+                ruby.components().get(PrismComponents.LORE).orElseThrow().lines());
     }
 
     @Test
@@ -53,8 +58,27 @@ class ExampleModTest {
         assertEquals(PrismComponents.Rotation.HORIZONTAL,
                 counter.components().get(PrismComponents.ROTATION).orElseThrow());
         assertEquals(1.5, counter.components().get(PrismComponents.MINING).orElseThrow().hardness());
+        assertEquals(java.util.List.of("idle", "active"),
+                counter.components().get(PrismComponents.VARIANTS).orElseThrow().names());
         assertEquals(20, counter.behaviors(com.aitchn.prism.api.block.BlockTickBehavior.class).getFirst()
                 .tickInterval());
+    }
+
+    @Test
+    void recipesLoadForPrismAndModTypes() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var recipes = harness.recipes();
+        var block = recipes.get(com.aitchn.prism.api.recipe.PrismRecipes.SHAPED,
+                com.aitchn.prism.api.PrismKey.parse("examplemod:ruby_block")).orElseThrow().value();
+        assertEquals(java.util.List.of("RRR", "RRR", "RRR"), block.pattern());
+        assertEquals("examplemod:ruby", block.key().get('R').item().toString());
+        assertEquals(2, recipes.all(com.aitchn.prism.api.recipe.PrismRecipes.SHAPED).size());
+        assertEquals(9, recipes.all(com.aitchn.prism.api.recipe.PrismRecipes.SHAPELESS).getFirst().value().result().count());
+        assertEquals(1, recipes.all(com.aitchn.prism.api.recipe.PrismRecipes.SMELTING).size());
+        var polish = recipes.all(ExampleMod.polishing);
+        assertEquals(1, polish.size());
+        assertEquals(100, polish.getFirst().value().ticks());
     }
 
     @Test
@@ -76,7 +100,7 @@ class ExampleModTest {
                             }
                             default -> null;
                         });
-        ruby.behaviors(ItemUseBehavior.class).forEach(behavior -> behavior.onUse(context));
+        ruby.behaviors(HealBehavior.class).forEach(behavior -> behavior.onUse(context));
 
         assertEquals(14.0, fake.health());
         assertTrue(cancelled[0]);

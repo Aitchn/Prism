@@ -108,7 +108,7 @@ final class DigListener implements Listener {
             return;
         }
         Optional<CustomBlock> custom = blocks.get(block);
-        if (custom.isEmpty()) {
+        if (custom.isEmpty() || blocks.clientBreaks(block)) {
             return;
         }
         Session previous = sessions.get(player.getUniqueId());

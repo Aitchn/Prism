@@ -23,4 +23,12 @@ public interface ModContext {
     /** Registers {@code namespace:path} as a behavior type usable in YAML. */
     <B extends Behavior> @NotNull BehaviorType<B> registerBehavior(
             @NotNull String path, @NotNull Class<B> behaviorType, @NotNull BehaviorFactory<B> factory);
+
+    /**
+     * Registers {@code namespace:path} as a recipe type: files in {@code prism/recipes/} of this and later-loaded mods
+     * with {@code type: namespace:path} are decoded by {@code decoder} and listed by {@code Prism.recipes()}. What the
+     * recipe means is up to the mod (Prism does not run it).
+     */
+    <R> @NotNull com.aitchn.prism.api.recipe.RecipeType<R> registerRecipeType(
+            @NotNull String path, @NotNull Class<R> valueType, @NotNull com.aitchn.prism.api.recipe.RecipeDecoder<R> decoder);
 }
