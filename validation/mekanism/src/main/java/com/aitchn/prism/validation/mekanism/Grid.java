@@ -13,6 +13,7 @@ import com.aitchn.prism.validation.mekanism.logic.MachineType;
 import com.aitchn.prism.validation.mekanism.logic.Networks;
 import com.aitchn.prism.validation.mekanism.logic.Plant;
 import com.aitchn.prism.validation.mekanism.logic.Pos;
+import com.aitchn.prism.validation.mekanism.logic.Side;
 import com.aitchn.prism.validation.mekanism.logic.SolarGenerator;
 import com.aitchn.prism.validation.mekanism.logic.Stack;
 import java.util.HashMap;
@@ -132,7 +133,8 @@ final class Grid {
                 return existing;
             }
             MachineType type = new MachineType(spec.machine(), () -> recipes.forMachine(spec.machine()),
-                    spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity(), spec.maxExtract());
+                    spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity(), spec.maxExtract(),
+                    spec.bufferFilter());
             Machine machine = new Machine(type);
             String state = block.data().get(STATE, PersistentDataType.STRING);
             if (state != null) {
@@ -271,7 +273,7 @@ final class Grid {
     boolean useBucket(BlockContext context, ChemicalTank tank) {
         ItemStack held = context.heldItem();
         Player player = context.player();
-        if (held == null || held.getType() != Material.WATER_BUCKET || player == null) {
+        if (tank == null || held == null || held.getType() != Material.WATER_BUCKET || player == null) {
             return false;
         }
         boolean filled = locked(() -> {
@@ -292,6 +294,35 @@ final class Grid {
                 player.sendActionBar(Component.text("The water tank is full"));
             }
         }, null);
+        return true;
+    }
+
+    /** Face number as in {@code Pos.neighbors()}: east, west, up, down, south, north; -1 for other directions. */
+    static int faceIndex(org.bukkit.block.BlockFace face) {
+        return face == null ? -1 : switch (face) {
+            case EAST -> 0;
+            case WEST -> 1;
+            case UP -> 2;
+            case DOWN -> 3;
+            case SOUTH -> 4;
+            case NORTH -> 5;
+            default -> -1;
+        };
+    }
+
+    /** Right click on a machine with the Configurator: the clicked face takes the next chemical side mode. */
+    boolean configure(BlockContext context, Machine machine) {
+        ItemStack held = context.heldItem();
+        Player player = context.player();
+        int face = faceIndex(context.face());
+        if (held == null || player == null || face < 0 || !itemId(held).equals("mekanism:configurator")) {
+            return false;
+        }
+        String text = locked(() -> {
+            machine.setFace(face, machine.face(face).next());
+            return Text.title(Side.FACE_NAMES[face]) + " face: " + machine.face(face).label();
+        });
+        Prism.scheduler().runOn(player, () -> player.sendActionBar(Component.text(text)), null);
         return true;
     }
 

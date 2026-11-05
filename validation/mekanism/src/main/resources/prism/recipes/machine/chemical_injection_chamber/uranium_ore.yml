@@ -2,6 +2,6 @@ type: mekanism:machine
 machine: chemical_injection_chamber
 input: mekanism:uranium_ore
 output: {item: mekanism:uranium_shard, count: 4}
-chemical_in: {chemical: hydrogen, amount: 1}
+chemical_in: {chemical: hydrogen_chloride, amount: 10}
 ticks: 300
 energy: 50

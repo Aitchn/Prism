@@ -1,0 +1,8 @@
+type: mekanism:machine
+machine: chemical_washer
+chemical_in: {chemical: dirty_osmium_slurry, amount: 1000}
+chemical_in2: {chemical: water, amount: 100}
+chemical_out:
+  - {chemical: clean_osmium_slurry, amount: 1000}
+ticks: 100
+energy: 50

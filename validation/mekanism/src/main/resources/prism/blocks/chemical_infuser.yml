@@ -1,0 +1,11 @@
+# Key: mekanism:chemical_infuser. Two looks (block/chemical_infuser_idle.png and block/chemical_infuser_active.png); recipes: prism/recipes/machine/chemical_infuser/.
+base: minecraft:barrier
+drop: mekanism:chemical_infuser
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: chemical_infuser
+    energy_capacity: 20000
+    max_receive: 2000
+    tank_capacity: 10000

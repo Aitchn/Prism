@@ -25,6 +25,7 @@ public final class Plant {
     private boolean topologyChanged = true;
     private long energyMoved;
     private long chemicalMoved;
+    private long rounds;
 
     public Map<Pos, Machine> machines() {
         return machines;
@@ -80,8 +81,9 @@ public final class Plant {
                         : machines.containsKey(p) && machines.get(p).type().maxExtract() > 0
                                 ? machines.get(p).energy() : null,
                 p -> machines.containsKey(p) ? machines.get(p).energy() : null, CABLE_LIMIT);
-        chemicalMoved = Networks.distributeChemical(pipeNets,
-                p -> machines.containsKey(p) ? machines.get(p).ports().outputs() : null,
-                p -> machines.containsKey(p) ? machines.get(p).ports().inputs() : null, PIPE_LIMIT);
+        chemicalMoved = Networks.distributeChemicalByFace(pipeNets,
+                e -> machines.containsKey(e.pos()) ? machines.get(e.pos()).giveTanks(e.face()) : null,
+                e -> machines.containsKey(e.pos()) ? machines.get(e.pos()).takeTanks(e.face()) : null, PIPE_LIMIT,
+                rounds++);
     }
 }

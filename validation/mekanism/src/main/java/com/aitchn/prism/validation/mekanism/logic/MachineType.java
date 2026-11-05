@@ -3,6 +3,7 @@ package com.aitchn.prism.validation.mekanism.logic;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -10,12 +11,18 @@ import java.util.function.Supplier;
  * recipes are looked up on every call because they are data that can be reloaded.
  */
 public record MachineType(String id, Supplier<List<Recipe>> source, long energyCapacity, long maxReceive,
-        long tankCapacity, long maxExtract) {
+        long tankCapacity, long maxExtract, Predicate<Chemical> buffer) {
 
     /** A type that gives no energy to cables (everything except batteries). */
     public MachineType(String id, Supplier<List<Recipe>> source, long energyCapacity, long maxReceive,
             long tankCapacity) {
-        this(id, source, energyCapacity, maxReceive, tankCapacity, 0);
+        this(id, source, energyCapacity, maxReceive, tankCapacity, 0, null);
+    }
+
+    /** A type with a battery rate but no tank buffer. */
+    public MachineType(String id, Supplier<List<Recipe>> source, long energyCapacity, long maxReceive,
+            long tankCapacity, long maxExtract) {
+        this(id, source, energyCapacity, maxReceive, tankCapacity, maxExtract, null);
     }
 
     /** A type with a fixed recipe list (tests). */
@@ -59,6 +66,17 @@ public record MachineType(String id, Supplier<List<Recipe>> source, long energyC
 
     public boolean makesItems() {
         return recipes().stream().anyMatch(r -> r.itemOut() != null);
+    }
+
+    /** Chemicals some recipe consumes as its second chemical input: the only ones the second input tank accepts. */
+    public Set<Chemical> inputChemicals2() {
+        Set<Chemical> result = new HashSet<>();
+        for (Recipe r : recipes()) {
+            if (r.chemicalIn2() != null) {
+                result.add(r.chemicalIn2());
+            }
+        }
+        return result;
     }
 
     /** Chemicals some recipe consumes: the only ones the input tank accepts. */

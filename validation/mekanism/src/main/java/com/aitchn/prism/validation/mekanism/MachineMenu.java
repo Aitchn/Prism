@@ -36,9 +36,10 @@ final class MachineMenu implements ContainerMenu {
     static final int OUTPUT = 15;
     static final int HINT = 22;
     static final int TANK_IN = 20;
+    static final int TANK_IN_2 = 19;
     static final int TANK_OUT_1 = 24;
     static final int TANK_OUT_2 = 25;
-    private static final List<Integer> USED = List.of(ENERGY, INPUT, EXTRA, PROGRESS, OUTPUT, HINT, TANK_IN, TANK_OUT_1,
+    private static final List<Integer> USED = List.of(ENERGY, INPUT, EXTRA, PROGRESS, OUTPUT, HINT, TANK_IN, TANK_IN_2, TANK_OUT_1,
             TANK_OUT_2);
 
     private final Grid grid;
@@ -100,7 +101,8 @@ final class MachineMenu implements ContainerMenu {
     public void onOpen(@NotNull MenuView view) {
         this.view = view;
         for (int slot = 0; slot < view.size(); slot++) {
-            if (!USED.contains(slot) || (slot == EXTRA && !grid.locked(() -> machine.type().takesExtra()))) {
+            if (!USED.contains(slot) || (slot == EXTRA && !grid.locked(() -> machine.type().takesExtra()))
+                    || (slot == TANK_IN_2 && !grid.locked(() -> !machine.type().inputChemicals2().isEmpty()))) {
                 view.setIcon(slot, PrismKey.parse("minecraft:black_stained_glass_pane"), "<dark_gray> ", List.of());
             }
         }
@@ -183,9 +185,15 @@ final class MachineMenu implements ContainerMenu {
                 List.of(Text.bar(progress, 20, "yellow"),
                         working && machine.idleTicks() > 0 ? "<red>Waiting for energy" : "<dark_gray>"));
         if (machine.type().tankCapacity() > 0) {
-            drawTank(view, TANK_IN, "Input tank", machine.inTank());
-            drawTank(view, TANK_OUT_1, "Output tank", machine.outTank());
-            drawTank(view, TANK_OUT_2, "Second output tank", machine.outTank2());
+            boolean storage = machine.type().buffer() != null;
+            drawTank(view, TANK_IN, storage ? "Tank" : "Input tank", machine.inTank());
+            if (!machine.type().inputChemicals2().isEmpty()) {
+                drawTank(view, TANK_IN_2, "Second input tank", machine.inTank2());
+            }
+            if (!storage) {
+                drawTank(view, TANK_OUT_1, "Output tank", machine.outTank());
+                drawTank(view, TANK_OUT_2, "Second output tank", machine.outTank2());
+            }
         }
         view.setIcon(HINT, PrismKey.parse("minecraft:paper"), "<gray>How it works", hint());
     }
@@ -223,7 +231,11 @@ final class MachineMenu implements ContainerMenu {
             case "water" -> "minecraft:water_bucket";
             case "hydrogen" -> "minecraft:light_blue_dye";
             case "oxygen" -> "minecraft:white_dye";
-            default -> "minecraft:potion";
+            case "chlorine" -> "minecraft:lime_dye";
+            case "hydrogen_chloride" -> "minecraft:green_dye";
+            case "sulfur_dioxide", "sulfur_trioxide" -> "minecraft:yellow_dye";
+            case "sulfuric_acid" -> "minecraft:honey_bottle";
+            default -> type.id().endsWith("_slurry") ? "minecraft:clay_ball" : "minecraft:potion";
         };
     }
 

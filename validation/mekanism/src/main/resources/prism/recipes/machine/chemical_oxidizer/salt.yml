@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: chemical_oxidizer
+input: mekanism:salt
+chemical_out:
+  - {chemical: chlorine, amount: 200}
+ticks: 100
+energy: 50

@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "IXI"
+  - "BCB"
+  - "IXI"
+key:
+  I: minecraft:iron_ingot
+  X: minecraft:observer
+  B: mekanism:basic_control_circuit
+  C: mekanism:steel_casing
+result: mekanism:pressurized_reaction_chamber

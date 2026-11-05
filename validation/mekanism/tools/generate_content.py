@@ -87,15 +87,24 @@ def machine_block(i, spec):
 
 
 def mrecipe(machine, name, inp, out, count=1, ticks=200, energy=50, input2=None, chem_in=None, in_count=1,
-            in2_count=1):
+            in2_count=1, chem_in2=None, chem_out=None):
+    """One machine recipe file. inp/out may be None (gas-only steps); chem_* are (chemical, mB) pairs."""
     def stack(s, n):
         return s if n == 1 else f"{{item: {s}, count: {n}}}"
-    text = f"type: mekanism:machine\nmachine: {machine}\ninput: {stack(inp, in_count)}\n"
+    text = f"type: mekanism:machine\nmachine: {machine}\n"
+    if inp:
+        text += f"input: {stack(inp, in_count)}\n"
     if input2:
         text += f"input2: {stack(input2, in2_count)}\n"
-    text += f"output: {stack(out, count)}\n"
+    if out:
+        text += f"output: {stack(out, count)}\n"
     if chem_in:
         text += f"chemical_in: {{chemical: {chem_in[0]}, amount: {chem_in[1]}}}\n"
+    if chem_in2:
+        text += f"chemical_in2: {{chemical: {chem_in2[0]}, amount: {chem_in2[1]}}}\n"
+    if chem_out:
+        text += f"chemical_out: {{chemical: {chem_out[0]}, amount: {chem_out[1]}}}\n".replace(
+            "chemical_out: {", "chemical_out:\n  - {")
     text += f"ticks: {ticks}\nenergy: {energy}\n"
     put(PRISM / f"recipes/machine/{machine}/{name}.yml", text)
 
@@ -257,7 +266,9 @@ def gen():
         # 1x, 2x, 3x, 4x processing, as in Mekanism
         mrecipe("enrichment_chamber", f"{metal}_ore", ore, dust, 2)
         mrecipe("purification_chamber", f"{metal}_ore", ore, clump, 3, 300, chem_in=("oxygen", 1))
-        mrecipe("chemical_injection_chamber", f"{metal}_ore", ore, shard, 4, 300, chem_in=("hydrogen", 1))
+        mrecipe("chemical_injection_chamber", f"{metal}_ore", ore, shard, 4, 300, chem_in=("hydrogen_chloride", 10))
+        mrecipe("chemical_injection_chamber", f"{metal}_crystal", f"mekanism:{metal}_crystal", shard, 1, 300,
+                chem_in=("hydrogen_chloride", 10))
         mrecipe("purification_chamber", f"{metal}_shard", shard, clump, 1, 300, chem_in=("oxygen", 1))
         mrecipe("crusher", f"{metal}_clump", clump, dirty)
         mrecipe("enrichment_chamber", f"{metal}_dirty_dust", dirty, dust)
@@ -396,8 +407,90 @@ def gen():
         prev = name
 
 
+# ---------------------------------------------------------------------------------------------- stage 2
+
+CHEM_MACHINES = {  # id -> (tank capacity, signature item, colour)
+    "chemical_oxidizer": (10000, "minecraft:bucket", (120, 190, 120)),
+    "chemical_infuser": (10000, "minecraft:glass_bottle", (190, 190, 90)),
+    "chemical_washer": (10000, "minecraft:water_bucket", (90, 150, 200)),
+    "chemical_crystallizer": (10000, "minecraft:amethyst_shard", (170, 120, 210)),
+    "chemical_dissolution_chamber": (10000, "minecraft:brewing_stand", (200, 110, 60)),
+    "pressurized_reaction_chamber": (10000, "minecraft:observer", (110, 110, 160)),
+}
+SLURRY_METALS = list(OWN) + list(VANILLA)
+
+
+def gen2():
+    for m, (tank, sig, col) in CHEM_MACHINES.items():
+        machine_block(m, (20000, 2000, tank, sig, col))
+        tex_machine(m, col)
+        shaped(m, ["IXI", "BCB", "IXI"], {"I": "minecraft:iron_ingot", "X": sig, "B": "mekanism:basic_control_circuit",
+                                         "C": "mekanism:steel_casing"}, f"mekanism:{m}")
+    # storage tanks: the machine behavior as a buffer
+    for name, buffer, cap, what in (("chemical_tank", "any", 64000, "any chemical"), ("fluid_tank", "water", 32000, "water")):
+        put(PRISM / f"blocks/{name}.yml",
+            f"# Key: mekanism:{name}. Stores {what}; pipes fill it and drain it.\nbase: minecraft:barrier\n"
+            f"drop: mekanism:{name}\nbehaviors:\n  - type: mekanism:machine\n    machine: {name}\n"
+            f"    energy_capacity: 1\n    max_receive: 1\n    tank_capacity: {cap}\n    buffer: {buffer}\n")
+        block_item(name)
+        tex_cube(name, (120, 170, 200) if buffer == "any" else (70, 110, 200))
+        shaped(name, ["IGI", "GCG", "IGI"], {"I": "minecraft:iron_ingot", "G": "minecraft:glass",
+                                             "C": "mekanism:steel_casing"}, f"mekanism:{name}")
+    # the tool that sets which tank a face of a machine uses
+    item("configurator")
+    tex_item("configurator", "upgrade", (80, 200, 230))
+    shaped("configurator", [" A ", "AIA", " I "], {"A": "mekanism:alloy_infused", "I": "minecraft:iron_ingot"},
+           "mekanism:configurator")
+    # gases made from items
+    for k, col in (("sulfur", (230, 220, 70)), ("salt", (240, 240, 245))):
+        item(f"{k}_dust" if k == "sulfur" else k)
+        tex_item(f"{k}_dust" if k == "sulfur" else k, "dust", col)
+    # stand-ins for world-generated salt and sulfur
+    shapeless("sulfur_dust", ["minecraft:gunpowder", "mekanism:coal_dust"], "mekanism:sulfur_dust", 2)
+    shapeless("salt", ["minecraft:bone_meal", "minecraft:sand"], "mekanism:salt", 2)
+    mrecipe("chemical_oxidizer", "salt", "mekanism:salt", None, chem_out=("chlorine", 200), ticks=100)
+    mrecipe("chemical_oxidizer", "sulfur_dust", "mekanism:sulfur_dust", None, chem_out=("sulfur_dioxide", 200),
+            ticks=100)
+    mrecipe("chemical_infuser", "hydrogen_chloride", None, None, chem_in=("hydrogen", 100), chem_in2=("chlorine", 100),
+            chem_out=("hydrogen_chloride", 200), ticks=60)
+    mrecipe("chemical_infuser", "sulfur_trioxide", None, None, chem_in=("sulfur_dioxide", 100),
+            chem_in2=("oxygen", 50), chem_out=("sulfur_trioxide", 100), ticks=60)
+    mrecipe("chemical_infuser", "sulfuric_acid", None, None, chem_in=("sulfur_trioxide", 100), chem_in2=("water", 100),
+            chem_out=("sulfuric_acid", 100), ticks=60)
+    # the 5x chain: ore -> dirty slurry -> clean slurry -> crystals (five per ore)
+    for metal in SLURRY_METALS:
+        ore = f"mekanism:{metal}_ore" if metal in OWN else VANILLA[metal][2]
+        col = OWN.get(metal) or VANILLA[metal][0]
+        item(f"{metal}_crystal")
+        tex_item(f"{metal}_crystal", "gem", col)
+        mrecipe("chemical_dissolution_chamber", f"{metal}_ore", ore, None, chem_in=("sulfuric_acid", 10),
+                chem_out=(f"dirty_{metal}_slurry", 1000), ticks=400, energy=60)
+        mrecipe("chemical_washer", f"{metal}_slurry", None, None, chem_in=(f"dirty_{metal}_slurry", 1000),
+                chem_in2=("water", 100), chem_out=(f"clean_{metal}_slurry", 1000), ticks=100)
+        mrecipe("chemical_crystallizer", f"{metal}_crystal", None, f"mekanism:{metal}_crystal",
+                chem_in=(f"clean_{metal}_slurry", 200), ticks=200)
+    # plastics: bio fuel -> substrate -> ethylene -> HDPE
+    for k, col in (("bio_fuel", (110, 160, 60)), ("substrate", (150, 120, 70)), ("hdpe_pellet", (230, 230, 235))):
+        item(k)
+        tex_item(k, "dust" if k != "hdpe_pellet" else "nugget", col)
+    for k in ("hdpe_sheet", "hdpe_rod"):
+        item(k)
+        tex_item(k, "alloy" if k == "hdpe_sheet" else "ingot", (235, 235, 240))
+    for crop in ("wheat", "carrot", "potato", "beetroot", "sugar_cane", "melon_slice"):
+        mrecipe("crusher", f"bio_fuel_{crop}", f"minecraft:{crop}", "mekanism:bio_fuel", 2 if crop in ("wheat", "sugar_cane") else 1, 100)
+    mrecipe("pressurized_reaction_chamber", "substrate", "mekanism:bio_fuel", "mekanism:substrate", 1,
+            chem_in=("water", 100), chem_in2=("hydrogen", 100), ticks=200, in_count=2)
+    mrecipe("pressurized_reaction_chamber", "ethylene", "mekanism:substrate", None, 1, chem_in=("hydrogen", 100),
+            chem_in2=("water", 100), chem_out=("ethylene", 100), ticks=200)
+    mrecipe("pressurized_reaction_chamber", "hdpe_pellet", None, "mekanism:hdpe_pellet", 1,
+            chem_in=("ethylene", 100), chem_in2=("oxygen", 100), ticks=300)
+    shaped("hdpe_sheet", ["PP", "PP"], {"P": "mekanism:hdpe_pellet"}, "mekanism:hdpe_sheet")
+    shapeless("hdpe_rod", ["mekanism:hdpe_sheet"], "mekanism:hdpe_rod", 2)
+
+
 if __name__ == "__main__":
     if Image is None:
         print("Pillow is missing: textures were not generated")
     gen()
+    gen2()
     print(f"wrote {len(written)} files")

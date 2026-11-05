@@ -31,24 +31,38 @@ import org.jetbrains.annotations.Nullable;
  *     energy_capacity: 20000     # joules
  *     max_receive: 2000          # joules per tick a cable may push in
  *     tank_capacity: 0           # millibuckets per tank; 0 for machines without chemicals
+ *     buffer: ""                 # "any" or "water": a storage tank that takes and gives back that much
  *     max_extract: 0             # joules per tick it gives to cables; above 0 makes it a battery (energy cube)
  * </pre>
  */
 public record MachineBehavior(String machine, int energyCapacity, int maxReceive, int tankCapacity,
-        int maxExtract)
+        int maxExtract, String buffer)
         implements BlockPlaceBehavior, BlockLoadBehavior, BlockTickBehavior, BlockRemoveBehavior,
         BlockInteractBehavior, BlockCapabilityProvider, BlockDropBehavior {
 
     static MachineBehavior fromYaml(ConfigSection section) throws ContentException {
-        section.rejectUnknownKeys(Set.of("machine", "energy_capacity", "max_receive", "tank_capacity", "max_extract"));
+        section.rejectUnknownKeys(Set.of("machine", "energy_capacity", "max_receive", "tank_capacity", "max_extract", "buffer"));
         MachineBehavior behavior = new MachineBehavior(section.requireString("machine"),
                 section.getInt("energy_capacity").orElse(20_000), section.getInt("max_receive").orElse(2_000),
-                section.getInt("tank_capacity").orElse(0), section.getInt("max_extract").orElse(0));
+                section.getInt("tank_capacity").orElse(0), section.getInt("max_extract").orElse(0),
+                section.getString("buffer").orElse(""));
+        if (!Set.of("", "any", "water").contains(behavior.buffer)) {
+            throw section.error("buffer must be any or water");
+        }
         if (behavior.energyCapacity < 1 || behavior.maxReceive < 1 || behavior.tankCapacity < 0
                 || behavior.maxExtract < 0) {
             throw section.error("energy_capacity and max_receive must be at least 1, tank_capacity and max_extract at least 0");
         }
         return behavior;
+    }
+
+    /** Storage tanks take what this allows; null for ordinary machines. */
+    java.util.function.Predicate<com.aitchn.prism.validation.mekanism.logic.Chemical> bufferFilter() {
+        return switch (buffer) {
+            case "any" -> c -> true;
+            case "water" -> com.aitchn.prism.validation.mekanism.logic.Chemical.WATER::equals;
+            default -> null;
+        };
     }
 
     @Override
@@ -90,7 +104,7 @@ public record MachineBehavior(String machine, int energyCapacity, int maxReceive
         context.cancel();
         Grid grid = Grid.get();
         Machine machine = grid.machine(context.custom(), this);
-        if (grid.pushTablet(context, machine.energy()) || grid.useBucket(context, machine.inTank())
+        if (grid.configure(context, machine) || grid.pushTablet(context, machine.energy()) || grid.useBucket(context, machine.tankFor(com.aitchn.prism.validation.mekanism.logic.Chemical.WATER))
                 || grid.installUpgrade(context, machine)) {
             return;
         }

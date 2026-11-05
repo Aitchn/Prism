@@ -1,0 +1,10 @@
+type: prism:shaped
+pattern:
+  - "IGI"
+  - "GCG"
+  - "IGI"
+key:
+  I: minecraft:iron_ingot
+  G: minecraft:glass
+  C: mekanism:steel_casing
+result: mekanism:fluid_tank

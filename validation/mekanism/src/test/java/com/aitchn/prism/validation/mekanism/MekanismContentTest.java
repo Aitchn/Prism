@@ -34,7 +34,10 @@ class MekanismContentTest {
     private static final Path RESOURCES = Path.of("src/main/resources");
     private static final List<String> MACHINES = List.of("crusher", "enrichment_chamber", "purification_chamber",
             "chemical_injection_chamber", "electrolytic_separator", "osmium_compressor", "combiner",
-            "metallurgic_infuser", "precision_sawmill", "energized_smelter");
+            "metallurgic_infuser", "precision_sawmill", "energized_smelter", "chemical_oxidizer", "chemical_infuser",
+            "chemical_washer", "chemical_crystallizer", "chemical_dissolution_chamber",
+            "pressurized_reaction_chamber");
+    private static final List<String> TANKS = List.of("chemical_tank", "fluid_tank");
     private static final List<String> CUBES = List.of("energy_cube", "advanced_energy_cube", "elite_energy_cube",
             "ultimate_energy_cube");
 
@@ -72,6 +75,21 @@ class MekanismContentTest {
         } catch (java.io.IOException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @Test
+    void storageTanksHoldWhatTheirFilterAllows() {
+        var harness = load();
+        for (String id : TANKS) {
+            MachineBehavior spec = harness.block("mekanism:" + id).behaviors(MachineBehavior.class).getFirst();
+            assertTrue(spec.tankCapacity() >= 32_000, id);
+            assertTrue(spec.bufferFilter() != null, id + " is a storage tank");
+            assertTrue(spec.bufferFilter().test(com.aitchn.prism.validation.mekanism.logic.Chemical.WATER), id);
+        }
+        assertTrue(harness.block("mekanism:chemical_tank").behaviors(MachineBehavior.class).getFirst().bufferFilter()
+                .test(new com.aitchn.prism.validation.mekanism.logic.Chemical("hydrogen")));
+        assertFalse(harness.block("mekanism:fluid_tank").behaviors(MachineBehavior.class).getFirst().bufferFilter()
+                .test(new com.aitchn.prism.validation.mekanism.logic.Chemical("hydrogen")));
     }
 
     @Test
@@ -190,7 +208,12 @@ class MekanismContentTest {
                 assertEquals(r.chemicalIn().amount(), machine.inTank().fill(r.chemicalIn().chemical(),
                         r.chemicalIn().amount(), false), entry.id() + " chemical accepted");
             }
+            if (r.chemicalIn2() != null) {
+                assertEquals(r.chemicalIn2().amount(), machine.inTank2().fill(r.chemicalIn2().chemical(),
+                        r.chemicalIn2().amount(), false), entry.id() + " second chemical accepted");
+            }
             for (int i = 0; i <= r.ticks() + 1; i++) {
+                machine.energy().set(spec.energyCapacity()); // long recipes may need more than one buffer: cables refill it
                 machine.tick();
             }
             if (r.output() != null) {
@@ -217,6 +240,7 @@ class MekanismContentTest {
         var harness = load();
         var recipes = harness.recipes();
         Set<PrismKey> have = new HashSet<>();
+        Set<String> gases = new HashSet<>(List.of("water")); // a bucket of water is always at hand
         boolean changed = true;
         while (changed) {
             changed = false;
@@ -230,6 +254,14 @@ class MekanismContentTest {
                 recipes.all(type).forEach(r -> steps.add(new Step(List.of(r.value().input()), r.value().result().item())));
             }
             recipes.all(Content.machineRecipes()).forEach(r -> {
+                List<String> needs = new ArrayList<>();
+                if (r.value().chemicalIn() != null) {
+                    needs.add(r.value().chemicalIn().chemical().id());
+                }
+                if (r.value().chemicalIn2() != null) {
+                    needs.add(r.value().chemicalIn2().chemical().id());
+                }
+                List<String> makes = r.value().chemicalOut().stream().map(c -> c.chemical().id()).toList();
                 List<Ingredient> in = new ArrayList<>();
                 if (r.value().input() != null) {
                     in.add(r.value().input());
@@ -237,13 +269,18 @@ class MekanismContentTest {
                 if (r.value().input2() != null) {
                     in.add(r.value().input2());
                 }
-                if (r.value().output() != null) {
-                    steps.add(new Step(in, r.value().output().item()));
-                }
+                steps.add(new Step(in, r.value().output() == null ? null : r.value().output().item(), needs, makes));
             });
             for (Step step : steps) {
-                if (!have.contains(step.result) && step.inputs.stream().allMatch(i -> obtainable(i, have))) {
-                    have.add(step.result);
+                boolean usable = step.inputs.stream().allMatch(i -> obtainable(i, have))
+                        && gases.containsAll(step.needs);
+                if (!usable) {
+                    continue;
+                }
+                if (step.result != null && have.add(step.result)) {
+                    changed = true;
+                }
+                if (gases.addAll(step.makes)) {
                     changed = true;
                 }
             }
@@ -254,7 +291,12 @@ class MekanismContentTest {
         assertFalse(have.isEmpty());
     }
 
-    private record Step(List<Ingredient> inputs, PrismKey result) {}
+    /** One way to make something: needs items and gases, gives an item and/or gases. */
+    private record Step(List<Ingredient> inputs, PrismKey result, List<String> needs, List<String> makes) {
+        Step(List<Ingredient> inputs, PrismKey result) {
+            this(inputs, result, List.of(), List.of());
+        }
+    }
 
     private static boolean obtainable(Ingredient ingredient, Set<PrismKey> have) {
         return ingredient.isTag() || ingredient.item().namespace().equals("minecraft") || have.contains(ingredient.item());
