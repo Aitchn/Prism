@@ -76,7 +76,9 @@ public final class Plant {
     public void tickNetworks() {
         rebuildIfNeeded();
         energyMoved = Networks.distributeEnergy(cableNets,
-                p -> solars.containsKey(p) ? solars.get(p).energy() : null,
+                p -> solars.containsKey(p) ? solars.get(p).energy()
+                        : machines.containsKey(p) && machines.get(p).type().maxExtract() > 0
+                                ? machines.get(p).energy() : null,
                 p -> machines.containsKey(p) ? machines.get(p).energy() : null, CABLE_LIMIT);
         chemicalMoved = Networks.distributeChemical(pipeNets,
                 p -> machines.containsKey(p) ? machines.get(p).ports().outputs() : null,

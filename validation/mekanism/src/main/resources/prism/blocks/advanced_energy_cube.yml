@@ -1,0 +1,9 @@
+# Key: mekanism:advanced_energy_cube. A battery: 8,000,000 J, takes and gives 32,768 J per tick through cables.
+base: minecraft:barrier
+drop: mekanism:advanced_energy_cube
+behaviors:
+  - type: mekanism:machine
+    machine: advanced_energy_cube
+    energy_capacity: 8000000
+    max_receive: 32768
+    max_extract: 32768

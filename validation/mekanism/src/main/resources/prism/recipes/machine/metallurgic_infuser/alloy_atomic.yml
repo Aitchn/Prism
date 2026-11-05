@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: metallurgic_infuser
+input: mekanism:alloy_reinforced
+input2: mekanism:refined_obsidian_ingot
+output: mekanism:alloy_atomic
+ticks: 300
+energy: 50

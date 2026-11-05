@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: metallurgic_infuser
+input: mekanism:alloy_infused
+input2: mekanism:diamond_dust
+output: mekanism:alloy_reinforced
+ticks: 300
+energy: 50

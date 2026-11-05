@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: energized_smelter
+input: mekanism:lead_dust
+output: mekanism:lead_ingot
+ticks: 160
+energy: 40

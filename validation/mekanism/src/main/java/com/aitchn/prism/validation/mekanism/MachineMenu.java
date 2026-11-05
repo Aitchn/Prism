@@ -31,13 +31,14 @@ final class MachineMenu implements ContainerMenu {
 
     static final int ENERGY = 4;
     static final int INPUT = 11;
+    static final int EXTRA = 12;
     static final int PROGRESS = 13;
     static final int OUTPUT = 15;
     static final int HINT = 22;
     static final int TANK_IN = 20;
     static final int TANK_OUT_1 = 24;
     static final int TANK_OUT_2 = 25;
-    private static final List<Integer> USED = List.of(ENERGY, INPUT, PROGRESS, OUTPUT, HINT, TANK_IN, TANK_OUT_1,
+    private static final List<Integer> USED = List.of(ENERGY, INPUT, EXTRA, PROGRESS, OUTPUT, HINT, TANK_IN, TANK_OUT_1,
             TANK_OUT_2);
 
     private final Grid grid;
@@ -47,6 +48,7 @@ final class MachineMenu implements ContainerMenu {
     private final long created = System.currentTimeMillis();
     private volatile MenuView view;
     private Stack shownInput;
+    private Stack shownExtra;
     private Stack shownOutput;
 
     MachineMenu(Grid grid, Pos pos, Machine machine, String id) {
@@ -77,6 +79,9 @@ final class MachineMenu implements ContainerMenu {
         if (slot == INPUT && grid.locked(() -> machine.type().takesItems())) {
             return SlotRole.INPUT;
         }
+        if (slot == EXTRA && grid.locked(() -> machine.type().takesExtra())) {
+            return SlotRole.INPUT;
+        }
         if (slot == OUTPUT && grid.locked(() -> machine.type().makesItems())) {
             return SlotRole.OUTPUT;
         }
@@ -85,14 +90,17 @@ final class MachineMenu implements ContainerMenu {
 
     @Override
     public boolean accepts(int slot, @NotNull ItemStack stack) {
-        return slot == INPUT && grid.locked(() -> machine.type().acceptsItem(Grid.itemId(stack)));
+        if (slot == INPUT) {
+            return grid.locked(() -> machine.type().acceptsItem(Grid.itemId(stack)));
+        }
+        return slot == EXTRA && grid.locked(() -> machine.type().acceptsExtra(Grid.itemId(stack)));
     }
 
     @Override
     public void onOpen(@NotNull MenuView view) {
         this.view = view;
         for (int slot = 0; slot < view.size(); slot++) {
-            if (!USED.contains(slot)) {
+            if (!USED.contains(slot) || (slot == EXTRA && !grid.locked(() -> machine.type().takesExtra()))) {
                 view.setIcon(slot, PrismKey.parse("minecraft:black_stained_glass_pane"), "<dark_gray> ", List.of());
             }
         }
@@ -129,6 +137,10 @@ final class MachineMenu implements ContainerMenu {
                 Stack now = read(view, INPUT);
                 machine.setInput(Slots.reconcileInput(shownInput, machine.input(), now));
                 shownInput = now;
+            } else if (slot == EXTRA) {
+                Stack now = read(view, EXTRA);
+                machine.setExtra(Slots.reconcileInput(shownExtra, machine.extra(), now));
+                shownExtra = now;
             } else if (slot == OUTPUT) {
                 Stack now = read(view, OUTPUT);
                 machine.setOutput(Slots.reconcileOutput(shownOutput, machine.output(), now));
@@ -145,7 +157,7 @@ final class MachineMenu implements ContainerMenu {
         }
         // The block was broken while open: what the slots still hold goes to the viewer, once.
         Player player = view.player();
-        for (int slot : new int[] {INPUT, OUTPUT}) {
+        for (int slot : new int[] {INPUT, EXTRA, OUTPUT}) {
             ItemStack left = view.item(slot);
             if (left != null && left.getType() != Material.AIR) {
                 view.setItem(slot, null);
@@ -187,6 +199,10 @@ final class MachineMenu implements ContainerMenu {
             return List.of("<gray>Put the item in the left slot.", "<gray>Gas arrives through pressurized tubes",
                     "<gray>from an electrolytic separator.");
         }
+        if (machine.type().takesExtra()) {
+            return List.of("<gray>Put the main item in the first slot", "<gray>and the second item (coal, redstone,",
+                    "<gray>cobblestone...) next to it.");
+        }
         return List.of("<gray>Put the item in the left slot,", "<gray>take the result from the right.");
     }
 
@@ -226,6 +242,8 @@ final class MachineMenu implements ContainerMenu {
     private void forceItems(MenuView view) {
         show(view, INPUT, machine.input());
         shownInput = read(view, INPUT);
+        show(view, EXTRA, machine.extra());
+        shownExtra = read(view, EXTRA);
         show(view, OUTPUT, machine.output());
         shownOutput = read(view, OUTPUT);
     }
@@ -235,6 +253,10 @@ final class MachineMenu implements ContainerMenu {
         if (Objects.equals(read(view, INPUT), shownInput) && !Objects.equals(machine.input(), shownInput)) {
             show(view, INPUT, machine.input());
             shownInput = read(view, INPUT);
+        }
+        if (Objects.equals(read(view, EXTRA), shownExtra) && !Objects.equals(machine.extra(), shownExtra)) {
+            show(view, EXTRA, machine.extra());
+            shownExtra = read(view, EXTRA);
         }
         if (Objects.equals(read(view, OUTPUT), shownOutput) && !Objects.equals(machine.output(), shownOutput)) {
             show(view, OUTPUT, machine.output());

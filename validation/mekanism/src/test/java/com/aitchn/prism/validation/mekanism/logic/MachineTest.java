@@ -145,4 +145,77 @@ class MachineTest {
     void emptyMachineSavesJustItsEnergy() {
         assertEquals("e=0", new Machine(TestMachines.crusher()).save());
     }
+
+    @Test
+    void speedUpgradesFinishSoonerForTheSameBaseEnergyPlusOverhead() {
+        Machine plain = new Machine(TestMachines.enrichment());
+        Machine fast = new Machine(TestMachines.enrichment());
+        for (Machine m : new Machine[] {plain, fast}) {
+            m.energy().set(20_000);
+            m.insertInput(new Stack("mekanism:osmium_ore", 1));
+        }
+        assertEquals(8, fast.addUpgrades(true, 20), "only eight fit");
+        run(plain, 200);
+        run(fast, 23);
+        assertEquals(new Stack("mekanism:osmium_dust", 2), plain.takeOutput().orElseThrow());
+        assertEquals(new Stack("mekanism:osmium_dust", 2), fast.takeOutput().orElseThrow(), "9x speed: 23 ticks");
+        assertTrue(20_000 - fast.energy().stored() >= 20_000 - plain.energy().stored(), "speed costs energy");
+    }
+
+    @Test
+    void energyUpgradesSaveEnergy() {
+        Machine plain = new Machine(TestMachines.enrichment());
+        Machine frugal = new Machine(TestMachines.enrichment());
+        for (Machine m : new Machine[] {plain, frugal}) {
+            m.energy().set(20_000);
+            m.insertInput(new Stack("mekanism:osmium_ore", 1));
+        }
+        frugal.addUpgrades(false, 8);
+        run(plain, 200);
+        run(frugal, 200);
+        assertTrue(frugal.takeOutput().isPresent());
+        long plainUsed = 20_000 - plain.energy().stored();
+        long frugalUsed = 20_000 - frugal.energy().stored();
+        assertEquals(10_000, plainUsed);
+        assertEquals(3_600, frugalUsed, "8 upgrades use 36%");
+    }
+
+    @Test
+    void upgradesAndTheSecondInputSurviveSaveAndLoad() {
+        MachineType type = MachineType.fixed("combiner", java.util.List.of(
+                Recipe.items2("mekanism:iron_dust", 1, "minecraft:cobblestone", 2, "minecraft:raw_iron", 1, 100, 10)),
+                20_000, 2_000, 0);
+        Machine m = new Machine(type);
+        m.energy().set(1_000);
+        m.addUpgrades(true, 3);
+        m.addUpgrades(false, 2);
+        assertEquals(0, m.insertInput(new Stack("mekanism:iron_dust", 2)).count());
+        assertEquals(0, m.insertExtra(new Stack("minecraft:cobblestone", 3)).count());
+        assertEquals(1, m.insertExtra(new Stack("minecraft:dirt", 1)).count(), "no recipe uses dirt");
+        run(m, 5);
+        Machine copy = new Machine(type);
+        copy.load(m.save());
+        assertEquals(3, copy.speedUpgrades());
+        assertEquals(2, copy.energyUpgrades());
+        assertEquals(1, copy.extra().count(), "one operation took two cobblestone");
+        assertEquals(1, copy.input().count());
+        assertTrue(copy.running());
+    }
+
+    @Test
+    void secondInputIsRequiredAndConsumed() {
+        MachineType type = MachineType.fixed("combiner", java.util.List.of(
+                Recipe.items2("mekanism:iron_dust", 1, "minecraft:cobblestone", 2, "minecraft:raw_iron", 1, 10, 10)),
+                20_000, 2_000, 0);
+        Machine m = new Machine(type);
+        m.energy().set(1_000);
+        m.insertInput(new Stack("mekanism:iron_dust", 1));
+        run(m, 50);
+        assertFalse(m.running(), "waits for cobblestone");
+        m.insertExtra(new Stack("minecraft:cobblestone", 2));
+        run(m, 10);
+        assertEquals(new Stack("minecraft:raw_iron", 1), m.takeOutput().orElseThrow());
+        assertNull(m.extra());
+        assertNull(m.input());
+    }
 }

@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: purification_chamber
+input: mekanism:uranium_shard
+output: mekanism:uranium_clump
+chemical_in: {chemical: oxygen, amount: 1}
+ticks: 300
+energy: 50

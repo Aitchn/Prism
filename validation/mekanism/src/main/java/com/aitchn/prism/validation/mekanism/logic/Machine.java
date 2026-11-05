@@ -20,6 +20,9 @@ public final class Machine {
     private final ChemicalTank outTank2;
     private final ChemicalPorts ports;
     private Stack input;
+    private Stack extra;
+    private int speedUpgrades;
+    private int energyUpgrades;
     private Stack output;
     private Recipe active;
     private int progress;
@@ -29,7 +32,7 @@ public final class Machine {
 
     public Machine(MachineType type) {
         this.type = type;
-        this.energy = new EnergyBuffer(type.energyCapacity(), type.maxReceive(), 0);
+        this.energy = new EnergyBuffer(type.energyCapacity(), type.maxReceive(), type.maxExtract());
         this.inTank = new ChemicalTank(type.tankCapacity(), c -> type.inputChemicals().contains(c));
         this.outTank = new ChemicalTank(type.tankCapacity());
         this.outTank2 = new ChemicalTank(type.tankCapacity());
@@ -63,6 +66,47 @@ public final class Machine {
 
     public Stack input() {
         return input;
+    }
+
+    /** The second input slot (combiner, metallurgic infuser); empty for machines without one. */
+    public Stack extra() {
+        return extra;
+    }
+
+    public void setExtra(Stack stack) {
+        extra = stack == null || stack.isEmpty() ? null : stack;
+    }
+
+    public static final int MAX_UPGRADES = 8;
+
+    public int speedUpgrades() {
+        return speedUpgrades;
+    }
+
+    public int energyUpgrades() {
+        return energyUpgrades;
+    }
+
+    /** Progress added per tick: 1 without upgrades, one more for every speed upgrade. */
+    public int speedFactor() {
+        return 1 + speedUpgrades;
+    }
+
+    /** Installs upgrades; returns how many were taken (the rest does not fit). */
+    public int addUpgrades(boolean speed, int count) {
+        int have = speed ? speedUpgrades : energyUpgrades;
+        int taken = Math.max(0, Math.min(count, MAX_UPGRADES - have));
+        if (speed) {
+            speedUpgrades += taken;
+        } else {
+            energyUpgrades += taken;
+        }
+        return taken;
+    }
+
+    /** Energy one tick of {@code r} costs with the installed upgrades: speed multiplies, energy upgrades save 8% each. */
+    long tickCost(Recipe r) {
+        return r.energyPerTick() * speedFactor() * (100 - 8L * energyUpgrades) / 100;
     }
 
     public Stack output() {
@@ -126,6 +170,22 @@ public final class Machine {
         return stack.withCount(stack.count() - accepted);
     }
 
+    /** Offers items to the second input slot; returns what did not fit. */
+    public Stack insertExtra(Stack stack) {
+        if (extra != null && !extra.id().equals(stack.id())) {
+            return stack;
+        }
+        if (extra == null && !type.acceptsExtra(stack.id())) {
+            return stack;
+        }
+        int have = extra == null ? 0 : extra.count();
+        int accepted = Math.min(stack.count(), Stack.MAX - have);
+        if (accepted > 0) {
+            extra = new Stack(stack.id(), have + accepted);
+        }
+        return stack.withCount(stack.count() - accepted);
+    }
+
     /** Removes and returns the whole output slot (empty Optional when nothing is there). */
     public Optional<Stack> takeOutput() {
         Stack out = output;
@@ -149,10 +209,10 @@ public final class Machine {
             }
             startOperation(active);
         }
-        if (!energy.consume(active.energyPerTick())) {
+        if (!energy.consume(tickCost(active))) {
             return false;
         }
-        progress++;
+        progress += speedFactor();
         if (progress >= active.ticks()) {
             finishOperation(active);
             active = null;
@@ -165,6 +225,10 @@ public final class Machine {
         for (Recipe r : type.recipes()) {
             if (r.itemIn() != null && (input == null || !input.id().equals(r.itemIn().id())
                     || input.count() < r.itemIn().count())) {
+                continue;
+            }
+            if (r.itemIn2() != null && (extra == null || !extra.id().equals(r.itemIn2().id())
+                    || extra.count() < r.itemIn2().count())) {
                 continue;
             }
             if (r.chemicalIn() != null && inTank.drain(r.chemicalIn(), r.chemicalInAmount(), true)
@@ -182,7 +246,7 @@ public final class Machine {
                     < r.chemicalOut2Amount()) {
                 continue;
             }
-            if (energy.stored() < r.energyPerTick()) {
+            if (energy.stored() < tickCost(r)) {
                 continue;
             }
             return r;
@@ -198,6 +262,10 @@ public final class Machine {
         if (r.itemIn() != null) {
             int left = input.count() - r.itemIn().count();
             input = left == 0 ? null : input.withCount(left);
+        }
+        if (r.itemIn2() != null) {
+            int left = extra.count() - r.itemIn2().count();
+            extra = left == 0 ? null : extra.withCount(left);
         }
         if (r.chemicalIn() != null) {
             inTank.drain(r.chemicalIn(), r.chemicalInAmount(), false);
@@ -229,8 +297,14 @@ public final class Machine {
         if (active != null) {
             out.append("|p=").append(progress).append("|r=").append(type.recipes().indexOf(active));
         }
+        if (speedUpgrades > 0 || energyUpgrades > 0) {
+            out.append("|u=").append(speedUpgrades).append(',').append(energyUpgrades);
+        }
         if (input != null) {
             out.append("|i=").append(input.id()).append(',').append(input.count());
+        }
+        if (extra != null) {
+            out.append("|x=").append(extra.id()).append(',').append(extra.count());
         }
         if (output != null) {
             out.append("|o=").append(output.id()).append(',').append(output.count());
@@ -263,6 +337,12 @@ public final class Machine {
                     case 'p' -> savedProgress = Integer.parseInt(value);
                     case 'r' -> recipeIndex = Integer.parseInt(value);
                     case 'i' -> setInput(stack(value));
+                    case 'x' -> setExtra(stack(value));
+                    case 'u' -> {
+                        String[] parts = value.split(",");
+                        speedUpgrades = Math.max(0, Math.min(MAX_UPGRADES, Integer.parseInt(parts[0])));
+                        energyUpgrades = Math.max(0, Math.min(MAX_UPGRADES, Integer.parseInt(parts[1])));
+                    }
                     case 'o' -> setOutput(stack(value));
                     case 'a' -> loadTank(inTank, value);
                     case 'b' -> loadTank(outTank, value);

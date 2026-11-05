@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: purification_chamber
+input: mekanism:tin_shard
+output: mekanism:tin_clump
+chemical_in: {chemical: oxygen, amount: 1}
+ticks: 300
+energy: 50

@@ -132,7 +132,7 @@ final class Grid {
                 return existing;
             }
             MachineType type = new MachineType(spec.machine(), () -> recipes.forMachine(spec.machine()),
-                    spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity());
+                    spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity(), spec.maxExtract());
             Machine machine = new Machine(type);
             String state = block.data().get(STATE, PersistentDataType.STRING);
             if (state != null) {
@@ -187,6 +187,7 @@ final class Grid {
                     // hold the same items again.
                     machine.markDead();
                     machine.setInput(null);
+                    machine.setExtra(null);
                     machine.setOutput(null);
                 }
                 saveMachine(block, pos, machine);
@@ -212,7 +213,10 @@ final class Grid {
         });
         if (machine != null && !viewed) {
             Location at = block.block().getLocation().add(0.5, 0.5, 0.5);
-            for (Stack stack : locked(() -> new Stack[] {machine.input(), machine.output()})) {
+            for (Stack stack : locked(() -> new Stack[] {machine.input(), machine.extra(), machine.output(),
+                    machine.speedUpgrades() > 0 ? new Stack("mekanism:speed_upgrade", machine.speedUpgrades()) : null,
+                    machine.energyUpgrades() > 0 ? new Stack("mekanism:energy_upgrade", machine.energyUpgrades())
+                            : null})) {
                 if (stack != null) {
                     create(stack).ifPresent(item -> block.block().getWorld().dropItemNaturally(at, item));
                 }
@@ -271,6 +275,35 @@ final class Grid {
                 player.sendActionBar(Component.text("Filled 1,000 mB of water"));
             } else {
                 player.sendActionBar(Component.text("The water tank is full"));
+            }
+        }, null);
+        return true;
+    }
+
+    /** Right click on a machine holding a speed or energy upgrade: installs one (up to 8 of each kind). */
+    boolean installUpgrade(BlockContext context, Machine machine) {
+        ItemStack held = context.heldItem();
+        Player player = context.player();
+        if (held == null || player == null) {
+            return false;
+        }
+        String id = itemId(held);
+        boolean speed = id.equals("mekanism:speed_upgrade");
+        if (!speed && !id.equals("mekanism:energy_upgrade")) {
+            return false;
+        }
+        int taken = locked(() -> machine.addUpgrades(speed, 1));
+        EquipmentSlot hand = context.hand();
+        Prism.scheduler().runOn(player, () -> {
+            if (taken > 0) {
+                if (hand != null && player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
+                    held.setAmount(held.getAmount() - 1);
+                    player.getInventory().setItem(hand, held.getAmount() > 0 ? held : null);
+                }
+                player.sendActionBar(Component.text(locked(() -> (speed ? "Speed upgrades " : "Energy upgrades ")
+                        + (speed ? machine.speedUpgrades() : machine.energyUpgrades()) + " / " + Machine.MAX_UPGRADES)));
+            } else {
+                player.sendActionBar(Component.text("This machine cannot take more of those"));
             }
         }, null);
         return true;

@@ -1,6 +1,7 @@
 package com.aitchn.prism.validation.mekanism.logic;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -14,58 +15,58 @@ import java.util.Optional;
  * <p>"Unloading" mirrors the server adapter: the machine is saved as text, dropped from the plant and rebuilt from
  * that text when its chunk loads again.
  */
-final class TestWorld {
+public final class TestWorld {
 
-    static final String W = "w";
+    public static final String W = "w";
 
-    final Plant plant = new Plant();
+    public final Plant plant = new Plant();
     private final Map<Pos, MachineType> types = new HashMap<>();
     private final Map<Pos, String> stored = new HashMap<>();
-    long solarEnergyMade;
-    long ticks;
+    public long solarEnergyMade;
+    public long ticks;
 
-    static Pos at(int x, int y, int z) {
+    public static Pos at(int x, int y, int z) {
         return new Pos(W, x, y, z);
     }
 
-    Machine machine(Pos pos) {
+    public Machine machine(Pos pos) {
         return plant.machines().get(pos);
     }
 
-    SolarGenerator solar(Pos pos) {
+    public SolarGenerator solar(Pos pos) {
         return plant.solars().get(pos);
     }
 
-    void placeMachine(Pos pos, MachineType type) {
+    public void placeMachine(Pos pos, MachineType type) {
         types.put(pos, type);
         plant.machines().put(pos, new Machine(type));
         plant.markDirty();
     }
 
-    void placeSolar(Pos pos) {
+    public void placeSolar(Pos pos) {
         plant.solars().put(pos, new SolarGenerator());
         plant.markDirty();
     }
 
-    void placeCable(Pos pos) {
+    public void placeCable(Pos pos) {
         plant.cables().add(pos);
         plant.markDirty();
     }
 
-    void placePipe(Pos pos) {
+    public void placePipe(Pos pos) {
         plant.pipes().add(pos);
         plant.markDirty();
     }
 
     /** Breaking a cable or pipe. */
-    void breakConduit(Pos pos) {
+    public void breakConduit(Pos pos) {
         plant.cables().remove(pos);
         plant.pipes().remove(pos);
         plant.markDirty();
     }
 
     /** Breaking a machine: returns what a player would get back (input and output slots). */
-    Optional<Stack> breakMachine(Pos pos) {
+    public Optional<Stack> breakMachine(Pos pos) {
         Machine m = plant.machines().remove(pos);
         types.remove(pos);
         stored.remove(pos);
@@ -78,8 +79,10 @@ final class TestWorld {
     }
 
     /** One game tick: generators, cable and pipe transfer (energy conserved), then every machine. */
-    void tick() {
+    public void tick() {
         ticks++;
+        long energyAtStart = totalEnergy();
+        long madeBefore = solarEnergyMade;
         for (SolarGenerator s : plant.solars().values()) {
             long before = s.energy().stored();
             s.tick(true);
@@ -91,15 +94,17 @@ final class TestWorld {
         for (Machine m : plant.machines().values()) {
             m.tick();
         }
+        assertTrue(totalEnergy() <= energyAtStart + (solarEnergyMade - madeBefore),
+                "energy appeared from nowhere (tick " + ticks + ")");
     }
 
-    void tick(int n) {
+    public void tick(int n) {
         for (int i = 0; i < n; i++) {
             tick();
         }
     }
 
-    long totalEnergy() {
+    public long totalEnergy() {
         long sum = 0;
         for (Machine m : plant.machines().values()) {
             sum += m.energy().stored();
@@ -111,7 +116,7 @@ final class TestWorld {
     }
 
     /** Saves every machine, drops it from memory and loads it again, like a chunk unload followed by a load. */
-    void reloadAll() {
+    public void reloadAll() {
         for (Pos pos : types.keySet().toArray(new Pos[0])) {
             Machine old = plant.machines().get(pos);
             stored.put(pos, old.save());
@@ -123,7 +128,7 @@ final class TestWorld {
     }
 
     /** The player moves the whole output slot of one machine into the input slot of another; returns items moved. */
-    int shuttle(Pos from, Pos to) {
+    public int shuttle(Pos from, Pos to) {
         Machine source = machine(from);
         Machine target = machine(to);
         if (source.output() == null) {

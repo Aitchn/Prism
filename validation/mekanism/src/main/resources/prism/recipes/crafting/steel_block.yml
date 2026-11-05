@@ -1,0 +1,8 @@
+type: prism:shaped
+pattern:
+  - "III"
+  - "III"
+  - "III"
+key:
+  I: mekanism:steel_ingot
+result: mekanism:steel_block

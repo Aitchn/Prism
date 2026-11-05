@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Combiner"
+  prism:places_block: mekanism:combiner

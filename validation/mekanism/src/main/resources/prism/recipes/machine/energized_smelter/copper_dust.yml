@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: energized_smelter
+input: mekanism:copper_dust
+output: minecraft:copper_ingot
+ticks: 160
+energy: 40

@@ -1,0 +1,11 @@
+# Key: mekanism:osmium_compressor. Two looks (block/osmium_compressor_idle.png and block/osmium_compressor_active.png); recipes: prism/recipes/machine/osmium_compressor/.
+base: minecraft:barrier
+drop: mekanism:osmium_compressor
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: osmium_compressor
+    energy_capacity: 20000
+    max_receive: 2000
+    tank_capacity: 0
