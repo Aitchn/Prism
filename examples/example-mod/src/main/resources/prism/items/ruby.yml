@@ -3,6 +3,8 @@ base: minecraft:paper
 components:
   prism:display_name: "<red>Ruby"
   prism:max_stack_size: 16
+  prism:lore:
+    - "<gray>Right click to heal"
   examplemod:tier: 2
 behaviors:
   - type: examplemod:heal

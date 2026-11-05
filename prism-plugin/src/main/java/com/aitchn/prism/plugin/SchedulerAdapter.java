@@ -50,6 +50,12 @@ final class SchedulerAdapter implements PrismScheduler {
     }
 
     @Override
+    public @NotNull PrismTask runOnTimer(@NotNull Entity entity, @NotNull Runnable task, @Nullable Runnable retired,
+            long delayTicks, long periodTicks) {
+        return wrap(platform.runOnTimer(entity, task, retired, delayTicks, periodTicks));
+    }
+
+    @Override
     public boolean isOwnedByCurrentThread(@NotNull Location location) {
         return platform.isOwnedByCurrentThread(location);
     }

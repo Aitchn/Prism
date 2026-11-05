@@ -14,6 +14,10 @@ public interface ItemUseContext {
 
     @NotNull Player player();
 
+    /**
+     * The used stack. After changing it (for example with {@link ItemService#editData}), put it back with
+     * {@code player().getInventory().setItem(hand(), stack)} so the change reaches the inventory on every platform.
+     */
     @NotNull ItemStack stack();
 
     @NotNull ItemDefinition definition();

@@ -11,6 +11,12 @@ public final class PrismComponents {
             DisplayName.class,
             section -> new DisplayName(section.requireString("value")));
 
+    /** Static lore lines of an item (MiniMessage), shown above any {@code ItemLoreBehavior} lines. */
+    public static final ComponentType<Lore> LORE = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "lore"),
+            Lore.class,
+            section -> new Lore(java.util.List.copyOf(section.getStringList("value"))));
+
     /** Maximum stack size of an item, 1 to 99. */
     public static final ComponentType<MaxStackSize> MAX_STACK_SIZE = new ComponentType<>(
             new PrismKey(PrismKey.PRISM_NAMESPACE, "max_stack_size"),
@@ -142,4 +148,6 @@ public final class PrismComponents {
     public record DisplayName(String miniMessage) {}
 
     public record MaxStackSize(int value) {}
+
+    public record Lore(java.util.List<String> lines) {}
 }

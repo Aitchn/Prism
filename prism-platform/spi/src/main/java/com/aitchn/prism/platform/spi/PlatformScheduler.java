@@ -35,6 +35,13 @@ public interface PlatformScheduler {
     @NotNull ScheduledTask runAtTimer(
             @NotNull Location location, @NotNull Runnable task, long delayTicks, long periodTicks);
 
+    /**
+     * Runs {@code task} repeatedly on the thread that owns {@code entity}, following it across regions, until
+     * cancelled or the entity is removed; {@code retired} then runs once (may be null).
+     */
+    @NotNull ScheduledTask runOnTimer(@NotNull Entity entity, @NotNull Runnable task, @Nullable Runnable retired,
+            long delayTicks, long periodTicks);
+
     /** Whether the current thread may access state at {@code location} directly. Always the main thread on Paper. */
     boolean isOwnedByCurrentThread(@NotNull Location location);
 

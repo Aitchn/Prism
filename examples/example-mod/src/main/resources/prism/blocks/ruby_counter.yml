@@ -1,5 +1,5 @@
 # Key: examplemod:ruby_counter. Shows the block platform: it faces the player when placed, counts ticks in its own
-# per-block data, reacts to neighbours, offers a capability, and switches between its two looks (textures
+# per-block data, reacts to neighbours, offers a capability, and opens a menu that switches between its two looks (textures
 # block/ruby_counter_idle.png and block/ruby_counter_active.png) when right-clicked.
 base: minecraft:barrier
 drop: examplemod:ruby_counter

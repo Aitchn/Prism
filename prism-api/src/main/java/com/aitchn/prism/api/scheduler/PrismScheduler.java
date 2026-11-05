@@ -34,6 +34,14 @@ public interface PrismScheduler {
 
     @NotNull PrismTask runAtTimer(@NotNull Location location, @NotNull Runnable task, long delayTicks, long periodTicks);
 
+    /**
+     * Runs {@code task} repeatedly on the thread that owns {@code entity} (it follows the entity across regions) until
+     * cancelled or the entity is removed; {@code retired} then runs once. Use it for per-player work such as a live
+     * GUI or a HUD.
+     */
+    @NotNull PrismTask runOnTimer(@NotNull Entity entity, @NotNull Runnable task, @Nullable Runnable retired,
+            long delayTicks, long periodTicks);
+
     /** Whether the current thread may touch state at {@code location} directly. */
     boolean isOwnedByCurrentThread(@NotNull Location location);
 

@@ -6,6 +6,7 @@ import com.aitchn.prism.api.content.ComponentType;
 import com.aitchn.prism.api.mod.ContentView;
 import com.aitchn.prism.api.mod.ModContext;
 import com.aitchn.prism.api.mod.PrismMod;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
@@ -33,5 +34,15 @@ public final class ExampleMod extends JavaPlugin implements PrismMod {
         Prism.items().create(new PrismKey("examplemod", "ruby"), 1).ifPresentOrElse(
                 stack -> getLogger().info("EXAMPLE_ITEM_OK examplemod:ruby x" + stack.getAmount()),
                 () -> getLogger().severe("EXAMPLE_ITEM_FAIL examplemod:ruby is not registered"));
+        // Per-stack data and dynamic lore: the smoke test looks for EXAMPLE_LORE_OK.
+        Prism.items().create(new PrismKey("examplemod", "ruby"), 1).ifPresent(stack -> {
+            Prism.items().editData(stack, data -> data.set(HealBehavior.USES, PersistentDataType.INTEGER, 3));
+            java.util.List<net.kyori.adventure.text.Component> lore = stack.lore();
+            String text = lore == null ? "" : lore.stream()
+                    .map(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()::serialize)
+                    .reduce("", (a, b) -> a + "|" + b);
+            boolean ok = text.equals("|Right click to heal|Used 3 times");
+            getLogger().info((ok ? "EXAMPLE_LORE_OK " : "EXAMPLE_LORE_FAIL ") + text);
+        });
     }
 }

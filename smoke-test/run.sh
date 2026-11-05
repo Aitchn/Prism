@@ -81,7 +81,7 @@ if docker logs "$NAME" 2>&1 | grep -q 'PRISM_SCHEDULER_FAIL'; then
   exit 1
 fi
 # Mods enable before the first tick, so these lines normally exist already; allow a few seconds anyway.
-for marker in 'PRISM_MOD_ACTIVE ExampleMod items=3 blocks=3' 'PRISM_MODELS_SYNCED changed=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'PRISM_PACK_READY sha1=' 'PRISM_BEDROCK_PACK_READY sha1=.* blocks=9 ' 'PRISM_DATA_OK' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block' 'PRISM_NATIVE_SELFTEST_OK examplemod:ruby_block' 'PRISM_GEYSER_EXPORTED' 'PRISM_PLATFORM_SELFTEST_OK examplemod:ruby_counter'; do
+for marker in 'PRISM_MOD_ACTIVE ExampleMod items=3 blocks=3' 'PRISM_MODELS_SYNCED changed=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'EXAMPLE_LORE_OK' 'PRISM_PACK_READY sha1=' 'PRISM_BEDROCK_PACK_READY sha1=.* blocks=9 ' 'PRISM_DATA_OK' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block' 'PRISM_NATIVE_SELFTEST_OK examplemod:ruby_block' 'PRISM_GEYSER_EXPORTED' 'PRISM_PLATFORM_SELFTEST_OK examplemod:ruby_counter'; do
   found=""
   for ((i = 0; i < 90; i++)); do
     if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
@@ -93,7 +93,7 @@ for marker in 'PRISM_MOD_ACTIVE ExampleMod items=3 blocks=3' 'PRISM_MODELS_SYNCE
     exit 1
   fi
 done
-if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL|PRISM_NATIVE_SELFTEST_FAIL|PRISM_NATIVE_OUT_OF_STATES|PRISM_GEYSER_INSTALL_FAIL'; then
+if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMPLE_LORE_FAIL|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL|PRISM_NATIVE_SELFTEST_FAIL|PRISM_NATIVE_OUT_OF_STATES|PRISM_GEYSER_INSTALL_FAIL'; then
   echo "FAIL: a mod failed to activate" >&2
   exit 1
 fi

@@ -76,10 +76,11 @@ public final class PrismPlugin extends JavaPlugin {
             modelSync.contentChanged();
             blocks.contentChanged();
         });
-        ChestMenus menus = new ChestMenus(items, scheduler);
+        ChestMenus menus = new ChestMenus(items, scheduler, getLogger());
         Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus, data,
                 new SchedulerAdapter(scheduler));
         getServer().getPluginManager().registerEvents(menus, this);
+        getServer().getPluginManager().registerEvents(menus.containers(), this);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
         getServer().getPluginManager().registerEvents(blocks, this);
