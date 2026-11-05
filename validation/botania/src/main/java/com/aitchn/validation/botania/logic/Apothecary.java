@@ -49,7 +49,7 @@ public final class Apothecary implements BlockEntity {
      * Applies a right-click with {@code held} (null for an empty hand). The caller consumes the held item for
      * FILLED, ADDED and CRAFTED (one item) and gives {@code item} back for REMOVED.
      */
-    public synchronized Outcome use(String held) {
+    public synchronized Outcome use(String held, RecipeBook recipes) {
         if (held == null) {
             if (ingredients.isEmpty()) {
                 return new Outcome(Kind.REJECTED, null);
@@ -67,7 +67,7 @@ public final class Apothecary implements BlockEntity {
             return new Outcome(Kind.REJECTED, null);
         }
         if (held.equals(TRIGGER)) {
-            String result = Recipes.petal(ingredients);
+            String result = recipes.petal(ingredients);
             if (result == null) {
                 return new Outcome(Kind.NO_MATCH, null);
             }

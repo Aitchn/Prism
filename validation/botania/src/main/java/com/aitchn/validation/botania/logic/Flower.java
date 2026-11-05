@@ -64,7 +64,7 @@ public final class Flower implements BlockEntity {
             case ENDOFLAME -> tickEndoflame(world);
             case PURE_DAISY -> tickDaisy(world);
         }
-        push(network);
+        push(world, network);
     }
 
     private void tickEndoflame(WorldView world) {
@@ -98,7 +98,7 @@ public final class Flower implements BlockEntity {
                 if (!world.isOwned(target)) {
                     continue;
                 }
-                String result = Recipes.conversion(world.blockId(target));
+                String result = world.recipes().conversion(world.blockId(target));
                 if (result != null && world.convert(target, result)) {
                     daisyProgress = 0;
                     return;
@@ -108,11 +108,11 @@ public final class Flower implements BlockEntity {
         daisyProgress = DAISY_TICKS; // nothing to convert: stay ready, check again next tick
     }
 
-    private void push(ManaNetwork network) {
+    private void push(WorldView world, ManaNetwork network) {
         if (buffer <= 0 || bound == null) {
             return;
         }
-        var collector = network.collector(bound);
+        var collector = world.collectorAt(bound, network);
         if (collector.isPresent()) {
             buffer -= collector.get().receive(buffer);
         }

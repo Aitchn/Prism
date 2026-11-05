@@ -2,7 +2,7 @@ package com.aitchn.validation.botania;
 
 import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.block.BlockContext;
-import com.aitchn.prism.api.data.DataStore;
+import com.aitchn.prism.api.block.CustomBlock;
 import com.aitchn.validation.botania.logic.Apothecary;
 import com.aitchn.validation.botania.logic.BlockEntity;
 import com.aitchn.validation.botania.logic.Burst;
@@ -12,85 +12,102 @@ import com.aitchn.validation.botania.logic.ManaCollector;
 import com.aitchn.validation.botania.logic.ManaNetwork;
 import com.aitchn.validation.botania.logic.Pool;
 import com.aitchn.validation.botania.logic.Pos;
+import com.aitchn.validation.botania.logic.RecipeBook;
 import com.aitchn.validation.botania.logic.Spreader;
+import com.aitchn.validation.botania.logic.Tablet;
 import com.aitchn.validation.botania.logic.WandBinding;
-import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.persistence.PersistentDataType;
 
 /**
- * Owns the loaded block entities: one repeating task per block on the region scheduler, persistence in Prism's
- * DataStore (one key per block, grouped by chunk), and the hand-over of bursts between regions.
+ * The rules of the mod on top of Prism's block platform. Prism finds the blocks again after a restart, ticks them on
+ * the right region and keeps their data; this class only turns block events into calls on the Bukkit-free rules.
+ * State lives in each block's own data (one string), so nothing is stored outside the world.
  */
 final class BotaniaRuntime {
 
     static final String WAND = "botania:wand_of_the_forest";
+    static final String TABLET = "botania:mana_tablet";
+    static final NamespacedKey STATE = NamespacedKey.fromString("botania:state");
+    static final NamespacedKey TABLET_MANA = NamespacedKey.fromString("botania:mana");
     private static final int SAVE_INTERVAL = 200;
 
-    private static final class Active {
-        final BlockEntity entity;
-        volatile ScheduledTask task;
-        int ticks;
-        String saved;
-
-        Active(BlockEntity entity) {
-            this.entity = entity;
-        }
-    }
-
-    private final Plugin plugin;
+    private final Logger log;
     private final ManaNetwork network = new ManaNetwork();
     private final WandBinding wand = new WandBinding();
-    private final Map<Pos, Active> active = new ConcurrentHashMap<>();
-    private volatile DataStore store;
+    private final Map<Pos, int[]> ticks = new ConcurrentHashMap<>();
+    private volatile RecipeBook recipes = new RecipeBook();
 
-    BotaniaRuntime(Plugin plugin) {
-        this.plugin = plugin;
+    BotaniaRuntime(Logger log) {
+        this.log = log;
     }
 
     ManaNetwork network() {
         return network;
     }
 
-    int activeCount() {
-        return active.size();
+    void recipes(RecipeBook book) {
+        recipes = book;
     }
 
-    private DataStore store() {
-        DataStore current = store;
-        if (current == null) {
-            current = Prism.data().store("botania");
-            store = current;
-        }
-        return current;
+    private BukkitWorld view() {
+        return new BukkitWorld(recipes);
     }
 
-    // ---- lifecycle of a block entity -------------------------------------------------------------------------
+    // ---- block lifecycle --------------------------------------------------------------------------------------
 
-    /** Creates, registers and persists the entity for a block that was just placed (or found without one). */
-    BlockEntity ensure(Block block, String kind, Player placer) {
-        Pos pos = BukkitWorld.pos(block);
+    /** The entity of a block, created (or read from the block's data) on first use. */
+    BlockEntity ensure(CustomBlock custom, String kind) {
+        Pos pos = BukkitWorld.pos(custom.block());
         var existing = network.get(pos);
         if (existing.isPresent()) {
             return existing.get();
         }
-        float yaw = placer == null ? 0f : placer.getLocation().getYaw();
-        BlockEntity created = switch (kind) {
+        BlockEntity entity = null;
+        String raw = custom.data().get(STATE, PersistentDataType.STRING);
+        if (raw != null) {
+            try {
+                entity = BlockEntity.deserialize(pos, raw);
+            } catch (IllegalArgumentException e) {
+                log.log(Level.WARNING, "Unreadable state at " + pos + ", starting fresh", e);
+            }
+        }
+        if (entity == null) {
+            entity = create(pos, kind, custom.facing());
+        }
+        network.put(entity);
+        save(custom, entity);
+        return entity;
+    }
+
+    /** Same, for code that only has the block (the self test). */
+    BlockEntity ensure(Block block, String kind) {
+        return ensure(Prism.blocks().get(block).orElseThrow(), kind);
+    }
+
+    private static BlockEntity create(Pos pos, String kind, BlockFace facing) {
+        return switch (kind) {
             case "pool" -> new Pool(pos, 0);
-            case "spreader" -> new Spreader(pos, 0, yaw, 0f);
-            case "apothecary" -> new Apothecary(pos, false, java.util.List.of());
+            case "spreader" -> {
+                float[] aim = aim(facing);
+                yield new Spreader(pos, 0, aim[0], aim[1]);
+            }
+            case "apothecary" -> new Apothecary(pos, false, List.of());
             default -> {
                 if (kind.startsWith("flower:")) {
                     yield new Flower(pos, FlowerType.byId(kind.substring("flower:".length())), 0, null);
@@ -98,146 +115,80 @@ final class BotaniaRuntime {
                 throw new IllegalArgumentException("unknown block entity kind '" + kind + "'");
             }
         };
-        register(created, true);
-        return created;
     }
 
-    private void register(BlockEntity entity, boolean persist) {
+    /** A spreader shoots away from the side that faces the placer. Returns {yaw, pitch}. */
+    static float[] aim(BlockFace facing) {
+        return switch (facing.getOppositeFace()) {
+            case SOUTH -> new float[] {0f, 0f};
+            case WEST -> new float[] {90f, 0f};
+            case NORTH -> new float[] {180f, 0f};
+            case EAST -> new float[] {-90f, 0f};
+            case UP -> new float[] {0f, -90f};
+            case DOWN -> new float[] {0f, 90f};
+            default -> new float[] {0f, 0f};
+        };
+    }
+
+    void tick(CustomBlock custom, String kind) {
+        BlockEntity entity = ensure(custom, kind);
         Pos pos = entity.pos();
-        Location at = BukkitWorld.location(pos);
-        if (at == null) {
-            return;
-        }
-        Active fresh = new Active(entity);
-        Active previous = active.put(pos, fresh);
-        if (previous != null && previous.task != null) {
-            previous.task.cancel();
-        }
-        network.put(entity);
-        fresh.saved = entity.serialize();
-        if (persist) {
-            store().put(pos.storeKey(), fresh.saved);
-        }
-        fresh.task = Bukkit.getRegionScheduler().runAtFixedRate(plugin, at, task -> tick(fresh, task), 1L, 1L);
-    }
-
-    private void tick(Active entry, ScheduledTask task) {
-        Pos pos = entry.entity.pos();
-        if (active.get(pos) != entry) {
-            task.cancel();
-            return;
-        }
         try {
-            entry.entity.tick(new BukkitWorld(), network);
-            if (entry.entity instanceof Spreader spreader) {
+            entity.tick(view(), network);
+            if (entity instanceof Spreader spreader) {
                 spreader.fire().ifPresent(burst -> fly(pos.world(), burst));
             }
-            if (++entry.ticks % SAVE_INTERVAL == 0) {
-                save(entry);
+            int[] counter = ticks.computeIfAbsent(pos, p -> new int[1]);
+            if (++counter[0] % SAVE_INTERVAL == 0) {
+                save(custom, entity);
             }
         } catch (RuntimeException e) {
-            plugin.getLogger().log(Level.SEVERE, "Block entity at " + pos + " failed", e);
+            log.log(Level.SEVERE, "Block entity at " + pos + " failed", e);
         }
     }
 
-    private void save(Active entry) {
-        String now = entry.entity.serialize();
-        if (!now.equals(entry.saved)) {
-            store().put(entry.entity.pos().storeKey(), now);
-            entry.saved = now;
+    private static void save(CustomBlock custom, BlockEntity entity) {
+        String now = entity.serialize();
+        if (!now.equals(custom.data().get(STATE, PersistentDataType.STRING))) {
+            custom.data().set(STATE, PersistentDataType.STRING, now);
         }
     }
 
-    /** The block was broken: forget the entity and give back what it held. */
-    void removed(BlockContext context) {
-        discard(context.block());
+    void unloaded(CustomBlock custom) {
+        Pos pos = BukkitWorld.pos(custom.block());
+        network.remove(pos).ifPresent(entity -> save(custom, entity));
+        ticks.remove(pos);
     }
 
-    void discard(Block block) {
-        Pos pos = BukkitWorld.pos(block);
-        Active entry = active.remove(pos);
-        if (entry == null) {
-            return;
-        }
-        if (entry.task != null) {
-            entry.task.cancel();
-        }
-        network.remove(pos);
-        store().remove(pos.storeKey());
-        if (entry.entity instanceof Apothecary apothecary) {
-            for (String ingredient : apothecary.ingredients()) {
-                new BukkitWorld().dropItem(pos.offset(0, 1, 0), ingredient, 1);
-            }
-        }
-    }
-
-    // ---- chunks ------------------------------------------------------------------------------------------------
-
-    /** Must run on the region thread of the chunk. */
-    void loadChunk(World world, int chunkX, int chunkZ) {
-        String prefix = Pos.chunkPrefix(world.getName(), chunkX, chunkZ);
-        DataStore data = store();
-        for (String key : data.keys(prefix)) {
-            try {
-                Pos pos = Pos.parseCoords(world.getName(), key.substring(prefix.length()));
-                if (active.containsKey(pos)) {
-                    continue;
+    /** The block is going away (any cause): forget the entity and hand back what it held. */
+    void removed(CustomBlock custom) {
+        Pos pos = BukkitWorld.pos(custom.block());
+        ticks.remove(pos);
+        network.remove(pos).ifPresent(entity -> {
+            if (entity instanceof Apothecary apothecary) {
+                for (String ingredient : apothecary.ingredients()) {
+                    view().dropItem(pos.offset(0, 1, 0), ingredient, 1);
                 }
-                String raw = data.get(key).orElse(null);
-                if (raw == null) {
-                    continue;
-                }
-                if (Prism.blocks().identify(world.getBlockAt(pos.x(), pos.y(), pos.z())).isEmpty()) {
-                    data.remove(key); // the block is gone (removed while Botania was not running)
-                    continue;
-                }
-                register(BlockEntity.deserialize(pos, raw), false);
-            } catch (IllegalArgumentException e) {
-                plugin.getLogger().log(Level.WARNING, "Skipping unreadable block entity " + key, e);
             }
-        }
+        });
     }
 
-    void unloadChunk(World world, int chunkX, int chunkZ) {
-        for (Active entry : active.values()) {
-            Pos pos = entry.entity.pos();
-            if (pos.world().equals(world.getName()) && pos.chunkX() == chunkX && pos.chunkZ() == chunkZ) {
-                save(entry);
-                if (entry.task != null) {
-                    entry.task.cancel();
-                }
-                active.remove(pos, entry);
-                network.remove(pos);
-            }
-        }
-    }
-
-    void shutdown() {
-        for (Active entry : active.values()) {
-            save(entry);
-            if (entry.task != null) {
-                entry.task.cancel();
-            }
-        }
-        active.clear();
-    }
-
-    // ---- bursts ----------------------------------------------------------------------------------------------
+    // ---- bursts -----------------------------------------------------------------------------------------------
 
     private void fly(String worldName, Burst burst) {
-        World world = Bukkit.getWorld(worldName);
+        World world = org.bukkit.Bukkit.getWorld(worldName);
         if (world == null) {
             return;
         }
         double x0 = burst.x();
         double y0 = burst.y();
         double z0 = burst.z();
-        Burst.Result result = burst.advance(new BukkitWorld(), network);
+        Burst.Result result = burst.advance(view(), network);
         trail(world, x0, y0, z0, burst.x(), burst.y(), burst.z());
         if (result.outcome() == Burst.Outcome.NEED_REGION) {
             Location next = BukkitWorld.location(result.at());
             if (next != null) {
-                Bukkit.getRegionScheduler().execute(plugin, next, () -> fly(worldName, burst));
+                Prism.scheduler().runAt(next, () -> fly(worldName, burst));
             }
         }
     }
@@ -252,7 +203,7 @@ final class BotaniaRuntime {
         }
     }
 
-    // ---- interaction -----------------------------------------------------------------------------------------
+    // ---- interaction ------------------------------------------------------------------------------------------
 
     /** Right click on a Botania block. Cancels the vanilla action when it handled the click. */
     void interact(BlockContext context, String kind) {
@@ -260,16 +211,22 @@ final class BotaniaRuntime {
         if (player == null) {
             return;
         }
-        Block block = context.block();
-        BlockEntity entity = ensure(block, kind, player);
-        ItemStack held = player.getInventory().getItemInMainHand();
+        CustomBlock custom = context.custom();
+        BlockEntity entity = ensure(custom, kind);
+        ItemStack held = context.heldItem();
         String heldId = BukkitWorld.itemId(held);
 
         if (WAND.equals(heldId)) {
             useWand(player, entity);
+            save(custom, entity);
+            context.cancel();
+        } else if (TABLET.equals(heldId) && entity instanceof Pool pool) {
+            useTablet(player, pool, held, context.hand());
+            save(custom, entity);
             context.cancel();
         } else if (entity instanceof Apothecary apothecary) {
             useApothecary(player, apothecary, held, heldId);
+            save(custom, entity);
             context.cancel();
         } else if (entity instanceof ManaCollector collector && heldId == null) {
             player.sendActionBar(Component.text("Mana " + collector.mana() + " / " + collector.capacity()));
@@ -280,33 +237,48 @@ final class BotaniaRuntime {
     private void useWand(Player player, BlockEntity entity) {
         if (player.isSneaking() && entity instanceof Spreader spreader) {
             spreader.aim(player.getLocation().getYaw(), player.getLocation().getPitch());
-            mark(entity);
             player.sendActionBar(Component.text("Spreader aimed"));
             return;
         }
-        String id = player.getUniqueId().toString();
-        var from = wand.selected(id);
-        var result = wand.click(id, entity.pos(), network);
-        String message = switch (result) {
+        var result = wand.click(player.getUniqueId().toString(), entity.pos(), network);
+        player.sendActionBar(Component.text(switch (result) {
             case SELECTED -> "Flower selected: now click a pool or spreader";
             case BOUND -> "Bound";
             case OUT_OF_RANGE -> "Too far away (max " + (int) Flower.BIND_RANGE + " blocks)";
             case NOTHING -> "Nothing to bind";
-        };
-        if (result == WandBinding.Result.BOUND) {
-            from.flatMap(network::get).ifPresent(this::mark);
+        }));
+    }
+
+    private void useTablet(Player player, Pool pool, ItemStack tablet, EquipmentSlot hand) {
+        int stored = TabletLore.stored(tablet);
+        int moved;
+        int next;
+        if (player.isSneaking()) {
+            moved = pool.receive(Tablet.toPool(stored, Pool.CAPACITY - pool.mana()));
+            next = stored - moved;
+        } else {
+            moved = pool.take(Tablet.toTablet(pool.mana(), stored));
+            next = stored + moved;
         }
-        player.sendActionBar(Component.text(message));
+        if (moved == 0) {
+            player.sendActionBar(Component.text("Nothing to move"));
+            return;
+        }
+        Prism.items().editData(tablet, data -> data.set(TABLET_MANA, PersistentDataType.INTEGER, next));
+        if (hand != null) {
+            player.getInventory().setItem(hand, tablet);
+        }
+        player.sendActionBar(Component.text("Tablet " + next + " / " + Tablet.CAPACITY));
     }
 
     private void useApothecary(Player player, Apothecary apothecary, ItemStack held, String heldId) {
-        Apothecary.Outcome outcome = apothecary.use(heldId);
+        Apothecary.Outcome outcome = apothecary.use(heldId, recipes);
         boolean survival = player.getGameMode() != GameMode.CREATIVE;
         Pos above = apothecary.pos().offset(0, 1, 0);
         switch (outcome.kind()) {
             case FILLED -> {
                 if (survival) {
-                    player.getInventory().setItemInMainHand(new ItemStack(Material.BUCKET));
+                    player.getInventory().setItemInMainHand(new ItemStack(org.bukkit.Material.BUCKET));
                 }
             }
             case ADDED -> {
@@ -318,19 +290,11 @@ final class BotaniaRuntime {
                 if (survival) {
                     held.subtract();
                 }
-                new BukkitWorld().dropItem(above, outcome.item(), 1);
+                view().dropItem(above, outcome.item(), 1);
             }
-            case REMOVED -> new BukkitWorld().dropItem(above, outcome.item(), 1);
+            case REMOVED -> view().dropItem(above, outcome.item(), 1);
             case NO_MATCH -> player.sendActionBar(Component.text("These petals make nothing"));
             case REJECTED -> { }
-        }
-        mark(apothecary);
-    }
-
-    private void mark(BlockEntity entity) {
-        Active entry = active.get(entity.pos());
-        if (entry != null) {
-            save(entry);
         }
     }
 }

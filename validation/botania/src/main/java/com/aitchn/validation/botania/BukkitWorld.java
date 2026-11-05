@@ -2,10 +2,14 @@ package com.aitchn.validation.botania;
 
 import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.PrismKey;
+import com.aitchn.validation.botania.logic.ManaCollector;
+import com.aitchn.validation.botania.logic.ManaNetwork;
 import com.aitchn.validation.botania.logic.Pos;
+import com.aitchn.validation.botania.logic.RecipeBook;
 import com.aitchn.validation.botania.logic.WorldView;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -16,6 +20,27 @@ import org.bukkit.inventory.ItemStack;
 
 /** {@link WorldView} over Bukkit. Every call must run on the thread that owns the position (see isOwned). */
 final class BukkitWorld implements WorldView {
+
+    private final RecipeBook recipes;
+
+    BukkitWorld(RecipeBook recipes) {
+        this.recipes = recipes;
+    }
+
+    @Override
+    public RecipeBook recipes() {
+        return recipes;
+    }
+
+    @Override
+    public Optional<ManaCollector> collectorAt(Pos pos, ManaNetwork network) {
+        Block block = block(pos);
+        if (block == null || !isOwned(pos)) {
+            // Another region owns the block: the in-memory network is the thread-safe way to reach its collector.
+            return network.collector(pos);
+        }
+        return Prism.blocks().capability(block, null, ManaCapabilities.MANA);
+    }
 
     static Pos pos(Block block) {
         return new Pos(block.getWorld().getName(), block.getX(), block.getY(), block.getZ());
@@ -43,7 +68,7 @@ final class BukkitWorld implements WorldView {
     @Override
     public boolean isOwned(Pos pos) {
         Location at = location(pos);
-        return at != null && Bukkit.isOwnedByCurrentRegion(at);
+        return at != null && Prism.scheduler().isOwnedByCurrentThread(at);
     }
 
     @Override

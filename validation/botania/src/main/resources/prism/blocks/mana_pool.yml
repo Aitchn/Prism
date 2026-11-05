@@ -1,6 +1,11 @@
 # Key: botania:mana_pool. Placeholder texture generated for this validation; no original assets are included.
 base: minecraft:barrier
 drop: botania:mana_pool
+components:
+  prism:mining:
+    hardness: 3
+    tool: pickaxe
 behaviors:
   - type: botania:block_entity
     kind: pool
+  - type: botania:mana_provider

@@ -29,4 +29,15 @@ public interface WorldView {
     boolean consumeDroppedItem(Pos pos, double radius, String itemId);
 
     void dropItem(Pos pos, String itemId, int amount);
+
+    /** The recipes in force. */
+    RecipeBook recipes();
+
+    /**
+     * The mana collector at {@code pos}. The plugin answers through Prism's block capability lookup, so any mod's
+     * block that offers the mana capability works; the default reads the local network (tests).
+     */
+    default java.util.Optional<ManaCollector> collectorAt(Pos pos, ManaNetwork network) {
+        return network.collector(pos);
+    }
 }

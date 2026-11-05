@@ -40,6 +40,13 @@ public final class Pool implements ManaCollector {
         return accepted;
     }
 
+    /** Removes up to {@code amount}; returns how much was taken. */
+    public synchronized int take(int amount) {
+        int taken = Math.max(0, Math.min(amount, mana));
+        mana -= taken;
+        return taken;
+    }
+
     @Override
     public synchronized void tick(WorldView world, ManaNetwork network) {
         if (++tick % INFUSION_INTERVAL != 0) {
@@ -47,7 +54,7 @@ public final class Pool implements ManaCollector {
         }
         List<String> items = world.droppedItems(pos, ITEM_RADIUS);
         for (String item : items) {
-            Recipes.Infusion recipe = Recipes.infusion(item);
+            RecipeBook.Infusion recipe = world.recipes().infusion(item);
             if (recipe != null && mana >= recipe.cost() && world.consumeDroppedItem(pos, ITEM_RADIUS, item)) {
                 mana -= recipe.cost();
                 world.dropItem(pos.offset(0, 1, 0), recipe.result(), 1);

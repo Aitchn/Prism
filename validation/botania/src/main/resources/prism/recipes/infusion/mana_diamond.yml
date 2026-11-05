@@ -1,0 +1,5 @@
+# Drop the input into a mana pool that holds enough mana.
+type: botania:mana_infusion
+input: minecraft:diamond
+result: botania:mana_diamond
+mana: 10000

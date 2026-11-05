@@ -1,0 +1,7 @@
+# Key: botania:mana_tablet. Mana is kept in the stack's own data; the lore line is computed (botania:tablet_lore).
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Mana Tablet"
+  prism:max_stack_size: 1
+behaviors:
+  - type: botania:tablet_lore

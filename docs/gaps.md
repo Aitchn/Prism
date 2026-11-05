@@ -10,7 +10,6 @@ promise. Update it when a milestone closes a gap or finds a new one.
 | Items | definitions, components, use behavior | M1 done |
 | Items | more events (hit, equip, tick in inventory), item tooltips, durability, cooldowns | open |
 | Blocks | definitions, place/break/interact behaviors, display-entity appearance | M2 done |
-| Blocks | place hook | done (found by the Botania validation) |
 | Blocks | block states/rotation from placement, hardness and tool rules, sounds, light, redstone | open |
 | Blocks | very large counts (one display entity per block) | open; NativeStateBackend in M5 |
 | Blocks | place/remove/load/neighbour lifecycle, facing, survival breaking | done (ADR-0007) |
@@ -41,17 +40,22 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 ## Found in the Botania validation
 
-Details and numbering in [validation/botania.md](validation/botania.md). Fixed: a block place hook
-(`BlockPlaceBehavior`) and break behaviors on explosions. Still open:
+Details in [validation/botania.md](validation/botania.md). The first rebuild found the block lifecycle gaps that
+ADR-0007 to ADR-0010 closed; the rebuild now runs on those APIs. What is still open, all generic:
 
-- A block ticking API and per-block data with lifecycle (cleanup, chunk load/unload callbacks, async, transactions).
-- A position-indexed `identify` (today it scans nearby entities).
-- Richer click contexts (held item, face, hit position) and an item capability for "use on block".
-- Placement state (facing, rotation) and carriers without full-block collision; breaking a barrier carrier in
-  survival must be verified.
-- A recipe content type, content variants/templates, per-stack item data and dynamic tooltips.
-- Region-aware scheduler helpers and runtime control of a block's model (animation, rotation).
-- An effects API (particles, sounds) that is Bedrock-aware.
+- **Cross-region reads.** `BlockService.capability` is safe on the owning thread only, but a flower binds to a pool up
+  to six blocks away, which can be another Folia region. The mod keeps its own thread-safe map for that case. Needed:
+  a documented, thread-safe way to reach a neighbouring block across regions (for example an asynchronous
+  `withCapability(block, side, capability, consumer)` that hops to the owner).
+- **Free rotation.** `prism:rotation: all` gives six facings. A spreader aimed at any yaw and pitch cannot show its
+  aim; model animation or free rotation from the API is missing (row 14 of the triage covers states, not this).
+- **No-collision carriers** (row 13) are still open: flowers are full-block barriers.
+- **World generation** (row 28): mystical flowers cannot be found, so a dye stands in for petals.
+- **Effects** (row 27): bursts are drawn with Bukkit particles; no moving model entities, no Bedrock-aware effects.
+- **Documentation:** it is not stated whether `ItemService.editData` changes the passed stack in place (the mod writes
+  it back to the inventory to be safe), nor whether `onPlace` and `onLoad` can both fire for a new block (the mod's
+  setup is idempotent), nor whether `onContentLoaded` runs again after a recipe reload.
+- Not needed by this mod, so unproven here: slot menus (Botania has none), neighbour behaviors, variants.
 
 ## Found in the Mekanism rebuild (`validation/mekanism`)
 

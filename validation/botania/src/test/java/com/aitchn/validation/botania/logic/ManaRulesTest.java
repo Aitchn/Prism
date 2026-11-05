@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 
 class ManaRulesTest {
 
+    private static final RecipeBook BOOK = RecipeBook.defaults();
+
     private static Pos at(int x, int y, int z) {
         return new Pos("world", x, y, z);
     }
@@ -183,13 +185,13 @@ class ManaRulesTest {
     @Test
     void apothecaryNeedsWaterPetalsAndSeeds() {
         var apothecary = new Apothecary(at(0, 64, 0), false, List.of());
-        assertEquals(Apothecary.Kind.REJECTED, apothecary.use(Recipes.petalItem("white")).kind());
-        assertEquals(Apothecary.Kind.FILLED, apothecary.use(Apothecary.WATER_BUCKET).kind());
+        assertEquals(Apothecary.Kind.REJECTED, apothecary.use(Recipes.petalItem("white"), BOOK).kind());
+        assertEquals(Apothecary.Kind.FILLED, apothecary.use(Apothecary.WATER_BUCKET, BOOK).kind());
         for (int i = 0; i < 4; i++) {
-            assertEquals(Apothecary.Kind.ADDED, apothecary.use(Recipes.petalItem("white")).kind());
+            assertEquals(Apothecary.Kind.ADDED, apothecary.use(Recipes.petalItem("white"), BOOK).kind());
         }
-        assertEquals(Apothecary.Kind.REJECTED, apothecary.use("minecraft:dirt").kind());
-        var crafted = apothecary.use(Apothecary.TRIGGER);
+        assertEquals(Apothecary.Kind.REJECTED, apothecary.use("minecraft:dirt", BOOK).kind());
+        var crafted = apothecary.use(Apothecary.TRIGGER, BOOK);
         assertEquals(Apothecary.Kind.CRAFTED, crafted.kind());
         assertEquals("botania:pure_daisy", crafted.item());
         assertFalse(apothecary.water());
@@ -200,17 +202,17 @@ class ManaRulesTest {
     void apothecaryRecipeIgnoresOrderAndFailsOnMismatch() {
         var apothecary = new Apothecary(at(0, 64, 0), true, List.of());
         for (String dye : List.of("light_blue", "yellow", "yellow")) {
-            apothecary.use(Recipes.petalItem(dye));
+            apothecary.use(Recipes.petalItem(dye), BOOK);
         }
-        assertEquals("botania:daybloom", apothecary.use(Apothecary.TRIGGER).item());
+        assertEquals("botania:daybloom", apothecary.use(Apothecary.TRIGGER, BOOK).item());
 
-        apothecary.use(Apothecary.WATER_BUCKET);
-        apothecary.use(Recipes.petalItem("red"));
-        assertEquals(Apothecary.Kind.NO_MATCH, apothecary.use(Apothecary.TRIGGER).kind());
-        var removed = apothecary.use(null);
+        apothecary.use(Apothecary.WATER_BUCKET, BOOK);
+        apothecary.use(Recipes.petalItem("red"), BOOK);
+        assertEquals(Apothecary.Kind.NO_MATCH, apothecary.use(Apothecary.TRIGGER, BOOK).kind());
+        var removed = apothecary.use(null, BOOK);
         assertEquals(Apothecary.Kind.REMOVED, removed.kind());
         assertEquals("botania:petal_red", removed.item());
-        assertNull(Recipes.petal(List.of()));
+        assertNull(BOOK.petal(List.of()));
     }
 
     @Test
@@ -239,6 +241,26 @@ class ManaRulesTest {
 
         var copy = BlockEntity.deserialize(flower.pos(), flower.serialize());
         assertEquals(flower.serialize(), copy.serialize());
+    }
+
+    @Test
+    void tabletMovesManaInStepsAndRespectsBothLimits() {
+        assertEquals(Tablet.STEP, Tablet.toTablet(50_000, 0));
+        assertEquals(300, Tablet.toTablet(300, 0));
+        assertEquals(5, Tablet.toTablet(50_000, Tablet.CAPACITY - 5));
+        assertEquals(0, Tablet.toTablet(50_000, Tablet.CAPACITY));
+        assertEquals(Tablet.STEP, Tablet.toPool(5000, Pool.CAPACITY));
+        assertEquals(7, Tablet.toPool(5000, 7));
+        assertEquals(0, Tablet.toPool(0, 100));
+    }
+
+    @Test
+    void recipeBookOnlyKnowsWhatWasAdded() {
+        var book = new RecipeBook().addInfusion("minecraft:gold_ingot", "x:gold", 5);
+        assertEquals(5, book.infusion("minecraft:gold_ingot").cost());
+        assertNull(book.infusion("minecraft:iron_ingot"));
+        assertNull(book.conversion("minecraft:stone"));
+        assertNull(book.petal(List.of("botania:petal_white")));
     }
 
     @Test

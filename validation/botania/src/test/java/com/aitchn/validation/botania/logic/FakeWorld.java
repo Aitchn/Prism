@@ -14,6 +14,7 @@ final class FakeWorld implements WorldView {
     final Map<Pos, String> blocks = new HashMap<>();
     final List<String> dropped = new ArrayList<>();
     final List<String> spawned = new ArrayList<>();
+    final RecipeBook recipes = RecipeBook.defaults();
     boolean daylight = true;
     int ownedMinX = Integer.MIN_VALUE;
     int ownedMaxX = Integer.MAX_VALUE;
@@ -52,6 +53,11 @@ final class FakeWorld implements WorldView {
     @Override
     public boolean consumeDroppedItem(Pos pos, double radius, String itemId) {
         return dropped.remove(itemId);
+    }
+
+    @Override
+    public RecipeBook recipes() {
+        return recipes;
     }
 
     @Override

@@ -1,0 +1,9 @@
+type: prism:shaped
+pattern:
+  - "S S"
+  - "SCS"
+  - "SSS"
+key:
+  S: minecraft:cobblestone_slab
+  C: minecraft:cobblestone
+result: botania:petal_apothecary

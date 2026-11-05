@@ -1,6 +1,10 @@
 # Key: botania:petal_apothecary. Placeholder texture generated for this validation; no original assets are included.
 base: minecraft:barrier
 drop: botania:petal_apothecary
+components:
+  prism:mining:
+    hardness: 2
+    tool: pickaxe
 behaviors:
   - type: botania:block_entity
     kind: apothecary

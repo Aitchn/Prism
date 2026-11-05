@@ -75,7 +75,7 @@ public final class Burst {
                 if (!world.isOwned(next)) {
                     return new Result(Outcome.NEED_REGION, next, 0);
                 }
-                var collector = network.collector(next);
+                var collector = world.collectorAt(next, network);
                 if (collector.isPresent() && !next.equals(origin)) {
                     int delivered = collector.get().receive(mana);
                     return new Result(Outcome.HIT, next, delivered);
