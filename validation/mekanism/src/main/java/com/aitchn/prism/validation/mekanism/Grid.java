@@ -11,12 +11,11 @@ import com.aitchn.prism.validation.mekanism.logic.EnergyBuffer;
 import com.aitchn.prism.validation.mekanism.logic.Machine;
 import com.aitchn.prism.validation.mekanism.logic.MachineType;
 import com.aitchn.prism.validation.mekanism.logic.Networks;
+import com.aitchn.prism.validation.mekanism.logic.Plant;
 import com.aitchn.prism.validation.mekanism.logic.Pos;
 import com.aitchn.prism.validation.mekanism.logic.SolarGenerator;
 import com.aitchn.prism.validation.mekanism.logic.Stack;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,22 +52,15 @@ final class Grid {
     private static final Grid INSTANCE = new Grid();
     private static final Logger LOG = Logger.getLogger("Mekanism");
     private static final int SAVE_EVERY = 100;
-    private static final long CABLE_LIMIT = 4_096;
-    private static final long PIPE_LIMIT = 256;
-
     private final ReentrantLock lock = new ReentrantLock();
     private final RecipeBook recipes = new RecipeBook();
-    private final Map<Pos, Machine> machines = new HashMap<>();
-    private final Map<Pos, SolarGenerator> solars = new HashMap<>();
-    private final Set<Pos> cables = new HashSet<>();
-    private final Set<Pos> pipes = new HashSet<>();
+    private final Plant plant = new Plant();
+    private final Map<Pos, Machine> machines = plant.machines();
+    private final Map<Pos, SolarGenerator> solars = plant.solars();
+    private final Set<Pos> cables = plant.cables();
+    private final Set<Pos> pipes = plant.pipes();
     private final Map<Pos, String> saved = new HashMap<>();
     private final Map<Pos, MachineMenu> viewers = new ConcurrentHashMap<>();
-    private List<Networks.Network> cableNets = List.of();
-    private List<Networks.Network> pipeNets = List.of();
-    private boolean topologyChanged = true;
-    private long energyMoved;
-    private long chemicalMoved;
     private volatile io.papermc.paper.threadedregions.scheduler.ScheduledTask loop;
 
     static Grid get() {
@@ -126,24 +118,7 @@ final class Grid {
     }
 
     private void tickNetworks() {
-        underLock(() -> {
-            rebuildIfNeeded();
-            energyMoved = Networks.distributeEnergy(cableNets,
-                    p -> solars.containsKey(p) ? solars.get(p).energy() : null,
-                    p -> machines.containsKey(p) ? machines.get(p).energy() : null, CABLE_LIMIT);
-            chemicalMoved = Networks.distributeChemical(pipeNets,
-                    p -> machines.containsKey(p) ? machines.get(p).ports().outputs() : null,
-                    p -> machines.containsKey(p) ? machines.get(p).ports().inputs() : null, PIPE_LIMIT);
-        });
-    }
-
-    /** Lock held. Networks change only when a conduit or an endpoint appears or goes. */
-    private void rebuildIfNeeded() {
-        if (topologyChanged) {
-            cableNets = Networks.build(cables);
-            pipeNets = Networks.build(pipes);
-            topologyChanged = false;
-        }
+        underLock(plant::tickNetworks);
     }
 
     // ---------------------------------------------------------------- machines
@@ -165,7 +140,7 @@ final class Grid {
                 saved.put(pos, state);
             }
             machines.put(pos, machine);
-            topologyChanged = true;
+            plant.markDirty();
             return machine;
         });
     }
@@ -217,7 +192,7 @@ final class Grid {
                 saveMachine(block, pos, machine);
             }
             saved.remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
         });
     }
 
@@ -229,7 +204,7 @@ final class Grid {
         Machine machine = locked(() -> {
             Machine removed = machines.remove(pos);
             saved.remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
             if (removed != null) {
                 removed.markDead();
             }
@@ -335,7 +310,7 @@ final class Grid {
                 saved.put(pos, Long.toString(stored));
             }
             solars.put(pos, solar);
-            topologyChanged = true;
+            plant.markDirty();
             return solar;
         });
     }
@@ -371,7 +346,7 @@ final class Grid {
                 saveSolar(block, pos, solar);
             }
             saved.remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
         });
     }
 
@@ -380,7 +355,7 @@ final class Grid {
         underLock(() -> {
             solars.remove(pos);
             saved.remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
         });
     }
 
@@ -397,7 +372,7 @@ final class Grid {
         Pos pos = pos(block);
         underLock(() -> {
             (cable ? cables : pipes).add(pos);
-            topologyChanged = true;
+            plant.markDirty();
         });
     }
 
@@ -405,7 +380,7 @@ final class Grid {
         Pos pos = pos(block);
         underLock(() -> {
             (cable ? cables : pipes).remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
         });
     }
 
@@ -414,7 +389,7 @@ final class Grid {
         Pos pos = pos(block);
         return locked(() -> {
             rebuildIfNeeded();
-            Networks.Network cable = Networks.containing(cableNets, pos);
+            Networks.Network cable = Networks.containing(plant.cableNets(), pos);
             if (cable != null) {
                 int generators = 0;
                 int consumers = 0;
@@ -431,13 +406,13 @@ final class Grid {
                 }
                 return "Cable network: " + cable.conduits().size() + " cables, " + generators + " generators, "
                         + consumers + " machines, " + Text.number(stored) + " J stored, moving "
-                        + Text.number(energyMoved) + " J/t (all networks)";
+                        + Text.number(plant.energyMoved()) + " J/t (all networks)";
             }
-            Networks.Network pipe = Networks.containing(pipeNets, pos);
+            Networks.Network pipe = Networks.containing(plant.pipeNets(), pos);
             if (pipe != null) {
                 int connected = (int) pipe.endpoints().stream().filter(machines::containsKey).count();
                 return "Pipe network: " + pipe.conduits().size() + " pipes, " + connected + " machines, moving "
-                        + Text.number(chemicalMoved) + " mB/t (all networks)";
+                        + Text.number(plant.chemicalMoved()) + " mB/t (all networks)";
             }
             return null;
         });

@@ -55,3 +55,10 @@ Prism**: joules, chemicals, machine recipes and the energy tablet are all in thi
   and proves placement, the capability lookup, energy over a cable, a data-driven recipe, per-block data, gas over a
   tube, and removal.
 - Not covered by CI (needs clients): see "Hand tests" in [docs/gaps.md](../../docs/gaps.md).
+
+## Coverage and chain tests
+
+`inventory.yml` lists what the real base module has and marks each entry `done | partial | missing`.
+`InventoryTest` prints `MEKANISM_COVERAGE` and fails below the target of the current stage. `ChainTest` runs
+solar, cables, pipes and machines together in an in-memory world (`TestWorld` over the real `Plant`), including
+unload/reload in the middle, broken cables, full outputs and random placing and breaking.
