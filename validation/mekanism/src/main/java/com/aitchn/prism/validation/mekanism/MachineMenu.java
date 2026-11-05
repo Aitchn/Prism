@@ -111,9 +111,7 @@ final class MachineMenu implements ContainerMenu {
     public void onRefresh(@NotNull MenuView view) {
         grid.underLock(() -> {
             if (machine.isDead()) {
-                view.setItem(INPUT, null);
-                view.setItem(OUTPUT, null);
-                view.close();
+                view.close(); // onClose hands over what the slots still show
                 return;
             }
             drawStatus(view);

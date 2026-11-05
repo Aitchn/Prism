@@ -53,7 +53,7 @@ public record TabletBehavior(int capacity) implements ItemUseBehavior, ItemLoreB
         var hand = context.hand();
         boolean sneaking = player.isSneaking();
         // The clicked block may belong to another region than the player: hop to its thread before looking at it.
-        Prism.scheduler().runAt(clicked.getLocation(), () -> {
+        Runnable transfer = () -> {
             Optional<CustomBlock> custom = Prism.blocks().get(clicked);
             if (custom.isEmpty()) {
                 Tablets.say(player, "That is not a Mekanism block");
@@ -73,7 +73,12 @@ public record TabletBehavior(int capacity) implements ItemUseBehavior, ItemLoreB
             } else {
                 Tablets.say(player, "Right click without sneaking to push energy in");
             }
-        });
+        };
+        if (Prism.scheduler().isOwnedByCurrentThread(clicked.getLocation())) {
+            transfer.run(); // same thread (always on Paper): no window between moving energy and recording it
+        } else {
+            Prism.scheduler().runAt(clicked.getLocation(), transfer);
+        }
     }
 
     @Override

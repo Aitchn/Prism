@@ -45,7 +45,7 @@ final class Tablets {
         if (hand == null) {
             return;
         }
-        Prism.scheduler().runOn(player, () -> {
+        Runnable apply = () -> {
             ItemStack now = player.getInventory().getItem(hand);
             if (now == null || !is(now)) {
                 return;
@@ -54,6 +54,13 @@ final class Tablets {
             Prism.items().editData(now, data -> data.set(CHARGE, PersistentDataType.LONG, updated));
             player.getInventory().setItem(hand, now);
             player.sendActionBar(Component.text(message + " (" + Text.number(updated) + " J stored)"));
-        }, null);
+        };
+        // On the player's own thread (always, on Paper) the change is applied at once, so the stack cannot change
+        // between moving the energy and recording it; elsewhere it is queued.
+        if (Prism.scheduler().isOwnedByCurrentThread(player)) {
+            apply.run();
+        } else {
+            Prism.scheduler().runOn(player, apply, null);
+        }
     }
 }

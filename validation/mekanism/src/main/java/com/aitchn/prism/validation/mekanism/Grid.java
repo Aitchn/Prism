@@ -204,9 +204,18 @@ final class Grid {
     /** The chunk unloads: keep the state in the block's data and stop tracking it. */
     void unloadMachine(CustomBlock block, MachineBehavior spec) {
         Pos pos = pos(block.block());
+        MachineMenu viewer = viewers.get(pos);
+        boolean viewed = viewer != null && viewer.active();
         underLock(() -> {
             Machine machine = machines.remove(pos);
             if (machine != null) {
+                if (viewed) {
+                    // The open menu keeps (and later hands over) what its slots show; the saved state must not
+                    // hold the same items again.
+                    machine.markDead();
+                    machine.setInput(null);
+                    machine.setOutput(null);
+                }
                 saveMachine(block, pos, machine);
             }
             saved.remove(pos);
