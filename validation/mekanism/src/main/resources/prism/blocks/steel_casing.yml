@@ -1,0 +1,6 @@
+# Key: mekanism:steel_casing. Invisible carrier; the look is a placeholder texture (real art is never published).
+base: minecraft:barrier
+drop: mekanism:steel_casing
+behaviors:
+  - type: mekanism:block
+    kind: casing

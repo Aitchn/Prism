@@ -1,0 +1,7 @@
+# Key: mekanism:purification_chamber. Invisible carrier; the look is a placeholder texture (real art is never published).
+base: minecraft:barrier
+drop: mekanism:purification_chamber
+behaviors:
+  - type: mekanism:block
+    kind: machine
+    machine: purification_chamber

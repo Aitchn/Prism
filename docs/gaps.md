@@ -41,3 +41,48 @@ promise. Update it when a milestone closes a gap or finds a new one.
   blocks max, no BetterModel models, and a player-made note block with an allocated state is read as that block.
   It is experimental: CI proves place/identify/remove on Paper, Folia and Purpur, but the look on a real Java client
   and on Bedrock (Geyser) has not been verified. Other state families (mushroom blocks, tripwire) would raise the cap.
+
+## Found in the Mekanism rebuild (`validation/mekanism`)
+
+What was built: energy buffers, five recipe machines (enrichment, crusher, purification, injection, electrolytic
+separator) forming the osmium ore chain, a solar generator, cable and pipe networks, a hollow-cuboid multiblock
+validator, and the YAML content (9 blocks, 11 items). The logic is Bukkit-free and unit-tested; only a thin adapter
+touches Prism. Items below are what Prism could not express and the mod had to work around or leave out.
+
+1. **No block lifecycle events.** There is no placed / loaded / unloaded / neighbour-changed hook for custom blocks,
+   only `BlockInteractBehavior` and `BlockBreakBehavior`. The mod registers a machine lazily on first right click, so
+   a placed cable or generator does nothing until touched, and after a restart nothing is re-registered.
+   Needed: `BlockPlaceBehavior`, chunk load/unload events and a "all custom blocks in this chunk" query.
+2. **No block entity / per-block data.** Machine state (energy, items, tanks, progress) lives in the mod's own
+   `Map<Pos, Machine>`. `DataStore` is a global key-value store with no chunk attachment, so persistence was not
+   written. Needed: data attached to a block position, saved with the chunk, removed with the block, typed.
+3. **Ticking is not in the API.** `PlatformScheduler` is internal. The mod calls Bukkit's `RegionScheduler` directly,
+   which only works because it targets Paper/Folia. Cross-region work (a cable network spanning regions) needed a
+   coarse lock and is not truly Folia-safe. Needed: a public `Tickable` capability plus a cross-region
+   message/queue primitive.
+4. **No capability lookup between blocks.** Cables find machines through a position map. Mekanism, AE2 and Botania all
+   need "give me the energy/item/fluid/chemical handler on this face of the neighbour". Needed: a generic
+   capability lookup (`BlockCapability<T>`) on `BlockService`, with sided access.
+5. **No shared resource types.** Energy, gas and water were invented by the mod, so a second mod cannot plug into
+   them. Needed: standard `Energy`, `Fluid`, `Chemical` handler interfaces in `prism-api` (or a documented
+   convention), including simulate/commit semantics.
+6. **Interaction context is too thin.** `BlockContext` has no clicked face, hand item or hit position, and
+   `ItemUseContext` has no clicked block or face. Directional machines, wrenches and custom placement rules cannot be
+   written. Needed: face, hit vector, hand and held stack on both contexts.
+7. **Menus have no slots.** `MenuSpec` is a button list, so the machine GUI is faked with "insert held item" and
+   "take output" buttons. Needed: real slot inventories with input/output slot rules, progress bars, and live
+   updates (see "Found in M3").
+8. **No recipe registry.** Recipes are Java objects in `Catalog`. Needed: a `RecipeType` registry loaded from
+   `prism/recipes/*.yml`, so numbers and recipes can be data, and so other mods can add recipes (Mekanism and AE2
+   both rely on this). Also no way to hook furnace recipes for dust smelting or to add vanilla-style crafting
+   recipes for custom items.
+9. **No multiblock support.** `Cuboid` validates a frame but nothing triggers re-validation. Needed: a structure
+   service that listens to member block changes, reports formed/unformed and exposes the formed structure as one
+   object (inventory, tank, controller).
+10. **Block state and look.** A machine cannot show "active" vs "idle", or its facing, because blocks have exactly
+    one appearance. Needed: block state properties mapped to appearances.
+11. **World generation is absent.** Ores exist as items only; no ore blocks, no generation hook.
+12. **Scale.** One display entity per block is fine for machines, not for a base with hundreds of cables. A
+    `NativeStateBackend` (M5) or a batched renderer is needed for cable-heavy builds.
+13. **Not attempted:** radiation, QIO storage, jetpacks/armor, configuration cards, side configuration, upgrades,
+    teleporters. They depend on 1-7 and add no new gap categories.
