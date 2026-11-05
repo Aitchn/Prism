@@ -14,3 +14,11 @@ softdepend:
   - Geyser-Spigot
   - floodgate
   - PlaceholderAPI
+commands:
+  prism:
+    description: Prism tools (give custom items, browse items).
+    usage: /prism give <player> <item> [amount] | /prism items
+permissions:
+  prism.command.give:
+    description: Use /prism give and /prism items.
+    default: op

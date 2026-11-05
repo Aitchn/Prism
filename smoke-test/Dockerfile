@@ -6,4 +6,4 @@ COPY plugins/ /server/plugins/
 RUN echo "eula=true" > eula.txt \
     && printf 'online-mode=false\nlevel-type=flat\ngenerate-structures=false\nview-distance=4\nsimulation-distance=4\nspawn-protection=0\nmax-players=1\n' > server.properties
 EXPOSE 25565
-ENTRYPOINT ["java", "-Xms512M", "-Xmx1G", "-Dprism.selftest=examplemod:ruby_block", "-Dprism.selftest.model=examplemod:turret", "-Dbotania.selftest=true", "-jar", "server.jar", "--nogui"]
+ENTRYPOINT ["java", "-Xms512M", "-Xmx1G", "-Dprism.selftest=examplemod:ruby_block", "-Dprism.selftest.platform=examplemod:ruby_counter", "-Dprism.selftest.model=examplemod:turret", "-Dbotania.selftest=true", "-jar", "server.jar", "--nogui"]

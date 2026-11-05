@@ -4,8 +4,8 @@ import com.aitchn.prism.api.content.Behavior;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Capability: runs before the block is broken by a player, which can cancel it with {@link BlockContext#cancel()},
- * or when an explosion destroys it ({@link BlockContext#player()} is null and cancelling has no effect).
+ * Capability: runs when a player finished breaking the block, before it is removed; {@link BlockContext#cancel()}
+ * keeps it. {@link BlockRemoveBehavior} runs afterwards for every removal, including explosions.
  */
 public interface BlockBreakBehavior extends Behavior {
 

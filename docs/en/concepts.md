@@ -13,7 +13,15 @@ collecting every problem, and publishes the content atomically. A mod with any p
 is the `item_model` component pointing at a generated item definition.
 
 **Blocks.** A vanilla carrier block (for example `barrier`) plus a persistent display entity that draws the model.
-Blocks survive restarts without a database.
+Prism keeps an index of custom blocks in each chunk's persistent data, so blocks, their facing and their per-block
+data survive restarts without a database. Behaviors can react to place, remove, break, chunk load/unload,
+neighbour changes and ticks (`BlockTickBehavior`, batched per chunk). `CustomBlock.data()` is a
+`PersistentDataContainer` per block, removed with the block. Blocks offer services to neighbours through
+`BlockCapability` and `BlockCapabilityProvider`; Prism defines only the lookup and `PrismCapabilities.INVENTORY`.
+`prism:rotation` makes a block face the player; `prism:mining` sets how long it takes to break in survival.
+
+**Getting items.** `/prism give <player> <item> [amount]` and `/prism items` (a browser menu) work for every mod.
+Permission: `prism.command.give` (operators by default).
 
 **Models.** A block can use an animated Blockbench model: `prism:model_ref: <ns>:<name>` plus
 `prism/models/<name>.bbmodel` in your jar. Prism hands the model to BetterModel (the one place Prism writes files,
@@ -26,5 +34,6 @@ because BetterModel only reads from its own folder).
 
 **Clients.** `Prism.clients().profile(player)` tells you the edition and what the client can show.
 
-**Folia.** Behaviors run on the thread that owns the player or location. Use Prism's scheduler abstraction, not the
-Bukkit scheduler, for anything you defer.
+**Folia.** Behaviors run on the thread that owns the player or location. Use `Prism.scheduler()`, not the Bukkit
+scheduler, for anything you defer. Touch a block only on the thread that owns it (`runAt`); work that spans regions
+keeps its own state thread-safe and hops to each block's thread.

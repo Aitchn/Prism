@@ -4,7 +4,6 @@ import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockBreakBehavior;
 import com.aitchn.prism.api.block.BlockContext;
 import com.aitchn.prism.api.block.BlockInteractBehavior;
-import com.aitchn.prism.api.block.BlockPlaceBehavior;
 import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.item.ItemUseBehavior;
@@ -90,18 +89,16 @@ public final class BehaviorDispatcher {
         return dispatchBlock(key, at, BlockBreakBehavior.class, context, (b, c) -> b.onBreak(c));
     }
 
-    /** Runs the place behaviors of block {@code key}, after it was placed. Returns how many ran. */
-    public int dispatchBlockPlace(
-            @NotNull PrismKey key, @NotNull Location at, @NotNull Function<BlockDefinition, BlockContext> context) {
-        return dispatchBlock(key, at, BlockPlaceBehavior.class, context, (b, c) -> b.onPlace(c));
-    }
-
-    private <B> int dispatchBlock(
-            PrismKey key,
-            Location at,
-            Class<B> capability,
-            Function<BlockDefinition, BlockContext> context,
-            java.util.function.BiConsumer<B, BlockContext> call) {
+    /**
+     * Runs every behavior of block {@code key} that implements {@code capability}, on the current thread, which must
+     * own {@code at}. Returns how many ran.
+     */
+    public <B> int dispatchBlock(
+            @NotNull PrismKey key,
+            @NotNull Location at,
+            @NotNull Class<B> capability,
+            @NotNull Function<BlockDefinition, BlockContext> context,
+            java.util.function.@NotNull BiConsumer<B, BlockContext> call) {
         Optional<BlockDefinition> found = blocks.get(key);
         if (found.isEmpty()) {
             return 0;

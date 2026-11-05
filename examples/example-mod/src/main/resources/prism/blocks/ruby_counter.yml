@@ -1,0 +1,12 @@
+# Key: examplemod:ruby_counter. Shows the block platform: it faces the player when placed, counts ticks in its own
+# per-block data, reacts to neighbours, offers a capability and reports its state when right-clicked.
+base: minecraft:barrier
+drop: examplemod:ruby_counter
+components:
+  prism:rotation: horizontal
+  prism:mining:
+    hardness: 1.5
+    tool: pickaxe
+behaviors:
+  - type: examplemod:counter
+    interval: 20

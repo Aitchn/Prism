@@ -4,9 +4,9 @@ import com.aitchn.prism.api.content.Behavior;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Capability: reacts after a block of this definition was placed by a player placing its item. Use it to start
- * ticking, register the block in a network or create per-block data. {@link BlockContext#player()} is the placer.
- * Blocks placed through {@link BlockService#place} by a mod do not trigger it; the caller already knows.
+ * Capability: runs right after the block was placed, by a player using its item or by a mod through
+ * {@link BlockService#place}. {@link BlockContext#player()} is the placer, or null when a mod placed it without one.
+ * The block, its facing and its (empty) data already exist. Use it to initialise per-block data or join a network.
  */
 public interface BlockPlaceBehavior extends Behavior {
 

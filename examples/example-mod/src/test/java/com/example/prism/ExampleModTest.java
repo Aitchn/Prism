@@ -21,6 +21,7 @@ class ExampleModTest {
             ExampleMod.tier = context.registerComponent("tier", ExampleMod.Tier.class,
                     section -> new ExampleMod.Tier(section.requireInt("value")));
             context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
+            context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
         }
     }
 
@@ -42,6 +43,18 @@ class ExampleModTest {
         assertEquals("minecraft:barrier", harness.block("examplemod:ruby_block").carrier().toString());
         assertTrue(harness.item("examplemod:ruby_block").components()
                 .has(PrismComponents.PLACES_BLOCK));
+    }
+
+    @Test
+    void counterUsesTheBlockPlatform() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var counter = harness.block("examplemod:ruby_counter");
+        assertEquals(PrismComponents.Rotation.HORIZONTAL,
+                counter.components().get(PrismComponents.ROTATION).orElseThrow());
+        assertEquals(1.5, counter.components().get(PrismComponents.MINING).orElseThrow().hardness());
+        assertEquals(20, counter.behaviors(com.aitchn.prism.api.block.BlockTickBehavior.class).getFirst()
+                .tickInterval());
     }
 
     @Test

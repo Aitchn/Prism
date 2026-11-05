@@ -61,6 +61,11 @@ final class BukkitItemService implements ItemService {
     }
 
     @Override
+    public @NotNull Optional<ItemDefinition> definition(@NotNull PrismKey key) {
+        return definitions.get(key);
+    }
+
+    @Override
     public @NotNull Optional<PrismKey> identify(@NotNull ItemStack stack) {
         if (stack.getType().isAir() || !stack.hasItemMeta()) {
             return Optional.empty();

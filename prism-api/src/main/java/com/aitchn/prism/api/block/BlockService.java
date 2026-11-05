@@ -1,23 +1,60 @@
 package com.aitchn.prism.api.block;
 
 import com.aitchn.prism.api.PrismKey;
+import com.aitchn.prism.api.content.BlockDefinition;
+import java.util.List;
 import java.util.Optional;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
- * Places, recognises and removes custom blocks. Must be called on the thread that owns {@code location}
- * (on Folia: the region thread).
+ * Places, finds and removes custom blocks. Every method that takes a block or location must be called on the thread
+ * that owns it (on Folia: the region thread); see {@link com.aitchn.prism.api.scheduler.PrismScheduler}.
  */
 public interface BlockService {
 
-    /** Places {@code key} at {@code location}'s block. Returns false if it is unknown or the spot is not free. */
-    boolean place(@NotNull PrismKey key, @NotNull Location location);
+    /** Places {@code key} facing north with no placer. */
+    default boolean place(@NotNull PrismKey key, @NotNull Location location) {
+        return place(key, location, null, BlockFace.NORTH);
+    }
 
-    /** The custom block at {@code block}, if it is one. */
-    @NotNull Optional<PrismKey> identify(@NotNull Block block);
+    /**
+     * Places {@code key} at {@code location}'s block and runs its {@link BlockPlaceBehavior}s. Returns false if the key
+     * is unknown or the spot is not free. The facing is ignored for blocks without {@code prism:rotation}.
+     */
+    boolean place(@NotNull PrismKey key, @NotNull Location location, @Nullable Player placer, @NotNull BlockFace facing);
 
-    /** Removes the custom block (carrier and appearance). Returns false if it was not a custom block. */
+    /** The custom block at {@code block}, if there is one. Constant time; safe to call every tick. */
+    @NotNull Optional<CustomBlock> get(@NotNull Block block);
+
+    /** The key of the custom block at {@code block}, if there is one. */
+    default @NotNull Optional<PrismKey> identify(@NotNull Block block) {
+        return get(block).map(CustomBlock::key);
+    }
+
+    /** Every custom block in a loaded chunk, in no particular order. */
+    @NotNull List<CustomBlock> blocksIn(@NotNull Chunk chunk);
+
+    /**
+     * Removes the custom block (carrier, appearance and data) after running its {@link BlockRemoveBehavior}s.
+     * Returns false if it was not a custom block.
+     */
     boolean remove(@NotNull Block block, boolean dropItem);
+
+    /** The currently registered definition of {@code key}. */
+    @NotNull Optional<BlockDefinition> definition(@NotNull PrismKey key);
+
+    /**
+     * Asks {@code block} for {@code capability} on its {@code side}. Custom blocks answer through their
+     * {@link BlockCapabilityProvider} behaviors; vanilla blocks answer the capabilities in {@link PrismCapabilities}.
+     *
+     * @param side the face of {@code block} being asked (for a neighbour lookup: the face pointing back at the caller)
+     */
+    <T> @NotNull Optional<T> capability(
+            @NotNull Block block, @Nullable BlockFace side, @NotNull BlockCapability<T> capability);
 }
