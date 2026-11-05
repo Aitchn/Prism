@@ -1,0 +1,11 @@
+# calculation_processor
+type: prism:shaped
+pattern:
+  - "IRI"
+  - "RCR"
+  - "IRI"
+key:
+  I: minecraft:iron_ingot
+  R: minecraft:redstone
+  C: ae2:certus_quartz_crystal
+result: ae2:calculation_processor

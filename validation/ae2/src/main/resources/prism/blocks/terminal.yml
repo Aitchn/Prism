@@ -1,6 +1,12 @@
-# Block ae2:terminal. The carrier is invisible; the look comes from assets/ae2/textures/block/terminal.png.
+# Block ae2:terminal. The look comes from assets/ae2/textures/block/terminal.png (one texture per variant where it has any).
 base: minecraft:barrier
 drop: ae2:terminal
+components:
+  prism:mining:
+    hardness: 1.5
+    tool: pickaxe
+  prism:rotation: horizontal
+  prism:variants: [offline, online]
 behaviors:
   - type: ae2:node
     kind: terminal

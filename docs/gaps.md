@@ -41,19 +41,15 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 ## Found in the AE2 validation
 
-Details and workarounds are in [validation/ae2.md](validation/ae2.md).
+Details are in [validation/ae2.md](validation/ae2.md). The first version found the gaps that the block platform, slot
+menus, item data and recipes (ADR-0007 to ADR-0010) then closed; AE2 has been migrated to them. What remains:
 
-- Per-stack item data (cells, encoded patterns) and a canonical "same item" key: not in `ItemService`.
-- Per-block data, listing custom blocks in a chunk, chunk load/unload callbacks, and cleanup when a block vanishes.
-- `DataStore`: blocking, string-only, no transactions.
-- `MenuSpec`: no slots or dragging, no click type, no live refresh, no text input, no fixed button positions.
-- Block appearance: no neighbour-dependent models, thin hitboxes, per-state looks or placement facing.
-- No neighbour-update callback or multiblock helper.
-- No capability lookup between blocks (energy, items, fluids); a mod cannot feed or drain another mod's machines.
-- No recipe registry, creative tab or item list for mod content.
-- Closed by the block platform (#15) after AE2 was written: place/remove behaviors, the placing player, facing and per-block data. AE2 has not been migrated to them yet.
-- No public runtime lookup of item and block definitions.
-- Folia: grid-style state spans regions; the rule and the schedulers mods may use are not documented.
+- A slotless item-handler capability (or a virtual `Inventory`) so a network's storage can feed hoppers and other mods.
+- Connection-dependent block shapes and thin hitboxes (cables).
+- Text input in menus (terminal search, crafting amounts).
+- Batched variant switching for many blocks.
+- Recipes that take items with per-stack data.
+- Per-player translated lore; world generation for certus ore.
 
 ## Found in the Mekanism rebuild (`validation/mekanism`)
 

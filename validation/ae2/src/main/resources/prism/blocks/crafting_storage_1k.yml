@@ -1,6 +1,10 @@
-# Block ae2:crafting_storage_1k. The carrier is invisible; the look comes from assets/ae2/textures/block/crafting_storage_1k.png.
+# Block ae2:crafting_storage_1k. The look comes from assets/ae2/textures/block/crafting_storage_1k.png (one texture per variant where it has any).
 base: minecraft:barrier
 drop: ae2:crafting_storage_1k
+components:
+  prism:mining:
+    hardness: 1.5
+    tool: pickaxe
 behaviors:
   - type: ae2:node
     kind: crafting_storage_1k

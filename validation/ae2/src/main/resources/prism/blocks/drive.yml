@@ -1,6 +1,12 @@
-# Block ae2:drive. The carrier is invisible; the look comes from assets/ae2/textures/block/drive.png.
+# Block ae2:drive. The look comes from assets/ae2/textures/block/drive.png (one texture per variant where it has any).
 base: minecraft:barrier
 drop: ae2:drive
+components:
+  prism:mining:
+    hardness: 1.5
+    tool: pickaxe
+  prism:rotation: horizontal
+  prism:variants: [offline, online]
 behaviors:
   - type: ae2:node
     kind: drive

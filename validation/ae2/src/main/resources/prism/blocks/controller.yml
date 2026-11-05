@@ -1,6 +1,12 @@
-# Block ae2:controller. The carrier is invisible; the look comes from assets/ae2/textures/block/controller.png.
+# Block ae2:controller. The look comes from assets/ae2/textures/block/controller.png (one texture per variant where it has any).
 base: minecraft:barrier
 drop: ae2:controller
+components:
+  prism:mining:
+    hardness: 1.5
+    tool: pickaxe
+  prism:variants: [offline, online]
 behaviors:
   - type: ae2:node
     kind: controller
+  - type: ae2:tick

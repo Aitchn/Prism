@@ -2,24 +2,12 @@ package com.aitchn.prism.validation.ae2;
 
 import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.PrismKey;
-import com.aitchn.prism.validation.ae2.crafting.Pattern;
-import com.aitchn.prism.validation.ae2.runtime.StackCodec;
-import com.aitchn.prism.validation.ae2.storage.ItemKey;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.Recipe;
-import org.bukkit.inventory.RecipeChoice;
-import org.bukkit.inventory.ShapedRecipe;
-import org.bukkit.inventory.ShapelessRecipe;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -78,39 +66,12 @@ final class Ae2Command implements CommandExecutor {
             Ae2Ui.say(player, "<red>Hold the item to make in your main hand and a blank pattern in your off hand.");
             return;
         }
-        ItemStack one = target.asOne();
-        Recipe recipe = Bukkit.getRecipesFor(one).stream()
-                .filter(r -> r instanceof ShapedRecipe || r instanceof ShapelessRecipe).findFirst().orElse(null);
-        if (recipe == null) {
-            Ae2Ui.say(player, "<red>No crafting recipe makes that item.");
+        Encoder.Result result = Encoder.encode(target);
+        if (result.pattern().isEmpty()) {
+            Ae2Ui.say(player, "<red>" + result.error());
             return;
         }
-        List<RecipeChoice> choices = new java.util.ArrayList<>();
-        if (recipe instanceof ShapedRecipe shaped) {
-            Map<Character, RecipeChoice> map = shaped.getChoiceMap();
-            for (String row : shaped.getShape()) {
-                for (char c : row.toCharArray()) {
-                    RecipeChoice choice = map.get(c);
-                    if (choice != null) {
-                        choices.add(choice);
-                    }
-                }
-            }
-        } else {
-            choices.addAll(((ShapelessRecipe) recipe).getChoiceList());
-        }
-        Map<ItemKey, Long> inputs = new HashMap<>();
-        for (RecipeChoice choice : choices) {
-            ItemStack ingredient = firstOf(choice);
-            if (ingredient == null) {
-                Ae2Ui.say(player, "<red>That recipe uses an ingredient type patterns cannot encode.");
-                return;
-            }
-            inputs.merge(StackCodec.key(ingredient), 1L, Long::sum);
-        }
-        Pattern pattern = new Pattern("enc-" + UUID.randomUUID(), inputs, StackCodec.key(one),
-                resultAmount(recipe));
-        Optional<ItemStack> encoded = services.ui.patternItem(pattern);
+        Optional<ItemStack> encoded = services.ui.patternItem(result.pattern().get());
         if (encoded.isEmpty()) {
             Ae2Ui.say(player, "<red>The encoded pattern item is not registered.");
             return;
@@ -119,19 +80,5 @@ final class Ae2Command implements CommandExecutor {
         player.getInventory().addItem(encoded.get()).values()
                 .forEach(rest -> player.getWorld().dropItem(player.getLocation(), rest));
         Ae2Ui.say(player, "<green>Pattern encoded.");
-    }
-
-    private static long resultAmount(Recipe recipe) {
-        return Math.max(1, recipe.getResult().getAmount());
-    }
-
-    private static ItemStack firstOf(RecipeChoice choice) {
-        if (choice instanceof RecipeChoice.MaterialChoice material && !material.getChoices().isEmpty()) {
-            return new ItemStack(material.getChoices().get(0));
-        }
-        if (choice instanceof RecipeChoice.ExactChoice exact && !exact.getChoices().isEmpty()) {
-            return exact.getChoices().get(0).clone();
-        }
-        return null;
     }
 }

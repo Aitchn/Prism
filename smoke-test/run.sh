@@ -101,7 +101,7 @@ if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMP
   exit 1
 fi
 if [[ -n "$AE2_JAR" ]]; then
-  for marker in 'PRISM_MOD_ACTIVE AE2 items=21 blocks=13' 'AE2_CONTENT_OK' 'AE2_SELFTEST_OK' 'AE2_GRID_SELFTEST_OK'; do
+  for marker in 'PRISM_MOD_ACTIVE AE2 items=30 blocks=13' 'AE2_CONTENT_OK' 'AE2_SELFTEST_OK' 'AE2_GRID_SELFTEST_OK'; do
     found=""
     for ((i = 0; i < 90; i++)); do
       if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi

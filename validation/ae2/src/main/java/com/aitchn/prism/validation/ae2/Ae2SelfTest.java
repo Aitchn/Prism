@@ -9,12 +9,12 @@ import com.aitchn.prism.validation.ae2.storage.StorageCell;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.ServerLoadEvent;
+import org.bukkit.inventory.ItemStack;
 
 /**
  * Optional startup check, enabled with {@code -Dae2.selftest=true}: builds a small network out of real Prism blocks
@@ -51,7 +51,7 @@ final class Ae2SelfTest implements Listener {
         List<Location> placed = new ArrayList<>();
         String[][] layout = {
             {"controller", "0", "0", "0"}, {"cable", "1", "0", "0"}, {"terminal", "2", "0", "0"},
-            {"drive", "1", "0", "1"}, {"creative_energy_cell", "1", "1", "0"}};
+            {"drive", "1", "0", "1"}, {"creative_energy_cell", "1", "1", "0"}, {"energy_cell", "1", "0", "-1"}};
         for (String[] entry : layout) {
             Location at = origin.clone().add(Integer.parseInt(entry[1]), Integer.parseInt(entry[2]),
                     Integer.parseInt(entry[3]));
@@ -67,12 +67,24 @@ final class Ae2SelfTest implements Listener {
                 || !network.get().topology().isOnline(drive)) {
             return "AE2_GRID_SELFTEST_FAIL placed blocks did not form a network";
         }
-        StorageCell cell = new StorageCell(UUID.randomUUID(), StorageCell.Tier.K1);
-        services.state.putCellInDrive(drive, 0, cell);
+
+        // A storage cell is an ordinary item; the drive keeps it in its per-block data.
+        ItemStack cell = Prism.items().create(Ae2Content.cellKey(StorageCell.Tier.K1), 1).orElseThrow();
+        boolean bound = services.grid.drive(drive).orElseThrow().bind(0, cell);
         services.grid.refresh();
         NetworkRuntime runtime = services.grid.networkAt(terminal).orElseThrow();
         long stored = runtime.storage().insert(new ItemKey("selftest"), 100);
         boolean powered = runtime.power().tick(runtime.topology());
+
+        // Another block can charge the network through the capability lookup.
+        double sunk = Prism.blocks().capability(placed.get(5).getBlock(), null, Ae2Content.ENERGY_SINK)
+                .map(sink -> sink.insert(10)).orElse(-1.0);
+
+        // The drive writes the cell, with its contents, into its own block data.
+        Prism.blocks().get(placed.get(3).getBlock()).ifPresent(block ->
+                services.grid.drive(drive).orElseThrow().write(block.data()));
+        boolean saved = Prism.blocks().get(placed.get(3).getBlock()).map(block -> block.data().has(
+                Ae2Content.slotKey("cell", 0), org.bukkit.persistence.PersistentDataType.BYTE_ARRAY)).orElse(false);
 
         Prism.blocks().remove(placed.get(1).getBlock(), false);
         boolean cutOff = services.grid.networkAt(terminal).map(n -> !n.topology().isOnline(terminal)).orElse(false);
@@ -81,8 +93,8 @@ final class Ae2SelfTest implements Listener {
             Prism.blocks().remove(at.getBlock(), false);
         }
         boolean clean = services.grid.networks().isEmpty();
-        boolean ok = stored == 100 && powered && cutOff && clean;
-        return (ok ? "AE2_GRID_SELFTEST_OK" : "AE2_GRID_SELFTEST_FAIL") + " stored=" + stored + " powered=" + powered
-                + " cutOff=" + cutOff + " clean=" + clean;
+        boolean ok = bound && stored == 100 && powered && sunk >= 0 && saved && cutOff && clean;
+        return (ok ? "AE2_GRID_SELFTEST_OK" : "AE2_GRID_SELFTEST_FAIL") + " bound=" + bound + " stored=" + stored
+                + " powered=" + powered + " sunk=" + sunk + " saved=" + saved + " cutOff=" + cutOff + " clean=" + clean;
     }
 }

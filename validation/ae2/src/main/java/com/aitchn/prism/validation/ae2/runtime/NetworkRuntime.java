@@ -35,6 +35,7 @@ public final class NetworkRuntime {
     private volatile List<Pattern> patterns = List.of();
     private final List<CraftingJob> draining = new ArrayList<>();
     private volatile boolean powered;
+    private long ticks;
 
     NetworkRuntime(@NotNull GridPos id, @NotNull GridNetwork topology) {
         this.id = id;
@@ -126,6 +127,10 @@ public final class NetworkRuntime {
         return true;
     }
 
+    public synchronized long ticks() {
+        return ticks;
+    }
+
     /** The cells currently backing the network's storage. */
     List<com.aitchn.prism.validation.ae2.storage.StorageCell> cells() {
         return storage.target.cells();
@@ -135,7 +140,8 @@ public final class NetworkRuntime {
      * Called every server tick from the global scheduler. Returns true when jobs ran, which means cell contents may
      * have changed and must be saved.
      */
-    synchronized boolean tick() {
+    public synchronized boolean tick() {
+        ticks++;
         powered = power.tick(topology);
         if (!powered) {
             return false;

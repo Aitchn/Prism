@@ -1,0 +1,8 @@
+# Stand-in for mining certus ore: this port has no world generation yet.
+type: prism:shapeless
+ingredients:
+  - minecraft:quartz
+  - minecraft:lapis_lazuli
+result:
+  item: ae2:certus_quartz_crystal
+  count: 2

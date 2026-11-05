@@ -1,6 +1,10 @@
-# Block ae2:crafting_coprocessor. The carrier is invisible; the look comes from assets/ae2/textures/block/crafting_coprocessor.png.
+# Block ae2:crafting_coprocessor. The look comes from assets/ae2/textures/block/crafting_coprocessor.png (one texture per variant where it has any).
 base: minecraft:barrier
 drop: ae2:crafting_coprocessor
+components:
+  prism:mining:
+    hardness: 1.5
+    tool: pickaxe
 behaviors:
   - type: ae2:node
     kind: crafting_coprocessor
