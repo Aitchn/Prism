@@ -1,0 +1,6 @@
+# Key: mekanism:solar_generator. Invisible carrier; the look is a placeholder texture (real art is never published).
+base: minecraft:barrier
+drop: mekanism:solar_generator
+behaviors:
+  - type: mekanism:block
+    kind: solar
