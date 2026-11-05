@@ -23,6 +23,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockCookEvent;
+import org.bukkit.event.block.CrafterCraftEvent;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.inventory.BlastingRecipe;
 import org.bukkit.inventory.CampfireRecipe;
@@ -99,14 +100,19 @@ final class VanillaRecipes implements Listener {
         skipped.forEach(reason -> log.warning("PRISM_RECIPE_SKIPPED " + reason));
     }
 
+    /** A built recipe, and how to remember it once the server has accepted it. */
+    private record Built(Recipe recipe, Runnable track) {}
+
     private interface Builder {
-        Recipe build() throws IllegalArgumentException;
+        Built build() throws IllegalArgumentException;
     }
 
     private void add(PrismKey id, Builder builder, List<String> skipped) {
         try {
-            Recipe recipe = builder.build();
-            if (!Bukkit.addRecipe(recipe, false)) {
+            Built built = builder.build();
+            if (Bukkit.addRecipe(built.recipe(), false)) {
+                built.track().run(); // only recipes Prism really added are removed on the next sync
+            } else {
                 skipped.add(id + ": a recipe with this id already exists");
             }
         } catch (IllegalArgumentException e) {
@@ -114,7 +120,7 @@ final class VanillaRecipes implements Listener {
         }
     }
 
-    private ShapedRecipe shaped(PrismRecipe<PrismRecipes.Shaped> recipe) {
+    private Built shaped(PrismRecipe<PrismRecipes.Shaped> recipe) {
         NamespacedKey key = key(recipe.id());
         ShapedRecipe shaped = new ShapedRecipe(key, result(recipe.value().result()));
         shaped.shape(recipe.value().pattern().toArray(String[]::new));
@@ -128,11 +134,11 @@ final class VanillaRecipes implements Listener {
                 }
             }
         }
-        added.put(key, custom);
-        return shaped;
+        int customCells = custom;
+        return new Built(shaped, () -> added.put(key, customCells));
     }
 
-    private ShapelessRecipe shapeless(PrismRecipe<PrismRecipes.Shapeless> recipe) {
+    private Built shapeless(PrismRecipe<PrismRecipes.Shapeless> recipe) {
         NamespacedKey key = key(recipe.id());
         ShapelessRecipe shapeless = new ShapelessRecipe(key, result(recipe.value().result()));
         int custom = 0;
@@ -140,11 +146,11 @@ final class VanillaRecipes implements Listener {
             shapeless.addIngredient(choice(ingredient));
             custom += isCustom(ingredient) ? 1 : 0;
         }
-        added.put(key, custom);
-        return shapeless;
+        int customCells = custom;
+        return new Built(shapeless, () -> added.put(key, customCells));
     }
 
-    private CookingRecipe<?> cooking(PrismRecipe<PrismRecipes.Cooking> recipe) {
+    private Built cooking(PrismRecipe<PrismRecipes.Cooking> recipe) {
         NamespacedKey key = key(recipe.id());
         PrismRecipes.Cooking value = recipe.value();
         ItemStack result = result(value.result());
@@ -155,8 +161,8 @@ final class VanillaRecipes implements Listener {
             case SMOKER -> new SmokingRecipe(key, result, input, value.experience(), value.ticks());
             case CAMPFIRE -> new CampfireRecipe(key, result, input, value.experience(), value.ticks());
         };
-        cooking.put(key, isCustom(value.input()));
-        return made;
+        boolean customInput = isCustom(value.input());
+        return new Built(made, () -> cooking.put(key, customInput));
     }
 
     private boolean isCustom(Ingredient ingredient) {
@@ -188,19 +194,30 @@ final class VanillaRecipes implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPrepareCraft(PrepareItemCraftEvent event) {
         Recipe recipe = event.getRecipe();
-        if (recipe == null) {
-            return;
+        if (recipe != null && !carriersRespected(recipe, event.getInventory().getMatrix())) {
+            event.getInventory().setResult(null);
         }
+    }
+
+    /** The same rule for redstone crafters, which craft without a player. */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onCrafterCraft(CrafterCraftEvent event) {
+        if (event.getBlock().getState(false) instanceof org.bukkit.block.Crafter crafter
+                && !carriersRespected(event.getRecipe(), crafter.getInventory().getContents())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Whether the grid holds exactly as many custom items as the recipe has custom ingredient cells. */
+    private boolean carriersRespected(Recipe recipe, ItemStack[] grid) {
         int expected = recipe instanceof Keyed keyed ? added.getOrDefault(keyed.getKey(), 0) : 0;
         int actual = 0;
-        for (ItemStack stack : event.getInventory().getMatrix()) {
+        for (ItemStack stack : grid) {
             if (stack != null && !stack.isEmpty() && items.identify(stack).isPresent()) {
                 actual++;
             }
         }
-        if (actual != expected) {
-            event.getInventory().setResult(null);
-        }
+        return actual == expected;
     }
 
     /** Custom items never cook as their carrier. */
