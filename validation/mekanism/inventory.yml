@@ -249,7 +249,7 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   alloys: done                    # steel, bronze, infused/reinforced/atomic alloy, refined obsidian and glowstone
   upgrades: partial               # speed and energy upgrades only; muffling, filter, gas, anchor missing
   tiers: partial                  # cubes, cables, pipes and transporters have four tiers; factories (4) still missing
-  side_configuration: partial     # chemical and item faces done (configurator, sneak for items); energy faces still open
+  side_configuration: partial     # chemical and item faces done (configurator; item configurator for items); energy faces still open
   auto_eject: done                # hopper toggles it; output goes out through transporters
   item_transport: partial         # transporters with colours, tiers and chained machines; filters and sorters missing (4)
   heat: missing                   # heat transfer, thermoelectric (5)

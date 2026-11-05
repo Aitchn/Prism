@@ -500,6 +500,9 @@ CONDUITS = {  # base id -> (behavior, display name, texture colour, crafting rin
 
 
 def gen3():
+    item("item_configurator")
+    tex_item("item_configurator", "upgrade", (230, 170, 80))
+    shapeless("item_configurator", ["mekanism:configurator", "minecraft:hopper"], "mekanism:item_configurator")
     for base, (behavior, label, col) in CONDUITS.items():
         prev = base
         for tier_no, tier in enumerate(TIERS):

@@ -71,7 +71,7 @@ Prism**: joules, chemicals, machine recipes and the energy tablet are all in thi
    - *Chemical tank* (any gas, 64,000 mB) and *fluid tank* (water, 32,000 mB) store chemicals; pipes fill and drain
      them.
 10. **Item transport.** Logistical transporters join machines into an item network. Hopper on a machine: auto-eject
-   on or off; Configurator (sneaking): item access per face; redstone dust: redstone mode. Cables, tubes and
+   on or off; Item Configurator (Configurator + hopper, shapeless): item access per face; redstone dust: redstone mode. Cables, tubes and
    transporters come in four tiers (8 of the tier below around the matching alloy).
 11. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
    Right click a cable or tube: read the network. The charge is in the item's lore.

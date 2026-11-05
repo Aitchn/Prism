@@ -260,12 +260,16 @@ final class Grid {
         }
         MachineMenu menu = new MachineMenu(this, pos, machine, id);
         viewers.put(pos, menu);
+        underLock(() -> machine.setMenuOpen(true));
         Prism.menus().open(player, menu);
         return true;
     }
 
     void menuClosed(Pos pos, MachineMenu menu) {
         viewers.remove(pos, menu);
+        if (!viewers.containsKey(pos)) {
+            menu.releaseMachine();
+        }
     }
 
     // ---------------------------------------------------------------- hands
@@ -313,7 +317,7 @@ final class Grid {
 
     /**
      * Right click on a machine with a setting tool. Configurator: the clicked face takes the next chemical side mode;
-     * sneaking, the next item access instead. Redstone dust: next redstone mode. Hopper: auto-eject on or off.
+     * Item Configurator: the next item access for transporters instead. Redstone dust: next redstone mode. Hopper: auto-eject on or off.
      */
     boolean configure(BlockContext context, Machine machine) {
         ItemStack held = context.heldItem();
@@ -325,14 +329,14 @@ final class Grid {
         int face = faceIndex(context.face());
         String text;
         if (id.equals("mekanism:configurator") && face >= 0) {
-            boolean items = player.isSneaking();
             text = locked(() -> {
-                if (items) {
-                    machine.setItemFace(face, machine.itemFace(face).next());
-                    return Text.title(Side.FACE_NAMES[face]) + " face (items): " + machine.itemFace(face).label();
-                }
                 machine.setFace(face, machine.face(face).next());
                 return Text.title(Side.FACE_NAMES[face]) + " face: " + machine.face(face).label();
+            });
+        } else if (id.equals("mekanism:item_configurator") && face >= 0) {
+            text = locked(() -> {
+                machine.setItemFace(face, machine.itemFace(face).next());
+                return Text.title(Side.FACE_NAMES[face]) + " face (items): " + machine.itemFace(face).label();
             });
         } else if (id.equals("minecraft:redstone")) {
             text = locked(() -> {

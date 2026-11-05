@@ -60,6 +60,14 @@ final class MachineMenu implements ContainerMenu {
     }
 
     /** Whether someone has this menu open (or is about to). */
+    /** The menu is gone: transporters may take from the output slot again. */
+    void releaseMachine() {
+        grid.locked(() -> {
+            machine.setMenuOpen(false);
+            return null;
+        });
+    }
+
     boolean active() {
         MenuView current = view;
         return current != null ? current.isOpen() : System.currentTimeMillis() - created < 5_000;

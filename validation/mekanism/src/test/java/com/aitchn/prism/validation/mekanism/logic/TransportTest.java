@@ -88,6 +88,20 @@ class TransportTest {
     }
 
     @Test
+    void an_open_menu_keeps_transporters_away_from_the_output_slot() {
+        TestWorld w = line();
+        Machine a = w.machine(A);
+        a.setAutoEject(true);
+        a.setOutput(new Stack("x:b", 5));
+        a.setMenuOpen(true);
+        run(w, 20);
+        assertEquals(5, a.output().count(), "nothing leaves while someone looks at the slot");
+        a.setMenuOpen(false);
+        run(w, 20);
+        assertTrue(a.output() == null || a.output().count() < 5);
+    }
+
+    @Test
     void redstone_modes_gate_work() {
         TestWorld w = line();
         Machine a = w.machine(A);

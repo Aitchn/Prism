@@ -176,7 +176,7 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
 20. Item line without hands: enrichment chamber -> logistical transporter -> a second machine (for example a crusher,
     fed with ore dust or ingots). Click the enrichment chamber with a hopper: action bar says "Auto-eject on". Items
     walk across; with auto-eject off they stay.
-21. Item faces: sneak + right click a machine face with the Configurator cycles input and output / input only / output
+21. Item faces: right click a machine face with the Item Configurator (Configurator + hopper) cycles input and output / input only / output
     only / nothing for transporters. Chemical faces (no sneaking) behave as before.
 22. Redstone: right click with redstone dust cycles ignore / with a signal / without a signal. A lever next to the
     machine starts and stops it.

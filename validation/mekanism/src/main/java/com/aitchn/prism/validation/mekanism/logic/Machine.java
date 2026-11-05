@@ -31,6 +31,7 @@ public final class Machine {
     private int idleTicks = IDLE_AFTER;
     private long ticks;
     private boolean dead;
+    private volatile boolean menuOpen;
     private boolean autoEject;
     private Redstone redstone = Redstone.IGNORE;
     private boolean powered;
@@ -55,6 +56,11 @@ public final class Machine {
             this.outTank2 = new ChemicalTank(type.tankCapacity());
             this.ports = new ChemicalPorts(List.of(inTank, inTank2), List.of(outTank, outTank2));
         }
+    }
+
+    /** While a player's menu shows the output slot, transporters leave it alone so both views stay in step. */
+    public void setMenuOpen(boolean open) {
+        menuOpen = open;
     }
 
     public boolean autoEject() {
@@ -95,7 +101,7 @@ public final class Machine {
         return new ItemPort() {
             @Override
             public Stack offer() {
-                return autoEject && access.canExtract() && output != null ? output : null;
+                return autoEject && !menuOpen && access.canExtract() && output != null ? output : null;
             }
 
             @Override
