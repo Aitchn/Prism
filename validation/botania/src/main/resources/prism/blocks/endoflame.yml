@@ -1,0 +1,10 @@
+# Key: botania:endoflame. Placeholder texture generated for this validation; no original assets are included.
+base: minecraft:barrier
+drop: botania:endoflame
+components:
+  prism:mining:
+    hardness: 0
+    tool: none
+behaviors:
+  - type: botania:block_entity
+    kind: flower:endoflame

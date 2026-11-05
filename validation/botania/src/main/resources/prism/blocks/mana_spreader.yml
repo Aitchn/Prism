@@ -1,0 +1,12 @@
+# Key: botania:mana_spreader. Placeholder texture generated for this validation; no original assets are included.
+base: minecraft:barrier
+drop: botania:mana_spreader
+components:
+  prism:rotation: all
+  prism:mining:
+    hardness: 3
+    tool: pickaxe
+behaviors:
+  - type: botania:block_entity
+    kind: spreader
+  - type: botania:mana_provider

@@ -1,0 +1,7 @@
+type: prism:shaped
+pattern:
+  - "R R"
+  - "RRR"
+key:
+  R: botania:livingrock
+result: botania:mana_pool

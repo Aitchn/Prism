@@ -1,0 +1,4 @@
+# Key: botania:petal_magenta
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Magenta Petal"

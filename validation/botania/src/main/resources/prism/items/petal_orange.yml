@@ -1,0 +1,4 @@
+# Key: botania:petal_orange
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Orange Petal"

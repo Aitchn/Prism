@@ -1,0 +1,4 @@
+# A Pure Daisy slowly turns the blocks around it.
+type: botania:pure_daisy
+input: minecraft:stone
+result: botania:livingrock

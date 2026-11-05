@@ -1,0 +1,9 @@
+type: prism:shaped
+pattern:
+  - "  M"
+  - " S "
+  - "S  "
+key:
+  M: botania:manasteel_ingot
+  S: minecraft:stick
+result: botania:wand_of_the_forest

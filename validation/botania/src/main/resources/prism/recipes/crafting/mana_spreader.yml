@@ -1,0 +1,10 @@
+type: prism:shaped
+pattern:
+  - "WWW"
+  - "GP "
+  - "WWW"
+key:
+  W: botania:livingwood
+  G: minecraft:gold_ingot
+  P: botania:petal_white
+result: botania:mana_spreader

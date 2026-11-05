@@ -1,0 +1,8 @@
+# Petal Apothecary: fill with water, add the petals in any order, throw in wheat seeds. Approximate recipe.
+type: botania:petal
+ingredients:
+  - botania:petal_brown
+  - botania:petal_brown
+  - botania:petal_red
+  - botania:petal_light_gray
+result: botania:endoflame

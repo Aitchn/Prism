@@ -1,0 +1,5 @@
+# Item form of botania:mana_spreader: placing it places the block.
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Mana Spreader"
+  prism:places_block: botania:mana_spreader

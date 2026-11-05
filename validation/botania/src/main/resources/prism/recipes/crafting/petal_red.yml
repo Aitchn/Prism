@@ -1,0 +1,7 @@
+# Stand-in for picking petals from a mystical flower (no world generation yet): a dye gives two petals.
+type: prism:shapeless
+ingredients:
+  - minecraft:red_dye
+result:
+  item: botania:petal_red
+  count: 2

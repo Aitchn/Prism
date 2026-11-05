@@ -1,0 +1,5 @@
+# Item form of botania:livingrock: placing it places the block.
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Livingrock"
+  prism:places_block: botania:livingrock

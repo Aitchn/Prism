@@ -1,0 +1,5 @@
+# Item form of botania:mana_pool: placing it places the block.
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Mana Pool"
+  prism:places_block: botania:mana_pool

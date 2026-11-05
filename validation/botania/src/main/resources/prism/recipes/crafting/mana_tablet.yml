@@ -1,0 +1,9 @@
+type: prism:shaped
+pattern:
+  - "MMM"
+  - "MDM"
+  - "MMM"
+key:
+  M: botania:manasteel_ingot
+  D: botania:mana_diamond
+result: botania:mana_tablet

@@ -38,6 +38,25 @@ promise. Update it when a milestone closes a gap or finds a new one.
 - `DataStore` is a string key-value store. Machines and networks (AE2, Mekanism) need transactional multi-key writes,
   per-chunk or per-block attachment with automatic cleanup on unload/removal, and async access; none exist yet.
 
+## Found in the Botania validation
+
+Details in [validation/botania.md](validation/botania.md). The first rebuild found the block lifecycle gaps that
+ADR-0007 to ADR-0010 closed; the rebuild now runs on those APIs. What is still open, all generic:
+
+- **Cross-region reads.** `BlockService.capability` is safe on the owning thread only, but a flower binds to a pool up
+  to six blocks away, which can be another Folia region. The mod keeps its own thread-safe map for that case. Needed:
+  a documented, thread-safe way to reach a neighbouring block across regions (for example an asynchronous
+  `withCapability(block, side, capability, consumer)` that hops to the owner).
+- **Free rotation.** `prism:rotation: all` gives six facings. A spreader aimed at any yaw and pitch cannot show its
+  aim; model animation or free rotation from the API is missing (row 14 of the triage covers states, not this).
+- **No-collision carriers** (row 13) are still open: flowers are full-block barriers.
+- **World generation** (row 28): mystical flowers cannot be found, so a dye stands in for petals.
+- **Effects** (row 27): bursts are drawn with Bukkit particles; no moving model entities, no Bedrock-aware effects.
+- **Documentation:** it is not stated whether `ItemService.editData` changes the passed stack in place (the mod writes
+  it back to the inventory to be safe), nor whether `onPlace` and `onLoad` can both fire for a new block (the mod's
+  setup is idempotent), nor whether `onContentLoaded` runs again after a recipe reload.
+- Not needed by this mod, so unproven here: slot menus (Botania has none), neighbour behaviors, variants.
+
 ## Found in the Mekanism rebuild (`validation/mekanism`)
 
 What was built: energy buffers, five recipe machines (enrichment, crusher, purification, injection, electrolytic

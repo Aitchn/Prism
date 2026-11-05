@@ -1,0 +1,4 @@
+# Key: botania:wand_of_the_forest
+base: minecraft:stick
+components:
+  prism:display_name: "<white>Wand of the Forest"
