@@ -1,0 +1,7 @@
+# Crafting table: a ruby block back into nine rubies.
+type: prism:shapeless
+ingredients:
+  - examplemod:ruby_block
+result:
+  item: examplemod:ruby
+  count: 9

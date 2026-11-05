@@ -120,6 +120,30 @@ final class BukkitItemService implements ItemService {
     }
 
     @Override
+    public boolean matches(@NotNull com.aitchn.prism.api.recipe.Ingredient ingredient, @NotNull ItemStack stack) {
+        if (stack.isEmpty() || stack.getAmount() < ingredient.count()) {
+            return false;
+        }
+        Optional<PrismKey> custom = identify(stack);
+        if (ingredient.isTag()) {
+            return custom.isEmpty() && VanillaRecipes.tag(ingredient.tag())
+                    .map(tag -> tag.isTagged(stack.getType())).orElse(false);
+        }
+        if (custom.isPresent()) {
+            return custom.get().equals(ingredient.item());
+        }
+        return VanillaItems.material(ingredient.item()).filter(material -> material == stack.getType()).isPresent();
+    }
+
+    @Override
+    public @NotNull Optional<ItemStack> create(@NotNull com.aitchn.prism.api.recipe.ItemResult result) {
+        if (definitions.contains(result.item())) {
+            return create(result.item(), result.count());
+        }
+        return VanillaItems.material(result.item()).map(material -> new ItemStack(material, result.count()));
+    }
+
+    @Override
     public @NotNull Optional<ItemDefinition> definition(@NotNull PrismKey key) {
         return definitions.get(key);
     }

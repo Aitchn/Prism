@@ -136,6 +136,11 @@ public final class MapConfigSection implements ConfigSection {
     }
 
     @Override
+    public boolean isSection(@NotNull String key) {
+        return values.get(key) instanceof Map<?, ?>;
+    }
+
+    @Override
     public @NotNull ConfigSection requireSection(@NotNull String key) throws ContentException {
         return getSection(key).orElseThrow(() -> missing(key));
     }

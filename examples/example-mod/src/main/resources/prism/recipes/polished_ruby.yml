@@ -1,0 +1,6 @@
+# A recipe of the mod's own type (registered in ExampleMod.onInitialize). Prism only loads and lists it; the mod
+# decides what it means. Other mods can add recipes of this type from their own jars.
+type: examplemod:polishing
+input: examplemod:ruby
+result: minecraft:diamond
+ticks: 100
