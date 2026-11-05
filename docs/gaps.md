@@ -141,3 +141,17 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
 9. Bedrock only: all GUI slots clickable by touch and controller, item icons show for custom items, the machine looks
    switch.
 
+
+### Stage 1 additions (hand tests)
+
+10. Metal chain on Java and Bedrock: from one raw iron to an iron ingot through purification (oxygen), crusher,
+    enrichment chamber and energized smelter; repeat with osmium through the injection chamber (4x). Cables and
+    tubes join everything; an energy cube charged with the tablet powers the line.
+11. Second slot: in a combiner and in a metallurgic infuser the extra slot sits right of the main slot; shift-click
+    puts coal/redstone/tin dust into the right slot; other machines show a grey pane there.
+12. Upgrades: right click a machine with a speed upgrade ten times: the action bar counts to 8 / 8, then says it
+    cannot take more; the arrow fills much faster. Break the machine (survival) and place the dropped item again: the
+    upgrades and the stored energy are still there.
+13. Energy cube: place next to a cable; it charges from a generator and feeds machines when the generator is gone; its
+    GUI shows the meter. Break it and place it again: the charge is kept.
+14. All eight storage blocks place and break; nuggets/ingots/blocks craft both ways.

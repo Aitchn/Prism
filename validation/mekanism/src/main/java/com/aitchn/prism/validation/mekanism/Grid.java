@@ -132,7 +132,7 @@ final class Grid {
                 return existing;
             }
             MachineType type = new MachineType(spec.machine(), () -> recipes.forMachine(spec.machine()),
-                    spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity());
+                    spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity(), spec.maxExtract());
             Machine machine = new Machine(type);
             String state = block.data().get(STATE, PersistentDataType.STRING);
             if (state != null) {
@@ -174,6 +174,24 @@ final class Grid {
         }
     }
 
+    /** The item a machine drops carries its energy, upgrades and tank contents (not the item slots, which drop as items). */
+    void storeSettings(Machine machine, ItemStack drop) {
+        String settings = locked(machine::saveSettings);
+        Prism.items().editData(drop, data -> data.set(STATE, PersistentDataType.STRING, settings));
+    }
+
+    /** A block placed from an item that carries settings starts with them. */
+    static void restoreFromItem(BlockContext context) {
+        ItemStack from = context.placedFrom();
+        if (from == null || !from.hasItemMeta()) {
+            return;
+        }
+        String state = from.getItemMeta().getPersistentDataContainer().get(STATE, PersistentDataType.STRING);
+        if (state != null) {
+            context.custom().data().set(STATE, PersistentDataType.STRING, state);
+        }
+    }
+
     /** The chunk unloads: keep the state in the block's data and stop tracking it. */
     void unloadMachine(CustomBlock block, MachineBehavior spec) {
         Pos pos = pos(block.block());
@@ -187,6 +205,7 @@ final class Grid {
                     // hold the same items again.
                     machine.markDead();
                     machine.setInput(null);
+                    machine.setExtra(null);
                     machine.setOutput(null);
                 }
                 saveMachine(block, pos, machine);
@@ -212,7 +231,7 @@ final class Grid {
         });
         if (machine != null && !viewed) {
             Location at = block.block().getLocation().add(0.5, 0.5, 0.5);
-            for (Stack stack : locked(() -> new Stack[] {machine.input(), machine.output()})) {
+            for (Stack stack : locked(() -> new Stack[] {machine.input(), machine.extra(), machine.output()})) {
                 if (stack != null) {
                     create(stack).ifPresent(item -> block.block().getWorld().dropItemNaturally(at, item));
                 }
@@ -273,6 +292,47 @@ final class Grid {
                 player.sendActionBar(Component.text("The water tank is full"));
             }
         }, null);
+        return true;
+    }
+
+    /** Right click on a machine holding a speed or energy upgrade: installs one (up to 8 of each kind). */
+    boolean installUpgrade(BlockContext context, Machine machine) {
+        ItemStack held = context.heldItem();
+        Player player = context.player();
+        if (held == null || player == null) {
+            return false;
+        }
+        String id = itemId(held);
+        boolean speed = id.equals("mekanism:speed_upgrade");
+        if (!speed && !id.equals("mekanism:energy_upgrade")) {
+            return false;
+        }
+        EquipmentSlot hand = context.hand();
+        String wanted = id;
+        // One transaction on the player's thread: check the hand still holds the upgrade, install, then take one.
+        Runnable transaction = () -> {
+            ItemStack now = hand == null ? null : player.getInventory().getItem(hand);
+            boolean creative = player.getGameMode() == org.bukkit.GameMode.CREATIVE;
+            if (!creative && (now == null || !itemId(now).equals(wanted))) {
+                return;
+            }
+            int taken = locked(() -> machine.addUpgrades(speed, 1));
+            if (taken > 0) {
+                if (!creative) {
+                    now.setAmount(now.getAmount() - 1);
+                    player.getInventory().setItem(hand, now.getAmount() > 0 ? now : null);
+                }
+                player.sendActionBar(Component.text(locked(() -> (speed ? "Speed upgrades " : "Energy upgrades ")
+                        + (speed ? machine.speedUpgrades() : machine.energyUpgrades()) + " / " + Machine.MAX_UPGRADES)));
+            } else {
+                player.sendActionBar(Component.text("This machine cannot take more of those"));
+            }
+        };
+        if (Prism.scheduler().isOwnedByCurrentThread(player)) {
+            transaction.run();
+        } else {
+            Prism.scheduler().runOn(player, transaction, null);
+        }
         return true;
     }
 

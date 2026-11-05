@@ -1,4 +1,3 @@
-# The 3x step: ore plus oxygen gives three clumps.
 type: mekanism:machine
 machine: purification_chamber
 input: mekanism:osmium_ore

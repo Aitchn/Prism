@@ -1,0 +1,8 @@
+type: prism:shaped
+pattern:
+  - "III"
+  - "III"
+  - "III"
+key:
+  I: mekanism:bronze_ingot
+result: mekanism:bronze_block

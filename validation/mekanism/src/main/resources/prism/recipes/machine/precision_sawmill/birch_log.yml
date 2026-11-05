@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: precision_sawmill
+input: minecraft:birch_log
+output: {item: minecraft:birch_planks, count: 6}
+ticks: 100
+energy: 50

@@ -10,7 +10,13 @@ import java.util.function.Supplier;
  * recipes are looked up on every call because they are data that can be reloaded.
  */
 public record MachineType(String id, Supplier<List<Recipe>> source, long energyCapacity, long maxReceive,
-        long tankCapacity) {
+        long tankCapacity, long maxExtract) {
+
+    /** A type that gives no energy to cables (everything except batteries). */
+    public MachineType(String id, Supplier<List<Recipe>> source, long energyCapacity, long maxReceive,
+            long tankCapacity) {
+        this(id, source, energyCapacity, maxReceive, tankCapacity, 0);
+    }
 
     /** A type with a fixed recipe list (tests). */
     public static MachineType fixed(String id, List<Recipe> recipes, long energyCapacity, long maxReceive,
@@ -31,6 +37,20 @@ public record MachineType(String id, Supplier<List<Recipe>> source, long energyC
             }
         }
         return false;
+    }
+
+    /** Whether some recipe consumes {@code itemId} as its second input. */
+    public boolean acceptsExtra(String itemId) {
+        for (Recipe r : recipes()) {
+            if (r.itemIn2() != null && r.itemIn2().id().equals(itemId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean takesExtra() {
+        return recipes().stream().anyMatch(r -> r.itemIn2() != null);
     }
 
     public boolean takesItems() {

@@ -1,0 +1,3 @@
+type: prism:shapeless
+ingredients: [mekanism:refined_obsidian_block]
+result: {item: mekanism:refined_obsidian_ingot, count: 9}

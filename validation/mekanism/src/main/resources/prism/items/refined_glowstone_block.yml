@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Refined Glowstone Block"
+  prism:places_block: mekanism:refined_glowstone_block

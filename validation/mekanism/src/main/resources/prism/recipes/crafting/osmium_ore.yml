@@ -1,4 +1,3 @@
-# Stopgap until Prism can generate ore in the world (a later row): ore items are made by hand.
 type: prism:shapeless
 ingredients: [minecraft:raw_iron, minecraft:lapis_lazuli]
 result: mekanism:osmium_ore

@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: metallurgic_infuser
+input: minecraft:iron_ingot
+input2: minecraft:coal
+output: mekanism:enriched_iron
+ticks: 200
+energy: 50

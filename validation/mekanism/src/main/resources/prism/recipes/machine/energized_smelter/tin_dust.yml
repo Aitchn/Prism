@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: energized_smelter
+input: mekanism:tin_dust
+output: mekanism:tin_ingot
+ticks: 160
+energy: 40

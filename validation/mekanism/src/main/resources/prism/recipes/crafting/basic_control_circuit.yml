@@ -1,0 +1,9 @@
+type: prism:shaped
+pattern:
+  - "RRR"
+  - "ROR"
+  - "RRR"
+key:
+  R: minecraft:redstone
+  O: mekanism:osmium_ingot
+result: mekanism:basic_control_circuit

@@ -14,7 +14,22 @@ public record Recipe(
         Chemical chemicalOut2,
         long chemicalOut2Amount,
         int ticks,
-        long energyPerTick) {
+        long energyPerTick,
+        Stack itemIn2) {
+
+    /** Canonical form without a second input item. */
+    public Recipe(Stack itemIn, Stack itemOut, Chemical chemicalIn, long chemicalInAmount, Chemical chemicalOut,
+            long chemicalOutAmount, Chemical chemicalOut2, long chemicalOut2Amount, int ticks, long energyPerTick) {
+        this(itemIn, itemOut, chemicalIn, chemicalInAmount, chemicalOut, chemicalOutAmount, chemicalOut2,
+                chemicalOut2Amount, ticks, energyPerTick, null);
+    }
+
+    /** Two input items (combiner, metallurgic infuser): both are consumed when the operation starts. */
+    public static Recipe items2(String in, int inCount, String in2, int in2Count, String out, int outCount, int ticks,
+            long energyPerTick) {
+        return new Recipe(new Stack(in, inCount), new Stack(out, outCount), null, 0, null, 0, null, 0, ticks,
+                energyPerTick, new Stack(in2, in2Count));
+    }
 
     public static Recipe item(String in, int inCount, String out, int outCount, int ticks, long energyPerTick) {
         return new Recipe(new Stack(in, inCount), new Stack(out, outCount), null, 0, null, 0, null, 0, ticks,

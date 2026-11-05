@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: osmium_compressor
+input: minecraft:glowstone_dust
+input2: mekanism:osmium_dust
+output: mekanism:refined_glowstone_ingot
+ticks: 300
+energy: 50

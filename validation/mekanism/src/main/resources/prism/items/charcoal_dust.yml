@@ -1,0 +1,3 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Charcoal Dust"

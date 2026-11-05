@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: precision_sawmill
+input: minecraft:mangrove_log
+output: {item: minecraft:mangrove_planks, count: 6}
+ticks: 100
+energy: 50

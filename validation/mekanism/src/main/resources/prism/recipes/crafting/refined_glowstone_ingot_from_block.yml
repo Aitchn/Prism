@@ -1,0 +1,3 @@
+type: prism:shapeless
+ingredients: [mekanism:refined_glowstone_block]
+result: {item: mekanism:refined_glowstone_ingot, count: 9}

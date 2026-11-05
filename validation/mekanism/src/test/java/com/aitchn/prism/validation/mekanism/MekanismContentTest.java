@@ -33,7 +33,10 @@ class MekanismContentTest {
 
     private static final Path RESOURCES = Path.of("src/main/resources");
     private static final List<String> MACHINES = List.of("crusher", "enrichment_chamber", "purification_chamber",
-            "chemical_injection_chamber", "electrolytic_separator");
+            "chemical_injection_chamber", "electrolytic_separator", "osmium_compressor", "combiner",
+            "metallurgic_infuser", "precision_sawmill", "energized_smelter");
+    private static final List<String> CUBES = List.of("energy_cube", "advanced_energy_cube", "elite_energy_cube",
+            "ultimate_energy_cube");
 
     private static final class Mod implements PrismMod {
         @Override
@@ -51,8 +54,38 @@ class MekanismContentTest {
     @Test
     void allBlocksAndItemsLoad() {
         var harness = load();
-        assertEquals(9, harness.manager().blocks().size());
-        assertEquals(23, harness.manager().items().size());
+        assertEquals(count("prism/blocks"), harness.manager().blocks().size());
+        assertEquals(count("prism/items"), harness.manager().items().size());
+    }
+
+    private static long count(String directory) {
+        try (var files = Files.list(RESOURCES.resolve(directory))) {
+            return files.filter(f -> f.toString().endsWith(".yml")).count();
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static long countRecursive(String directory) {
+        try (var files = Files.walk(RESOURCES.resolve(directory))) {
+            return files.filter(f -> f.toString().endsWith(".yml")).count();
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Test
+    void energyCubesAreBatteries() {
+        var harness = load();
+        long previous = 0;
+        for (String id : CUBES) {
+            MachineBehavior spec = harness.block("mekanism:" + id).behaviors(MachineBehavior.class).getFirst();
+            assertTrue(spec.maxExtract() > 0 && spec.maxReceive() > 0, id + " gives and takes energy");
+            assertTrue(spec.energyCapacity() > previous, id + " holds more than the tier before");
+            previous = spec.energyCapacity();
+            assertEquals(1, harness.block("mekanism:" + id).behaviors(BlockCapabilityProvider.class).size(), id);
+            assertTrue(Files.exists(RESOURCES.resolve("assets/mekanism/textures/block/" + id + ".png")), id);
+        }
     }
 
     @Test
@@ -111,7 +144,7 @@ class MekanismContentTest {
     void everyMachineRecipeNamesARealMachineAndRealItems() {
         var harness = load();
         var recipes = harness.recipes().all(Content.machineRecipes());
-        assertEquals(13, recipes.size());
+        assertEquals(countRecursive("prism/recipes/machine"), recipes.size());
         Set<String> machinesWithRecipes = new HashSet<>();
         for (var recipe : recipes) {
             MachineRecipe r = recipe.value();
@@ -119,6 +152,9 @@ class MekanismContentTest {
             assertTrue(MACHINES.contains(r.machine()), recipe.id() + " names an unknown machine " + r.machine());
             if (r.input() != null) {
                 assertItemExists(harness, recipe.id(), r.input().item());
+            }
+            if (r.input2() != null) {
+                assertItemExists(harness, recipe.id(), r.input2().item());
             }
             if (r.output() != null) {
                 assertItemExists(harness, recipe.id(), r.output().item());
@@ -145,6 +181,10 @@ class MekanismContentTest {
             if (r.input() != null) {
                 assertEquals(0, machine.insertInput(new com.aitchn.prism.validation.mekanism.logic.Stack(
                         r.input().item().toString(), r.input().count())).count(), entry.id() + " input accepted");
+            }
+            if (r.input2() != null) {
+                assertEquals(0, machine.insertExtra(new com.aitchn.prism.validation.mekanism.logic.Stack(
+                        r.input2().item().toString(), r.input2().count())).count(), entry.id() + " second input accepted");
             }
             if (r.chemicalIn() != null) {
                 assertEquals(r.chemicalIn().amount(), machine.inTank().fill(r.chemicalIn().chemical(),
@@ -190,7 +230,13 @@ class MekanismContentTest {
                 recipes.all(type).forEach(r -> steps.add(new Step(List.of(r.value().input()), r.value().result().item())));
             }
             recipes.all(Content.machineRecipes()).forEach(r -> {
-                List<Ingredient> in = r.value().input() == null ? List.of() : List.of(r.value().input());
+                List<Ingredient> in = new ArrayList<>();
+                if (r.value().input() != null) {
+                    in.add(r.value().input());
+                }
+                if (r.value().input2() != null) {
+                    in.add(r.value().input2());
+                }
                 if (r.value().output() != null) {
                     steps.add(new Step(in, r.value().output().item()));
                 }

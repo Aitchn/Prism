@@ -1,0 +1,8 @@
+type: prism:shaped
+pattern:
+  - "NNN"
+  - "NNN"
+  - "NNN"
+key:
+  N: mekanism:bronze_nugget
+result: mekanism:bronze_ingot

@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "IXI"
+  - "OCO"
+  - "IXI"
+key:
+  I: minecraft:iron_ingot
+  X: minecraft:furnace
+  O: mekanism:osmium_ingot
+  C: mekanism:steel_casing
+result: mekanism:energized_smelter
