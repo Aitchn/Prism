@@ -203,6 +203,7 @@ def tex_block(name, col, pattern="plain"):
         d.rectangle((2, 2, 13, 13), outline=shade(col, 1.3))
         d.line((2, 8, 13, 8), fill=shade(col, 0.7))
     save(img, TEX / f"block/{name}.png")
+    save(img, TEX / f"item/{name}.png")
 
 
 def tex_machine(name, col):

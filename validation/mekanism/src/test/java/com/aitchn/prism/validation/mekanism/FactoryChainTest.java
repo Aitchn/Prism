@@ -128,7 +128,7 @@ class FactoryChainTest {
     private static Line ironLine() {
         Line line = new Line("purification_chamber", "crusher", "enrichment_chamber", "energized_smelter",
                 "electrolytic_separator");
-        line.at(4).inTank().set(Chemical.WATER, 10_000);
+        line.at(4).inTank().set(Chemical.WATER, 24); // a separator runs while it has water, so give it just enough
         line.at(0).insertInput(new Stack("minecraft:raw_iron", 4));
         return line;
     }
@@ -155,7 +155,7 @@ class FactoryChainTest {
     void twoOsmiumOreBecomeEightIngotsThroughTheFourTimesChain() {
         Line line = new Line("chemical_injection_chamber", "purification_chamber", "crusher", "enrichment_chamber",
                 "energized_smelter", "electrolytic_separator");
-        line.at(5).inTank().set(Chemical.WATER, 10_000);
+        line.at(5).inTank().set(Chemical.WATER, 48);
         line.at(0).insertInput(new Stack("mekanism:osmium_ore", 2));
         line.run(80_000, 71, () -> line.count(4, "mekanism:osmium_ingot") >= 8);
         assertEquals(8, line.count(4, "mekanism:osmium_ingot"));
