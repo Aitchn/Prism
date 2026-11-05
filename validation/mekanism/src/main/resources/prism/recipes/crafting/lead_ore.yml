@@ -1,0 +1,4 @@
+# Stopgap until Prism can generate ore in the world (a later row): ore items are made by hand.
+type: prism:shapeless
+ingredients: [minecraft:raw_iron, minecraft:coal]
+result: mekanism:lead_ore

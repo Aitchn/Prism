@@ -1,6 +1,5 @@
-# Key: mekanism:universal_cable. Invisible carrier; the look is a placeholder texture (real art is never published).
+# Key: mekanism:universal_cable. Joins generators and machines touching it into one energy network.
 base: minecraft:barrier
 drop: mekanism:universal_cable
 behaviors:
-  - type: mekanism:block
-    kind: cable
+  - type: mekanism:cable

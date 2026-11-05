@@ -9,12 +9,21 @@ import java.util.Set;
 import java.util.function.Function;
 
 /**
- * Cable and pipe networks computed from the set of cable positions. Recomputed by flood fill; fine for tests and
- * small worlds. A real storage-scale version needs incremental merge/split (see docs/gaps.md).
+ * Cable and pipe networks computed from the set of conduit positions. A network is a face-connected group of
+ * conduits plus the blocks touching it. The grid rebuilds them only when a conduit or endpoint appears or goes, not
+ * every tick.
  */
 public final class Networks {
 
     private Networks() {}
+
+    /** One connected group: its conduits and the non-conduit positions touching them. */
+    public record Network(Set<Pos> conduits, Set<Pos> endpoints) {}
+
+    /** The connected components of {@code conduits} (face-adjacent) with their endpoints. */
+    public static List<Network> build(Set<Pos> conduits) {
+        return components(conduits).stream().map(c -> new Network(c, endpoints(c, conduits))).toList();
+    }
 
     /** The connected components of {@code cables} (face-adjacent). */
     public static List<Set<Pos>> components(Set<Pos> cables) {
@@ -53,18 +62,33 @@ public final class Networks {
         return out;
     }
 
+    /** The network that contains {@code conduit}, or null. */
+    public static Network containing(List<Network> networks, Pos conduit) {
+        for (Network network : networks) {
+            if (network.conduits().contains(conduit)) {
+                return network;
+            }
+        }
+        return null;
+    }
+
+    public static long distributeEnergy(Set<Pos> cables, Function<Pos, EnergyBuffer> sources,
+            Function<Pos, EnergyBuffer> sinks, long perCableLimit) {
+        return distributeEnergy(build(cables), sources, sinks, perCableLimit);
+    }
+
     /**
      * Moves energy within each network: everything {@code sources} can give is split evenly across the
      * {@code sinks} that accept it. Returns the total moved.
      */
-    public static long distributeEnergy(Set<Pos> cables, Function<Pos, EnergyBuffer> sources,
+    public static long distributeEnergy(List<Network> networks, Function<Pos, EnergyBuffer> sources,
             Function<Pos, EnergyBuffer> sinks, long perCableLimit) {
         long moved = 0;
-        for (Set<Pos> component : components(cables)) {
-            long limit = perCableLimit * component.size();
+        for (Network network : networks) {
+            long limit = perCableLimit * network.conduits().size();
             List<EnergyBuffer> givers = new ArrayList<>();
             List<EnergyBuffer> takers = new ArrayList<>();
-            for (Pos end : endpoints(component, cables)) {
+            for (Pos end : network.endpoints()) {
                 EnergyBuffer giver = sources.apply(end);
                 if (giver != null && giver.extract(limit, true) > 0) {
                     givers.add(giver);
@@ -96,28 +120,40 @@ public final class Networks {
         return moved;
     }
 
-    /** Pipes: moves chemicals from {@code from} tanks to {@code to} tanks inside each network. */
-    public static long distributeChemical(Set<Pos> pipes, Function<Pos, ChemicalTank> from,
-            Function<Pos, ChemicalTank> to, long perPipeLimit) {
+    public static long distributeChemical(Set<Pos> pipes, Function<Pos, List<ChemicalTank>> from,
+            Function<Pos, List<ChemicalTank>> to, long perPipeLimit) {
+        return distributeChemical(build(pipes), from, to, perPipeLimit);
+    }
+
+    /** Pipes: moves chemicals from output tanks to input tanks of other blocks inside each network. */
+    public static long distributeChemical(List<Network> networks, Function<Pos, List<ChemicalTank>> from,
+            Function<Pos, List<ChemicalTank>> to, long perPipeLimit) {
         long moved = 0;
-        for (Set<Pos> component : components(pipes)) {
-            long budget = perPipeLimit * component.size();
-            List<Pos> ends = new ArrayList<>(endpoints(component, pipes));
+        for (Network network : networks) {
+            long budget = perPipeLimit * network.conduits().size();
+            List<Pos> ends = new ArrayList<>(network.endpoints());
             for (Pos source : ends) {
-                ChemicalTank src = from.apply(source);
-                if (src == null || src.type() == null) {
+                List<ChemicalTank> sources = from.apply(source);
+                if (sources == null) {
                     continue;
                 }
-                for (Pos target : ends) {
-                    ChemicalTank dst = to.apply(target);
-                    if (dst == null || dst == src || budget <= 0) {
-                        continue;
+                for (ChemicalTank src : sources) {
+                    for (Pos target : ends) {
+                        List<ChemicalTank> targets = to.apply(target);
+                        if (targets == null || target.equals(source)) {
+                            continue;
+                        }
+                        for (ChemicalTank dst : targets) {
+                            if (src.type() == null || budget <= 0) {
+                                continue;
+                            }
+                            long possible = Math.min(budget, src.drain(null, budget, true));
+                            long accepted = dst.fill(src.type(), possible, false);
+                            src.drain(null, accepted, false);
+                            budget -= accepted;
+                            moved += accepted;
+                        }
                     }
-                    long possible = Math.min(budget, src.drain(null, budget, true));
-                    long accepted = dst.fill(src.type(), possible, false);
-                    src.drain(null, accepted, false);
-                    budget -= accepted;
-                    moved += accepted;
                 }
             }
         }

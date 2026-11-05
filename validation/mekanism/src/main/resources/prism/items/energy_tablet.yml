@@ -1,0 +1,8 @@
+# A portable battery. Its charge is per-stack data and its lore shows it (Java and Bedrock).
+base: minecraft:paper
+components:
+  prism:display_name: "<red>Energy Tablet"
+  prism:max_stack_size: 1
+behaviors:
+  - type: mekanism:tablet
+    capacity: 1000000

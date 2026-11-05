@@ -1,7 +1,12 @@
-# Key: mekanism:crusher. Invisible carrier; the look is a placeholder texture (real art is never published).
+# Key: mekanism:crusher. Two looks (textures block/crusher_idle.png and block/crusher_active.png): the machine switches to
+# "active" while it works. Its state lives in the block's per-block data; its recipes are prism/recipes/machine/crusher/.
 base: minecraft:barrier
 drop: mekanism:crusher
+components:
+  prism:variants: [idle, active]
 behaviors:
-  - type: mekanism:block
-    kind: machine
+  - type: mekanism:machine
     machine: crusher
+    energy_capacity: 20000
+    max_receive: 2000
+    tank_capacity: 0

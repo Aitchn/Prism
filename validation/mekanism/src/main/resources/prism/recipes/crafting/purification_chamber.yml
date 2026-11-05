@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "IGI"
+  - "OCO"
+  - "IGI"
+key:
+  I: minecraft:iron_ingot
+  G: minecraft:glass
+  O: mekanism:osmium_ingot
+  C: mekanism:steel_casing
+result: mekanism:purification_chamber
