@@ -54,6 +54,13 @@ public final class EnergyBuffer {
         return accepted;
     }
 
+    /** Takes up to {@code max} out regardless of the extract rate (an item or tool pulling from the block). */
+    public long take(long max) {
+        long taken = Math.max(0, Math.min(max, stored));
+        stored -= taken;
+        return taken;
+    }
+
     public void set(long value) {
         stored = Math.max(0, Math.min(value, capacity));
     }

@@ -1,6 +1,5 @@
-# Key: mekanism:pressurized_tube. Invisible carrier; the look is a placeholder texture (real art is never published).
+# Key: mekanism:pressurized_tube. Joins machines touching it into one chemical (gas and water) network.
 base: minecraft:barrier
 drop: mekanism:pressurized_tube
 behaviors:
-  - type: mekanism:block
-    kind: pipe
+  - type: mekanism:pipe
