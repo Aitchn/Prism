@@ -51,6 +51,7 @@ Details and workarounds are in [validation/ae2.md](validation/ae2.md).
 - `BlockService.place` has no placing player, so place behaviors see `player() == null`.
 - No public runtime lookup of item and block definitions.
 - Folia: grid-style state spans regions; the rule and the schedulers mods may use are not documented.
+
 ## Found in the Mekanism rebuild (`validation/mekanism`)
 
 What was built: energy buffers, five recipe machines (enrichment, crusher, purification, injection, electrolytic
