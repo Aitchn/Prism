@@ -26,6 +26,12 @@ public interface CustomBlock {
     @NotNull BlockFace facing();
 
     /**
+     * The current look, one of the names in {@code prism:variants}, or {@code ""} for blocks without variants.
+     * Change it with {@link BlockService#setVariant}.
+     */
+    @NotNull String variant();
+
+    /**
      * Data private to this block, like a vanilla block entity. It is saved with the chunk and deleted when the block
      * is removed. Use your own namespace for keys. The container is live: changes are kept without a save call.
      */

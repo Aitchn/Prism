@@ -58,6 +58,23 @@ public final class PaperPlatformScheduler implements PlatformScheduler {
     }
 
     @Override
+    public @NotNull ScheduledTask runOnTimer(@NotNull Entity entity, @NotNull Runnable task, @Nullable Runnable retired,
+            long delayTicks, long periodTicks) {
+        BukkitTask[] self = new BukkitTask[1];
+        self[0] = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (entity.isValid()) {
+                task.run();
+            } else {
+                self[0].cancel();
+                if (retired != null) {
+                    retired.run();
+                }
+            }
+        }, Math.max(1, delayTicks), Math.max(1, periodTicks));
+        return wrap(self[0]);
+    }
+
+    @Override
     public boolean isOwnedByCurrentThread(@NotNull Location location) {
         return Bukkit.isPrimaryThread();
     }

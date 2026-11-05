@@ -8,6 +8,8 @@ import com.aitchn.prism.core.client.Profiles;
 import com.aitchn.prism.core.data.SqliteDataService;
 import com.aitchn.prism.core.PrismRuntime;
 import com.aitchn.prism.core.StartupReport;
+import com.aitchn.prism.core.block.StateAllocator;
+import com.aitchn.prism.core.recipe.RegistryRecipes;
 import com.aitchn.prism.core.mod.BehaviorDispatcher;
 import com.aitchn.prism.core.mod.ModManager;
 import com.aitchn.prism.platform.folia.FoliaPlatformScheduler;
@@ -55,13 +57,6 @@ public final class PrismPlugin extends JavaPlugin {
         BehaviorDispatcher dispatcher = new BehaviorDispatcher(
                 mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
                 location -> scheduler.isOwnedByCurrentThread(location), getLogger());
-        PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, new BlockIndex(this), display,
-                dispatcher, scheduler, getLogger());
-        ModLifecycle lifecycle = new ModLifecycle(this, mods, () -> {
-            packManager.contentChanged();
-            modelSync.contentChanged();
-            blocks.contentChanged();
-        });
         try {
             getDataFolder().mkdirs();
             data = new SqliteDataService(getDataFolder().toPath().resolve("data.db"));
@@ -70,15 +65,33 @@ public final class PrismPlugin extends JavaPlugin {
         } catch (java.sql.SQLException | RuntimeException e) {
             throw new IllegalStateException("cannot open Prism's data store", e);
         }
-        ChestMenus menus = new ChestMenus(items, scheduler);
+        String backend = getConfig().getString("blocks.backend", "auto");
+        StateAllocator allocator = new StateAllocator(data.store("prism"));
+        NoteBlockAppearance noteBlocks = new NoteBlockAppearance(allocator, getLogger());
+        packManager.useNativeStates(allocator, backend);
+        packManager.installInto(new GeyserInstaller(getLogger(), getDataFolder().toPath().resolve("geyser")));
+        PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, new BlockIndex(this), display,
+                noteBlocks, backend, dispatcher, scheduler, getLogger());
+        RegistryRecipes recipes = new RegistryRecipes(mods.recipeTypes(), mods.recipes());
+        VanillaRecipes vanillaRecipes = new VanillaRecipes(recipes, items, scheduler, getLogger());
+        ModLifecycle lifecycle = new ModLifecycle(this, mods, () -> {
+            vanillaRecipes.sync();
+            packManager.contentChanged();
+            modelSync.contentChanged();
+            blocks.contentChanged();
+        });
+        ChestMenus menus = new ChestMenus(items, scheduler, getLogger());
         Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus, data,
-                new SchedulerAdapter(scheduler));
+                new SchedulerAdapter(scheduler), recipes);
         getServer().getPluginManager().registerEvents(menus, this);
+        getServer().getPluginManager().registerEvents(menus.containers(), this);
+        getServer().getPluginManager().registerEvents(vanillaRecipes, this);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
         getServer().getPluginManager().registerEvents(blocks, this);
         getServer().getPluginManager().registerEvents(new BlockListener(items, blocks, mods.items(), dispatcher), this);
         getServer().getPluginManager().registerEvents(new DigListener(blocks, scheduler), this);
+        getServer().getPluginManager().registerEvents(new NativeStateListener(blocks), this);
         var command = getCommand("prism");
         if (command != null) {
             PrismCommand executor = new PrismCommand(mods.items(), items, menus, scheduler);

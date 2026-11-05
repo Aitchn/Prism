@@ -9,6 +9,8 @@ import com.aitchn.prism.api.content.ComponentType;
 import com.aitchn.prism.api.content.ConfigSection;
 import com.aitchn.prism.api.content.ContentException;
 import com.aitchn.prism.api.content.ItemDefinition;
+import com.aitchn.prism.api.recipe.PrismRecipe;
+import com.aitchn.prism.api.recipe.RecipeType;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -20,14 +22,20 @@ import java.util.function.Predicate;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Reads {@code <root>/items/**.yml} and {@code <root>/blocks/**.yml}. The file path below the folder (without
- * extension) becomes the key value in the mod's namespace. All problems are collected, not just the first, so a
+ * Reads {@code <root>/items/**.yml}, {@code <root>/blocks/**.yml} and {@code <root>/recipes/**.yml}. The file path
+ * below the folder (without extension) becomes the key value in the mod's namespace. All problems are collected, not just the first, so a
  * creator fixes a file in one pass.
  */
 public final class ContentLoader {
 
     /** Everything one mod declared. */
-    public record Loaded(Map<PrismKey, ItemDefinition> items, Map<PrismKey, BlockDefinition> blocks) {}
+    public record Loaded(Map<PrismKey, ItemDefinition> items, Map<PrismKey, BlockDefinition> blocks,
+            Map<PrismKey, PrismRecipe<?>> recipes) {
+
+        public Loaded(Map<PrismKey, ItemDefinition> items, Map<PrismKey, BlockDefinition> blocks) {
+            this(items, blocks, Map.of());
+        }
+    }
 
     private static final Set<String> ITEM_KEYS = Set.of("base", "components", "behaviors");
     private static final Set<String> BLOCK_KEYS = Set.of("base", "drop", "components", "behaviors");
@@ -59,7 +67,35 @@ public final class ContentLoader {
         for (String file : yamlFiles(source, contentRoot + "/blocks", problems)) {
             read(file, contentRoot + "/blocks", namespace, problems, key -> blocks.put(key, loadBlock(source, file, key, owner)));
         }
-        return new Loaded(items, blocks);
+        Map<PrismKey, PrismRecipe<?>> recipes = new LinkedHashMap<>();
+        for (String file : yamlFiles(source, contentRoot + "/recipes", problems)) {
+            read(file, contentRoot + "/recipes", namespace, problems,
+                    key -> recipes.put(key, loadRecipe(source, file, key, owner)));
+        }
+        return new Loaded(items, blocks, recipes);
+    }
+
+    private PrismRecipe<?> loadRecipe(ContentSource source, String file, PrismKey id, String owner)
+            throws ContentException, IOException {
+        MapConfigSection section = MapConfigSection.of("", YamlFiles.parse(file, source.readText(file)));
+        PrismKey typeKey = parseKey("type", section.requireString("type"), id.namespace());
+        RecipeType<?> type = types.recipe(typeKey).orElseThrow(() -> new ContentException(
+                "type", "unknown recipe type " + typeKey + " (is the mod that provides it installed?)"));
+        return decodeRecipe(id, owner, type, section.without("type"));
+    }
+
+    private static <R> PrismRecipe<R> decodeRecipe(PrismKey id, String owner, RecipeType<R> type, ConfigSection section)
+            throws ContentException {
+        R value;
+        try {
+            value = type.decoder().decode(section, id.namespace());
+        } catch (RuntimeException e) {
+            throw new ContentException("", "recipe type " + type.key() + " failed: " + e);
+        }
+        if (!type.valueType().isInstance(value)) {
+            throw new ContentException("", "recipe type " + type.key() + " returned " + value.getClass().getName());
+        }
+        return new PrismRecipe<>(id, owner, type, value);
     }
 
     private interface Reader {

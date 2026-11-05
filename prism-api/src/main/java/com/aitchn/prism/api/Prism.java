@@ -6,6 +6,7 @@ import com.aitchn.prism.api.data.DataService;
 import com.aitchn.prism.api.menu.MenuService;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.mod.ModRegistrar;
+import com.aitchn.prism.api.recipe.RecipeService;
 import com.aitchn.prism.api.scheduler.PrismScheduler;
 import java.util.Objects;
 import org.jetbrains.annotations.ApiStatus;
@@ -42,6 +43,11 @@ public final class Prism {
         return current().data();
     }
 
+    /** Recipes of every active mod, by type; Prism's own types are also real vanilla recipes. */
+    public static @NotNull RecipeService recipes() {
+        return current().recipes();
+    }
+
     /** Thread-correct scheduling for Paper, Folia and Purpur. */
     public static @NotNull PrismScheduler scheduler() {
         return current().scheduler();
@@ -64,10 +70,11 @@ public final class Prism {
             @NotNull ClientService clients,
             @NotNull MenuService menus,
             @NotNull DataService data,
-            @NotNull PrismScheduler scheduler) {
+            @NotNull PrismScheduler scheduler,
+            @NotNull RecipeService recipes) {
         services = new Services(Objects.requireNonNull(mods), Objects.requireNonNull(items),
                 Objects.requireNonNull(blocks), Objects.requireNonNull(clients), Objects.requireNonNull(menus),
-                Objects.requireNonNull(data), Objects.requireNonNull(scheduler));
+                Objects.requireNonNull(data), Objects.requireNonNull(scheduler), Objects.requireNonNull(recipes));
     }
 
     @ApiStatus.Internal
@@ -76,5 +83,5 @@ public final class Prism {
     }
 
     private record Services(ModRegistrar mods, ItemService items, BlockService blocks, ClientService clients,
-            MenuService menus, DataService data, PrismScheduler scheduler) {}
+            MenuService menus, DataService data, PrismScheduler scheduler, RecipeService recipes) {}
 }

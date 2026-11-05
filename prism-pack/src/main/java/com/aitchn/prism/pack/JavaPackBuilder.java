@@ -4,6 +4,7 @@ import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
+import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.pack.json.JsonWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -39,7 +40,14 @@ public final class JavaPackBuilder {
             @NotNull Collection<ItemDefinition> items,
             @NotNull Collection<BlockDefinition> blocks,
             int packFormat,
-            @NotNull String description) {}
+            @NotNull String description,
+            @NotNull Map<Integer, NativeBlockstates.StateModel> nativeStates) {
+
+        public Input(@NotNull Map<String, Map<String, byte[]>> assets, @NotNull Collection<ItemDefinition> items,
+                @NotNull Collection<BlockDefinition> blocks, int packFormat, @NotNull String description) {
+            this(assets, items, blocks, packFormat, description, Map.of());
+        }
+    }
 
     /**
      * @param itemsWithAppearance  items that got an item definition; only these may carry {@code item_model}
@@ -101,14 +109,21 @@ public final class JavaPackBuilder {
             }
         }
         for (BlockDefinition block : input.blocks()) {
-            PrismKey model = block.components().get(PrismComponents.MODEL).map(PrismComponents.Model::model)
-                    .orElseGet(() -> new PrismKey(block.key().namespace(), "block/" + block.key().value()));
-            String definitionPath =
-                    "assets/" + block.key().namespace() + "/items/block/" + block.key().value() + ".json";
-            if (generate(files, warnings, "block " + block.key(), definitionPath, model, "minecraft:block/cube_all",
-                    "all", "block")) {
+            boolean all = true;
+            for (String variant : Appearances.variants(block)) {
+                PrismKey model = Appearances.model(block, variant);
+                PrismKey itemModel = Appearances.itemModel(block.key(), variant);
+                String definitionPath = "assets/" + itemModel.namespace() + "/items/" + itemModel.value() + ".json";
+                all &= generate(files, warnings, "block " + block.key() + (variant.isEmpty() ? "" : " variant " + variant),
+                        definitionPath, model, "minecraft:block/cube_all", "all", "block");
+            }
+            if (all) {
                 blocksOk.add(block.key());
             }
+        }
+        if (!input.nativeStates().isEmpty()) {
+            files.put(NativeBlockstates.PATH,
+                    NativeBlockstates.noteBlock(input.nativeStates()).getBytes(StandardCharsets.UTF_8));
         }
 
         files.put("pack.mcmeta", mcmeta(input).getBytes(StandardCharsets.UTF_8));

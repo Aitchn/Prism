@@ -52,13 +52,13 @@ row below therefore states how it reaches a player on Java and on Bedrock.
 
 ## Order of work
 
-1. **Block platform** (1-8, 10-12, 20, 25): lifecycle, chunk index, per-block data, ticking, scheduler, capabilities,
+1. **Block platform** (1-8, 10-12, 20, 25, done in ADR-0007): lifecycle, chunk index, per-block data, ticking, scheduler, capabilities,
    richer contexts, facing, survival breaking, definition lookup, `/prism give`.
-2. **Visibility** (14-16, 29): native block states as the default for Bedrock-visible blocks, Geyser block and item
+2. **Visibility** (14-16, 29, done in ADR-0008): native block states as the default for Bedrock-visible blocks, Geyser block and item
    mappings installed into Geyser's folders, appearance variants and facing.
-3. **Menus and stacks** (17, 19): slot menus rendered as chest containers (Geyser translates them for Bedrock), per-stack
+3. **Menus and stacks** (17, 19, done in ADR-0009): slot menus rendered as chest containers (Geyser translates them for Bedrock), per-stack
    data and lore.
-4. **Recipes** (21, 22).
+4. **Recipes** (21, 22, done in ADR-0010).
 5. Later rows (13, 18, 23, 24, 26-28) after the validation plugins move to 1-4.
 
 ## What cannot be verified in CI

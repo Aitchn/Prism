@@ -5,7 +5,15 @@ import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.registry.Registry;
+import com.aitchn.prism.api.item.ItemLoreBehavior;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -25,11 +33,13 @@ final class BukkitItemService implements ItemService {
     private final NamespacedKey identityKey;
     private final Registry<ItemDefinition> definitions;
     private final Appearance appearance;
+    private final Logger log;
 
     BukkitItemService(Plugin prism, Registry<ItemDefinition> definitions, Appearance appearance) {
         this.identityKey = new NamespacedKey(prism, "item");
         this.definitions = definitions;
         this.appearance = appearance;
+        this.log = prism.getLogger();
     }
 
     @Override
@@ -45,6 +55,7 @@ final class BukkitItemService implements ItemService {
         }
         ItemStack stack = new ItemStack(material.get(), amount);
         stack.editMeta(meta -> apply(definition, meta));
+        renderLore(definition, stack);
         return Optional.of(stack);
     }
 
@@ -58,6 +69,78 @@ final class BukkitItemService implements ItemService {
         }
         definition.components().get(PrismComponents.MAX_STACK_SIZE).ifPresent(size ->
                 meta.setMaxStackSize(size.value()));
+    }
+
+    @Override
+    public boolean editData(@NotNull ItemStack stack, @NotNull Consumer<PersistentDataContainer> edit) {
+        Optional<ItemDefinition> definition = definition(stack);
+        if (definition.isEmpty()) {
+            return false;
+        }
+        stack.editMeta(meta -> {
+            PersistentDataContainer data = meta.getPersistentDataContainer();
+            String identity = data.get(identityKey, PersistentDataType.STRING);
+            edit.accept(data);
+            if (identity != null) {
+                data.set(identityKey, PersistentDataType.STRING, identity); // the identity cannot be edited away
+            }
+        });
+        renderLore(definition.get(), stack);
+        return true;
+    }
+
+    @Override
+    public void refresh(@NotNull ItemStack stack) {
+        definition(stack).ifPresent(definition -> {
+            stack.editMeta(meta -> apply(definition, meta));
+            renderLore(definition, stack);
+        });
+    }
+
+    /** Static {@code prism:lore} lines, then every {@link ItemLoreBehavior}'s lines for this stack. */
+    private void renderLore(ItemDefinition definition, ItemStack stack) {
+        List<String> lines = new ArrayList<>(definition.components().get(PrismComponents.LORE)
+                .map(PrismComponents.Lore::lines).orElse(List.of()));
+        ItemStack view = stack.clone();
+        for (ItemLoreBehavior behavior : definition.behaviors(ItemLoreBehavior.class)) {
+            try {
+                lines.addAll(behavior.lore(view));
+            } catch (RuntimeException e) {
+                log.log(Level.SEVERE, "Lore of " + definition.key() + " failed", e);
+            }
+        }
+        if (lines.isEmpty() && !stack.getItemMeta().hasLore()) {
+            return;
+        }
+        List<Component> lore = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            lore.add(MiniMessage.miniMessage().deserialize(line).decoration(TextDecoration.ITALIC, false));
+        }
+        stack.editMeta(meta -> meta.lore(lore.isEmpty() ? null : lore));
+    }
+
+    @Override
+    public boolean matches(@NotNull com.aitchn.prism.api.recipe.Ingredient ingredient, @NotNull ItemStack stack) {
+        if (stack.isEmpty() || stack.getAmount() < ingredient.count()) {
+            return false;
+        }
+        Optional<PrismKey> custom = identify(stack);
+        if (ingredient.isTag()) {
+            return custom.isEmpty() && VanillaRecipes.tag(ingredient.tag())
+                    .map(tag -> tag.isTagged(stack.getType())).orElse(false);
+        }
+        if (custom.isPresent()) {
+            return custom.get().equals(ingredient.item());
+        }
+        return VanillaItems.material(ingredient.item()).filter(material -> material == stack.getType()).isPresent();
+    }
+
+    @Override
+    public @NotNull Optional<ItemStack> create(@NotNull com.aitchn.prism.api.recipe.ItemResult result) {
+        if (definitions.contains(result.item())) {
+            return create(result.item(), result.count());
+        }
+        return VanillaItems.material(result.item()).map(material -> new ItemStack(material, result.count()));
     }
 
     @Override

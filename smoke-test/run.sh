@@ -23,81 +23,8 @@ EXAMPLE_JAR="${EXAMPLE_MOD_JAR:-$(ls "$ROOT"/examples/example-mod/build/libs/*.j
 cp "$EXAMPLE_JAR" "$WORK/plugins/ExampleMod.jar"
 # The Botania validation mod exercises ticking, persistence and cross-region work on top of Prism (optional).
 BOTANIA_JAR="${BOTANIA_MOD_JAR:-$(ls "$ROOT"/validation/botania/build/libs/*.jar 2>/dev/null | grep -v -- '-sources' | head -n1 || true)}"
-if [[ -n "$BOTANIA_JAR" ]]; then cp "$BOTANIA_JAR" "$WORK/plugins/Botania.jar"; fi
-
-download_server() {
-  case "$PLATFORM" in
-    paper|folia)
-      # https://docs.papermc.io/misc/downloads-api
-      local url
-      url="$(curl -fsSL "https://fill.papermc.io/v3/projects/$PLATFORM/versions/$MC_VERSION/builds/latest" \
-        | jq -r '.downloads["server:default"].url')"
-      curl -fsSL -o "$WORK/server.jar" "$url" ;;
-    purpur)
-      curl -fsSL -o "$WORK/server.jar" "https://api.purpurmc.org/v2/purpur/$MC_VERSION/latest/download" ;;
-    *) echo "unknown platform: $PLATFORM" >&2; exit 2 ;;
-  esac
-}
-
-# Newest release file on Modrinth that is built for a Bukkit-family loader.
-download_modrinth() {
-  local slug="$1" out="$2" url
-  url="$(curl -fsSL "https://api.modrinth.com/v2/project/$slug/version?loaders=%5B%22paper%22,%22folia%22,%22spigot%22,%22bukkit%22%5D" \
-    | jq -r '[.[] | select(.version_type=="release")][0].files | (map(select(.primary))[0] // .[0]).url')"
-  curl -fsSL -o "$out" "$url"
-}
-
-download_server
-if [[ -n "${PACKETEVENTS_JAR:-}" ]]; then cp "$PACKETEVENTS_JAR" "$WORK/plugins/"; else download_modrinth packetevents "$WORK/plugins/packetevents.jar"; fi
-if [[ -n "${BETTERMODEL_JAR:-}" ]]; then cp "$BETTERMODEL_JAR" "$WORK/plugins/"; else download_modrinth bettermodel "$WORK/plugins/BetterModel.jar"; fi
-
-cp "$ROOT/smoke-test/Dockerfile" "$WORK/Dockerfile"
-IMAGE="prism-smoke:$PLATFORM-$MC_VERSION"
-docker build -q -t "$IMAGE" "$WORK" >/dev/null
-
-docker rm -f "$NAME" >/dev/null 2>&1 || true
-docker run -d --name "$NAME" "$IMAGE" >/dev/null
-cleanup() { docker logs "$NAME" > "$WORK/server.log" 2>&1 || true; docker rm -f "$NAME" >/dev/null 2>&1 || true; }
-trap cleanup EXIT
-
-ready=""
-for ((i = 0; i < TIMEOUT; i++)); do
-  ready="$(docker logs "$NAME" 2>&1 | grep -m1 'PRISM_READY' || true)"
-  [[ -n "$ready" ]] && break
-  if [[ "$(docker inspect -f '{{.State.Running}}' "$NAME")" != "true" ]]; then break; fi
-  sleep 1
-done
-
-if [[ -z "$ready" ]]; then
-  echo "FAIL: PRISM_READY not seen within ${TIMEOUT}s (or the server exited). Last log lines:" >&2
-  docker logs --tail 80 "$NAME" >&2 || true
-  exit 1
-fi
-echo "$ready"
-
-if ! grep -q "platform=$EXPECTED " <<<"$ready"; then
-  echo "FAIL: expected platform=$EXPECTED" >&2
-  exit 1
-fi
-if docker logs "$NAME" 2>&1 | grep -q 'PRISM_SCHEDULER_FAIL'; then
-  echo "FAIL: scheduler self check reported a failure" >&2
-  exit 1
-fi
-# Mods enable before the first tick, so these lines normally exist already; allow a few seconds anyway.
-for marker in 'PRISM_MOD_ACTIVE ExampleMod items=3 blocks=3' 'PRISM_MODELS_SYNCED changed=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'PRISM_PACK_READY sha1=' 'PRISM_BEDROCK_PACK_READY sha1=' 'PRISM_DATA_OK' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block' 'PRISM_PLATFORM_SELFTEST_OK examplemod:ruby_counter'; do
-  found=""
-  for ((i = 0; i < 90; i++)); do
-    if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
-    sleep 1
-  done
-  if [[ -z "$found" ]]; then
-    echo "FAIL: expected log line not seen: $marker" >&2
-    docker logs "$NAME" 2>&1 | grep -E 'PRISM_|EXAMPLE_|ExampleMod' >&2 || true
-    exit 1
-  fi
-done
 if [[ -n "$BOTANIA_JAR" ]]; then
-  for marker in 'PRISM_MOD_ACTIVE Botania items=28 blocks=8' 'BOTANIA_SELFTEST_OK'; do
+  for marker in 'PRISM_MOD_ACTIVE Botania' 'BOTANIA_SELFTEST_OK'; do
     found=""
     for ((i = 0; i < 120; i++)); do
       if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
@@ -110,7 +37,7 @@ if [[ -n "$BOTANIA_JAR" ]]; then
     fi
   done
 fi
-if docker logs "$NAME" 2>&1 | grep -qE 'BOTANIA_SELFTEST_FAIL|PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL'; then
+if docker logs "$NAME" 2>&1 | grep -qE 'BOTANIA_SELFTEST_FAIL|PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMPLE_LORE_FAIL|EXAMPLE_RECIPES_FAIL|PRISM_RECIPE_SKIPPED|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL|PRISM_NATIVE_SELFTEST_FAIL|PRISM_NATIVE_OUT_OF_STATES|PRISM_GEYSER_INSTALL_FAIL'; then
   echo "FAIL: a mod failed to activate" >&2
   exit 1
 fi

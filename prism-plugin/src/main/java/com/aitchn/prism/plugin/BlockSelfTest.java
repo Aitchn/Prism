@@ -41,6 +41,13 @@ final class BlockSelfTest implements Listener {
             try {
                 boolean placed = blocks.place(key, at);
                 boolean identified = placed && blocks.identify(at.getBlock()).filter(key::equals).isPresent();
+                // Under blocks.backend auto a plain block is a note block state, the look Bedrock can see.
+                org.bukkit.Material carrier = at.getBlock().getType();
+                if (identified) {
+                    log.info((carrier == org.bukkit.Material.NOTE_BLOCK ? "PRISM_NATIVE_SELFTEST_OK "
+                            : "PRISM_NATIVE_SELFTEST_FAIL ") + key + " carrier=" + carrier
+                            + " state=" + at.getBlock().getBlockData().getAsString());
+                }
                 boolean removed = identified && blocks.remove(at.getBlock(), false);
                 boolean gone = removed && blocks.identify(at.getBlock()).isEmpty();
                 log.info((gone ? "PRISM_BLOCK_SELFTEST_OK " : "PRISM_BLOCK_SELFTEST_FAIL ") + key

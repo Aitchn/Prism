@@ -1,3 +1,4 @@
-# Key: examplemod:ruby_block. The vanilla carrier is invisible; the model comes from assets/examplemod/textures/block/ruby_block.png.
+# Key: examplemod:ruby_block. Drawn as a note block state on Java and Bedrock (blocks.backend: auto); the base is only
+# used with blocks.backend: display. The model comes from assets/examplemod/textures/block/ruby_block.png.
 base: minecraft:barrier
 drop: examplemod:ruby_block

@@ -27,7 +27,23 @@ Permission: `prism.command.give` (operators by default).
 `prism/models/<name>.bbmodel` in your jar. Prism hands the model to BetterModel (the one place Prism writes files,
 because BetterModel only reads from its own folder).
 
-**Menus.** `Prism.menus().open(player, MenuSpec, handler)` shows a list of buttons.
+**Menus.** `Prism.menus().open(player, MenuSpec, handler)` shows a list of buttons. For a machine GUI implement
+`ContainerMenu` and call `Prism.menus().open(player, menu)`: each slot is a `BUTTON`, an `INPUT` (players put items in,
+if `accepts` says so) or an `OUTPUT` (take only). Prism enforces the roles for every click, shift-click, number key,
+drop, double-click and drag. `refreshTicks` and `onRefresh` update live values in place without reopening. It is a
+chest container, which Geyser shows to Bedrock players. Keep the items in your own model, such as per-block data.
+`examplemod:ruby_counter` is a complete example.
+
+**Item data and lore.** `Prism.items().editData(stack, data -> ...)` writes the stack's own persistent data and
+re-renders its lore. `prism:lore` holds static lines, and an `ItemLoreBehavior` adds lines computed from the stack.
+Both editions show the lore. `examplemod:ruby` counts its uses this way (`UseCounterBehavior`).
+
+**Recipes.** Put recipes in `prism/recipes/**.yml`. `type: prism:shaped`, `prism:shapeless`, `prism:smelting`,
+`prism:blasting`, `prism:smoking` and `prism:campfire_cooking` become real crafting table and furnace recipes, so
+players craft your items in survival on both editions. A custom item is never used as its carrier material. A machine
+registers its own type with `context.registerRecipeType("polishing", Polishing.class, Polishing::decode)` and reads
+the recipes with `Prism.recipes().all(type)`. Any mod can add recipes of that type, and `Ingredient`, `ItemResult`
+and `Prism.items().matches(...)` handle custom and vanilla items alike. See `examples/example-mod/src/main/resources/prism/recipes/`.
 
 **Data.** `Prism.data().store("examplemod")` is a persistent string key-value store per namespace (SQLite file
 `plugins/Prism/data.db`). Calls block on disk, so batch writes and keep them off hot paths.

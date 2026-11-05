@@ -16,4 +16,10 @@ public interface MenuService {
      * Closing the menu without choosing does not call the handler.
      */
     void open(@NotNull Player player, @NotNull MenuSpec spec, @NotNull Consumer<String> onSelect);
+
+    /**
+     * Shows a {@link ContainerMenu} with real slots to {@code player}. Callable from any thread; the menu opens on the
+     * player's thread.
+     */
+    void open(@NotNull Player player, @NotNull ContainerMenu menu);
 }

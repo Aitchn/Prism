@@ -60,6 +60,28 @@ public final class FoliaPlatformScheduler implements PlatformScheduler {
     }
 
     @Override
+    public @NotNull ScheduledTask runOnTimer(@NotNull Entity entity, @NotNull Runnable task, @Nullable Runnable retired,
+            long delayTicks, long periodTicks) {
+        var submitted = entity.getScheduler().runAtFixedRate(plugin, t -> task.run(), retired,
+                Math.max(1, delayTicks), Math.max(1, periodTicks));
+        if (submitted == null) {
+            if (retired != null) {
+                runGlobal(retired);
+            }
+            return new ScheduledTask() {
+                @Override
+                public void cancel() {}
+
+                @Override
+                public boolean isCancelled() {
+                    return true;
+                }
+            };
+        }
+        return wrap(submitted);
+    }
+
+    @Override
     public boolean isOwnedByCurrentThread(@NotNull Location location) {
         return Bukkit.isOwnedByCurrentRegion(location);
     }
