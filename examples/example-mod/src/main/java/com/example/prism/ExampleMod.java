@@ -24,6 +24,7 @@ public final class ExampleMod extends JavaPlugin implements PrismMod {
     public void onInitialize(@NotNull ModContext context) {
         tier = context.registerComponent("tier", Tier.class, section -> new Tier(section.requireInt("value")));
         context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
+        context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
     }
 
     @Override

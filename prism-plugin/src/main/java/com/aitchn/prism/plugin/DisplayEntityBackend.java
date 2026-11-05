@@ -1,60 +1,54 @@
 package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.PrismKey;
-import com.aitchn.prism.api.block.BlockService;
 import com.aitchn.prism.api.content.BlockDefinition;
-import com.aitchn.prism.api.item.ItemService;
-import com.aitchn.prism.api.registry.Registry;
+import com.aitchn.prism.core.block.Facings;
 import java.util.Optional;
+import java.util.function.BiConsumer;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
-import org.jetbrains.annotations.NotNull;
 
 /**
- * Custom blocks as a vanilla carrier block plus a persistent item display entity that draws the model. The display
- * is saved with its chunk, so the block survives restarts without any Prism-side database; its persistent data
- * holds the block key. Everything here must run on the thread that owns the block's region.
+ * How a custom block looks in v1: a vanilla carrier block plus a persistent item display entity that draws the
+ * model, rotated to the block's facing. Which block is where is kept by {@link BlockIndex}; the display's marker
+ * (the block key in its persistent data) is still written so worlds from before the index can be migrated.
+ * Everything here runs on the thread that owns the block's region.
  */
-final class DisplayEntityBackend implements BlockService {
+final class DisplayEntityBackend {
 
     private static final double SEARCH_RADIUS = 0.3;
 
     private final NamespacedKey markerKey;
-    private final Registry<BlockDefinition> definitions;
-    private final ItemService items;
     private final Appearance appearance;
     private final ModelAnchors anchors;
 
-    DisplayEntityBackend(Plugin prism, Registry<BlockDefinition> definitions, ItemService items, Appearance appearance,
-            ModelAnchors anchors) {
+    DisplayEntityBackend(Plugin prism, Appearance appearance, ModelAnchors anchors) {
         this.markerKey = new NamespacedKey(prism, "block");
         this.anchors = anchors;
-        this.definitions = definitions;
-        this.items = items;
         this.appearance = appearance;
     }
 
-    @Override
-    public boolean place(@NotNull PrismKey key, @NotNull Location location) {
-        Optional<BlockDefinition> found = definitions.get(key);
-        if (found.isEmpty()) {
-            return false;
-        }
-        BlockDefinition definition = found.get();
+    /** Sets the carrier block and spawns the display. The spot must already be free. */
+    boolean spawn(Block block, BlockDefinition definition, BlockFace facing) {
         Optional<Material> carrier = VanillaItems.blockMaterial(definition.carrier());
-        Block block = location.getBlock();
-        if (carrier.isEmpty() || !(block.isEmpty() || block.isReplaceable()) || identify(block).isPresent()) {
+        if (carrier.isEmpty()) {
             return false;
         }
+        PrismKey key = definition.key();
         block.setType(carrier.get(), false);
         Location center = block.getLocation().add(0.5, 0.5, 0.5);
+        center.setYaw(Facings.yawOf(facing.name()));
+        center.setPitch(Facings.pitchOf(facing.name()));
         boolean modelled = ModelAnchors.modelOf(definition).isPresent();
         ItemDisplay anchor = block.getWorld().spawn(center, ItemDisplay.class, display -> {
             display.setPersistent(true);
@@ -73,28 +67,8 @@ final class DisplayEntityBackend implements BlockService {
         return true;
     }
 
-    @Override
-    public @NotNull Optional<PrismKey> identify(@NotNull Block block) {
-        Location center = block.getLocation().add(0.5, 0.5, 0.5);
-        for (ItemDisplay display : block.getWorld().getNearbyEntitiesByType(ItemDisplay.class, center, SEARCH_RADIUS)) {
-            String raw = display.getPersistentDataContainer().get(markerKey, PersistentDataType.STRING);
-            if (raw != null) {
-                try {
-                    return Optional.of(PrismKey.parse(raw));
-                } catch (IllegalArgumentException e) {
-                    return Optional.empty();
-                }
-            }
-        }
-        return Optional.empty();
-    }
-
-    @Override
-    public boolean remove(@NotNull Block block, boolean dropItem) {
-        Optional<PrismKey> key = identify(block);
-        if (key.isEmpty()) {
-            return false;
-        }
+    /** Removes the display(s) and sets the carrier to air. */
+    void despawn(Block block) {
         Location center = block.getLocation().add(0.5, 0.5, 0.5);
         for (ItemDisplay display : block.getWorld().getNearbyEntitiesByType(ItemDisplay.class, center, SEARCH_RADIUS)) {
             if (display.getPersistentDataContainer().has(markerKey, PersistentDataType.STRING)) {
@@ -103,11 +77,27 @@ final class DisplayEntityBackend implements BlockService {
             }
         }
         block.setType(Material.AIR, false);
-        if (dropItem) {
-            definitions.get(key.get()).flatMap(BlockDefinition::drop)
-                    .flatMap(drop -> items.create(drop, 1))
-                    .ifPresent(stack -> block.getWorld().dropItemNaturally(center, stack));
+    }
+
+    /** Calls {@code found} for every marked display in {@code chunk}; used to migrate pre-index worlds. */
+    void forEachMarker(Chunk chunk, BiConsumer<Block, PrismKey> found) {
+        for (Entity entity : chunk.getEntities()) {
+            forMarker(entity, found);
         }
-        return true;
+    }
+
+    void forMarker(Entity entity, BiConsumer<Block, PrismKey> found) {
+        if (!(entity instanceof ItemDisplay)) {
+            return;
+        }
+        String raw = entity.getPersistentDataContainer().get(markerKey, PersistentDataType.STRING);
+        if (raw == null) {
+            return;
+        }
+        try {
+            found.accept(entity.getLocation().getBlock(), PrismKey.parse(raw));
+        } catch (IllegalArgumentException e) {
+            // Unreadable marker: leave the entity alone.
+        }
     }
 }
