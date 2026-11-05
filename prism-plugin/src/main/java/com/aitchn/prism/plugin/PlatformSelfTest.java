@@ -23,7 +23,7 @@ import org.bukkit.persistence.PersistentDataType;
  * Optional startup check of the block platform, enabled with {@code -Dprism.selftest.platform=<block key>}; the smoke
  * test passes {@code examplemod:ruby_counter}. It proves on a real server that placement runs place behaviors and
  * keeps the facing, per-block data is written, ticking runs, neighbours are told, capabilities resolve for custom and
- * vanilla blocks, and removal deletes the data. The block's mod must count ticks and neighbour changes in
+ * vanilla blocks, variants switch the look, and removal deletes the data. The block's mod must count ticks and neighbour changes in
  * {@code examplemod:ticks} / {@code examplemod:neighbors} and offer {@code examplemod:count}.
  */
 final class PlatformSelfTest implements Listener {
@@ -64,6 +64,13 @@ final class PlatformSelfTest implements Listener {
             Optional<CustomBlock> custom = blocks.get(block);
             boolean facing = custom.map(c -> c.facing() == BlockFace.EAST).orElse(false);
             boolean placeRan = custom.map(c -> c.data().has(placedKey, PersistentDataType.LONG)).orElse(false);
+            // Variants: placed with the first, switched at runtime, unknown names refused, the look follows.
+            String before = block.getBlockData().getAsString();
+            boolean variant = custom.map(c -> c.variant().equals("off")).orElse(false)
+                    && blocks.setVariant(block, "on")
+                    && blocks.get(block).map(c -> c.variant().equals("on")).orElse(false)
+                    && !blocks.setVariant(block, "missing")
+                    && !before.equals(block.getBlockData().getAsString());
 
             Block chest = block.getRelative(BlockFace.NORTH);
             chest.setType(Material.CHEST, false);
@@ -75,11 +82,11 @@ final class PlatformSelfTest implements Listener {
             boolean listed = blocks.blocksIn(block.getChunk()).size() >= (side.getChunk().equals(block.getChunk()) ? 2 : 1);
 
             BlockCapability<IntSupplier> count = BlockCapability.of(new PrismKey("examplemod", "count"), IntSupplier.class);
-            String early = "placed=" + placed + " facing=" + facing + " placeBehavior=" + placeRan
+            String early = "placed=" + placed + " facing=" + facing + " placeBehavior=" + placeRan + " variant=" + variant
                     + " vanillaCapability=" + vanillaCapability + " neighborPlaced=" + neighborPlaced
                     + " neighbors=" + neighbors + " listed=" + listed;
             scheduler.runAtLater(block.getLocation(), () -> finish(block, side, chest, count, early, placed && facing
-                    && placeRan && vanillaCapability && neighborPlaced && neighbors >= 1 && listed), 50);
+                    && placeRan && variant && vanillaCapability && neighborPlaced && neighbors >= 1 && listed), 50);
         } catch (RuntimeException e) {
             log.severe("PRISM_PLATFORM_SELFTEST_FAIL " + e);
         }

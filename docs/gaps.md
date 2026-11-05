@@ -25,8 +25,9 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 ## Found in M3 (Bedrock)
 
-- Bedrock registration with Geyser (event on the same server, extension on a proxy) is not implemented yet; only the
-  pack, mappings and HTTP distribution exist (M3b).
+- ~~Bedrock registration with Geyser~~: Prism now writes its pack and item/block mappings into a local Geyser's
+  folders, or to `plugins/Prism/geyser/` for a proxy (ADR-0008). A Geyser restart is still needed after content
+  changes; a live Geyser extension is not implemented.
 - `MenuSpec` covers button lists only (chest renderer, Bedrock via Geyser's container translation). Machine and
   terminal GUIs (AE2, Mekanism) need slots, live updates, text input and a native Bedrock form renderer.
 - Bedrock items are flat icons: no dynamic state and no 3D item models. Machines or tools that change their look

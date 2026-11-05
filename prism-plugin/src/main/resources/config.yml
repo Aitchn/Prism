@@ -12,3 +12,12 @@ pack:
   required: false
   # Message shown in the pack prompt (MiniMessage).
   prompt: "<gray>This server uses a custom content pack."
+blocks:
+  # How custom blocks are drawn.
+  #   auto    - as vanilla note block states (Java and Bedrock see them; Bedrock through Geyser's custom
+  #             block mappings, which Prism installs into Geyser's folder). Blocks with an animated
+  #             model (model_ref) still use display entities.
+  #   native  - same as auto.
+  #   display - always as an item display entity on a barrier (Java only; Geyser cannot draw these).
+  # Changing this needs a restart.
+  backend: auto

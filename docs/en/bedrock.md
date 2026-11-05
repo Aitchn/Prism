@@ -7,10 +7,27 @@ Bedrock players join through Geyser. Prism detects them (Floodgate, then Geyser)
 |---|---|---|
 | Item appearance | full model | flat icon from the item's texture |
 | Dynamic item state | yes | no |
-| Blocks | carrier + display entity | carrier + display entity (Geyser translates) |
-| BetterModel models | yes | no (not implemented) |
+| Blocks (default) | note block state + resource pack | note block state + Geyser custom block mapping |
+| Blocks with a BetterModel model, or `blocks.backend: display` | display entity | **not visible** (Geyser cannot draw display entities) |
+| Block variants (`prism:variants`, `setVariant`) | yes | yes |
 | Menus | chest container | chest container (Geyser translates); native forms not implemented |
 
-Prism builds a Bedrock `.mcpack` and Geyser custom item mappings and serves them under `/bedrock/` on the pack
-server. **Status:** registering them with Geyser (same server, or an extension on a proxy) is not implemented
-yet; see [Known gaps](https://github.com/Aitchn/Prism/blob/main/docs/gaps.md). Nothing here has been verified on a real Bedrock client.
+## Setup
+
+1. Install Geyser on the same server (`Geyser-Spigot`), and make sure custom content is on: `gameplay.enable-custom-content: true`
+   (older Geyser: `enable-custom-content`) in `plugins/Geyser-Spigot/config.yml`. Prism warns in the log if it is off.
+2. Start the server. Prism writes `custom_mappings/prism_items.json`, `custom_mappings/prism_blocks.json` and
+   `packs/prism.mcpack` into Geyser's folder and logs `PRISM_GEYSER_INSTALLED changed=[...]`.
+3. **Restart once** whenever that line lists changed files (first start, or after adding or changing content): Geyser
+   only reads mappings and packs at startup.
+
+Geyser on a proxy instead: Prism writes the same files to `plugins/Prism/geyser/`; copy `custom_mappings/` and `packs/`
+into the proxy's Geyser folder and restart the proxy.
+
+## Limits
+
+- 799 block looks (variant x facing) across all mods.
+- Custom blocks drawn as note blocks break like note blocks (axe, quick); `prism:mining` applies only to display blocks.
+- A vanilla note block tuned to a state owned by a custom look shows that look.
+
+Nothing on this page is checked by CI with a real client; see ADR-0008 for the hand test list.

@@ -15,6 +15,7 @@ import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.registry.Registry;
+import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.block.TickSchedule;
 import com.aitchn.prism.core.mod.BehaviorDispatcher;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
@@ -59,12 +60,21 @@ final class PrismBlockService implements BlockService, Listener {
     private final ItemService items;
     private final BlockIndex index;
     private final DisplayEntityBackend display;
+    private final NoteBlockAppearance noteBlocks;
+    private final String backend;
     private final BehaviorDispatcher dispatcher;
     private final PlatformScheduler scheduler;
     private final Logger log;
 
+    /**
+     * @param backend {@code auto} (note block states for every block that has no BetterModel model, so Bedrock sees
+     *                them), {@code display} (always display entities) or {@code native} (note block states only)
+     */
     PrismBlockService(Registry<BlockDefinition> definitions, ItemService items, BlockIndex index,
-            DisplayEntityBackend display, BehaviorDispatcher dispatcher, PlatformScheduler scheduler, Logger log) {
+            DisplayEntityBackend display, NoteBlockAppearance noteBlocks, String backend, BehaviorDispatcher dispatcher,
+            PlatformScheduler scheduler, Logger log) {
+        this.noteBlocks = noteBlocks;
+        this.backend = backend;
         this.definitions = definitions;
         this.items = items;
         this.index = index;
@@ -75,8 +85,8 @@ final class PrismBlockService implements BlockService, Listener {
     }
 
     /** A custom block handle. Cheap; created per lookup. */
-    private record Handle(Block block, PrismKey key, BlockDefinition definition, BlockFace facing, BlockIndex index)
-            implements CustomBlock {
+    private record Handle(Block block, PrismKey key, BlockDefinition definition, BlockFace facing, String variant,
+            BlockIndex index) implements CustomBlock {
         @Override
         public @NotNull PersistentDataContainer data() {
             return index.data(block);
@@ -97,11 +107,12 @@ final class PrismBlockService implements BlockService, Listener {
         BlockFace actual = definition.components().get(PrismComponents.ROTATION)
                 .filter(rotation -> rotation != PrismComponents.Rotation.NONE)
                 .isPresent() ? facing : BlockFace.NORTH;
-        if (!display.spawn(block, definition, actual)) {
+        String variant = Appearances.variants(definition).getFirst();
+        if (!appearanceFor(definition).spawn(block, definition, actual, variant)) {
             return false;
         }
-        index.put(block, new BlockIndex.Entry(key, actual));
-        Handle handle = new Handle(block, key, definition, actual, index);
+        index.put(block, new BlockIndex.Entry(key, actual, variant));
+        Handle handle = new Handle(block, key, definition, actual, variant, index);
         dispatcher.dispatchBlock(key, block.getLocation(), BlockPlaceBehavior.class,
                 d -> BlockEventContext.of(handle, placer), (b, c) -> b.onPlace(c));
         startTicking(handle);
@@ -112,7 +123,7 @@ final class PrismBlockService implements BlockService, Listener {
     @Override
     public @NotNull Optional<CustomBlock> get(@NotNull Block block) {
         return index.get(block).flatMap(entry -> definitions.get(entry.key())
-                .map(definition -> new Handle(block, entry.key(), definition, entry.facing(), index)));
+                .map(definition -> new Handle(block, entry.key(), definition, entry.facing(), entry.variant(), index)));
     }
 
     @Override
@@ -126,7 +137,8 @@ final class PrismBlockService implements BlockService, Listener {
         BlockIndex.Loaded mirror = index.load(chunk);
         List<CustomBlock> result = new ArrayList<>();
         mirror.blocks.forEach((packed, entry) -> definitions.get(entry.key()).ifPresent(definition ->
-                result.add(new Handle(mirror.block(packed), entry.key(), definition, entry.facing(), index))));
+                result.add(new Handle(mirror.block(packed), entry.key(), definition, entry.facing(), entry.variant(),
+                        index))));
         return result;
     }
 
@@ -139,12 +151,12 @@ final class PrismBlockService implements BlockService, Listener {
         PrismKey key = entry.get().key();
         Optional<BlockDefinition> definition = definitions.get(key);
         definition.ifPresent(d -> {
-            Handle handle = new Handle(block, key, d, entry.get().facing(), index);
+            Handle handle = new Handle(block, key, d, entry.get().facing(), entry.get().variant(), index);
             dispatcher.dispatchBlock(key, block.getLocation(), BlockRemoveBehavior.class,
                     x -> BlockEventContext.of(handle, null), (b, c) -> b.onRemove(c));
         });
         stopTicking(block);
-        display.despawn(block);
+        appearanceOf(block).despawn(block);
         index.remove(block);
         if (dropItem) {
             Location center = block.getLocation().add(0.5, 0.5, 0.5);
@@ -154,6 +166,40 @@ final class PrismBlockService implements BlockService, Listener {
         }
         notifyNeighbors(block);
         return true;
+    }
+
+    @Override
+    public boolean setVariant(@NotNull Block block, @NotNull String variant) {
+        Optional<CustomBlock> custom = get(block);
+        if (custom.isEmpty() || !Appearances.variants(custom.get().definition()).contains(variant)) {
+            return false;
+        }
+        if (!custom.get().variant().equals(variant)) {
+            appearanceOf(block).update(block, custom.get().definition(), custom.get().facing(), variant);
+            index.setVariant(block, variant);
+        }
+        return true;
+    }
+
+    /** The appearance new blocks of {@code definition} get. */
+    private BlockAppearance appearanceFor(BlockDefinition definition) {
+        return usesNoteBlocks(backend, definition) ? noteBlocks : display;
+    }
+
+    /** Whether new blocks of {@code definition} are drawn as note block states under the {@code blocks.backend} setting. */
+    static boolean usesNoteBlocks(String backend, BlockDefinition definition) {
+        // BetterModel models need an entity to animate, so they always use a display entity.
+        return !"display".equals(backend) && ModelAnchors.modelOf(definition).isEmpty();
+    }
+
+    /** The appearance an existing block was placed with (blocks keep theirs when the setting changes). */
+    BlockAppearance appearanceOf(Block block) {
+        return noteBlocks.draws(block) ? noteBlocks : display;
+    }
+
+    /** Whether the client breaks this block itself (its carrier is breakable), so Prism must not run the dig. */
+    boolean clientBreaks(Block block) {
+        return noteBlocks.draws(block);
     }
 
     @Override
@@ -279,7 +325,7 @@ final class PrismBlockService implements BlockService, Listener {
 
     private void adopt(Block block, PrismKey key) {
         if (index.get(block).isEmpty()) {
-            index.put(block, new BlockIndex.Entry(key, BlockFace.NORTH));
+            index.put(block, new BlockIndex.Entry(key, BlockFace.NORTH, ""));
         }
     }
 

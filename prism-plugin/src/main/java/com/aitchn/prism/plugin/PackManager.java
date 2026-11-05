@@ -49,6 +49,9 @@ final class PackManager implements Listener {
     private final AtomicBoolean buildQueued = new AtomicBoolean();
     private volatile boolean serverStarted;
     private volatile PackServer server;
+    private volatile com.aitchn.prism.core.block.StateAllocator nativeStates;
+    private volatile String backend = "display";
+    private volatile GeyserInstaller geyser;
     private final java.util.Map<UUID, Published> packs = new java.util.concurrent.ConcurrentHashMap<>();
 
     private record Published(String url, byte[] hash, String sha1) {}
@@ -61,6 +64,17 @@ final class PackManager implements Listener {
         this.platform = platform;
         this.appearance = appearance;
         this.config = config;
+    }
+
+    /** Native block looks get note block states in both packs; {@code backend} is the {@code blocks.backend} setting. */
+    void useNativeStates(com.aitchn.prism.core.block.StateAllocator allocator, String backend) {
+        this.nativeStates = allocator;
+        this.backend = backend;
+    }
+
+    /** Copies the Bedrock pack and mappings into a Geyser running on this server after every build. */
+    void installInto(GeyserInstaller installer) {
+        this.geyser = installer;
     }
 
     /** Re-resolves appearance now, and schedules a zip build once the server has started. */
@@ -108,7 +122,12 @@ final class PackManager implements Listener {
             bedrock.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
             ensureServer().publishBedrock(bedrock.sha1(), bedrock.mcpack(), bedrock.mappings());
             plugin.getLogger().info("PRISM_BEDROCK_PACK_READY sha1=" + bedrock.sha1() + " items="
-                    + bedrock.itemsWithIcon().size() + " bytes=" + bedrock.mcpack().length);
+                    + bedrock.itemsWithIcon().size() + " blocks=" + bedrock.blockLooks().size()
+                    + " bytes=" + bedrock.mcpack().length);
+            GeyserInstaller installer = geyser;
+            if (installer != null) {
+                installer.install(bedrock.mcpack(), bedrock.mappings(), bedrock.blockMappings());
+            }
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().severe("PRISM_PACK_FAIL " + e);
         }
@@ -183,19 +202,62 @@ final class PackManager implements Listener {
     }
 
     private BedrockPackBuilder.Input bedrockInput() {
-        return new BedrockPackBuilder.Input(mods.assets(), itemList(), "Prism Bedrock content");
+        List<BlockDefinition> blocks = blockList();
+        return new BedrockPackBuilder.Input(mods.assets(), itemList(), "Prism Bedrock content", blocks,
+                nativeLooks(blocks));
     }
 
-    private JavaPackBuilder.Input input() {
-        List<ItemDefinition> items = itemList();
+    private List<BlockDefinition> blockList() {
         List<BlockDefinition> blocks = new ArrayList<>();
         for (PrismKey key : mods.blocks().keys()) {
             mods.blocks().get(key).ifPresent(blocks::add);
         }
+        return blocks;
+    }
+
+    /** Look id to note block state for every look of every native block, allocating states on first sight. */
+    private java.util.Map<String, Integer> nativeLooks(List<BlockDefinition> blocks) {
+        com.aitchn.prism.core.block.StateAllocator allocator = nativeStates;
+        java.util.Map<String, Integer> looks = new java.util.LinkedHashMap<>();
+        if (allocator == null) {
+            return looks;
+        }
+        for (BlockDefinition block : blocks) {
+            if (!PrismBlockService.usesNoteBlocks(backend, block)) {
+                continue;
+            }
+            for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
+                allocator.allocate(look.id()).ifPresent(index -> looks.put(look.id(), index));
+            }
+        }
+        return looks;
+    }
+
+    private java.util.Map<Integer, com.aitchn.prism.pack.NativeBlockstates.StateModel> nativeModels(
+            List<BlockDefinition> blocks) {
+        java.util.Map<String, Integer> looks = nativeLooks(blocks);
+        java.util.Map<Integer, com.aitchn.prism.pack.NativeBlockstates.StateModel> models = new java.util.LinkedHashMap<>();
+        for (BlockDefinition block : blocks) {
+            for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
+                Integer index = looks.get(look.id());
+                if (index != null) {
+                    int[] rotation = com.aitchn.prism.core.block.Appearances.rotation(look.facing());
+                    models.put(index, new com.aitchn.prism.pack.NativeBlockstates.StateModel(
+                            com.aitchn.prism.core.block.Appearances.model(block, look.variant()), rotation[0], rotation[1]));
+                }
+            }
+        }
+        return models;
+    }
+
+    private JavaPackBuilder.Input input() {
+        List<ItemDefinition> items = itemList();
+        List<BlockDefinition> blocks = blockList();
         int format = config.getInt("pack.format", 0);
         if (format <= 0) {
             format = PackFormats.forVersion(platform.minecraftVersion()).number();
         }
-        return new JavaPackBuilder.Input(mods.assets(), items, blocks, format, "Prism content pack");
+        return new JavaPackBuilder.Input(mods.assets(), items, blocks, format, "Prism content pack",
+                nativeModels(blocks));
     }
 }

@@ -53,6 +53,8 @@ class ExampleModTest {
         assertEquals(PrismComponents.Rotation.HORIZONTAL,
                 counter.components().get(PrismComponents.ROTATION).orElseThrow());
         assertEquals(1.5, counter.components().get(PrismComponents.MINING).orElseThrow().hardness());
+        assertEquals(java.util.List.of("off", "on"),
+                counter.components().get(PrismComponents.VARIANTS).orElseThrow().names());
         assertEquals(20, counter.behaviors(com.aitchn.prism.api.block.BlockTickBehavior.class).getFirst()
                 .tickInterval());
     }
