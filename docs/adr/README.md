@@ -17,3 +17,4 @@ the ADRs are the authoritative English form.
 | [0009](0009-slot-menus-and-item-data.md) | Slot menus and per-stack item data | Accepted |
 | [0010](0010-recipes.md) | Recipe registry and vanilla recipes | Accepted |
 | [0011](0011-block-data-drops-and-sync-hooks.md) | Block data in drops, click pass-through, synchronous slot checks, global timer | Accepted |
+| [0012](0012-ore-generation.md) | Ore generation | Accepted |

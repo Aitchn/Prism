@@ -126,8 +126,102 @@ public final class PrismComponents {
 
     private PrismComponents() {}
 
+    /**
+     * Generates this block as ore veins in newly generated chunks. One vein spec, or a list of them:
+     * <pre>{@code
+     * prism:ore:
+     *   dimension: normal        # normal (default), nether or the_end
+     *   replace: [minecraft:stone, minecraft:andesite]   # vanilla blocks it may replace; per-dimension stone by default
+     *   min_y: -16               # inclusive, clamped to the world
+     *   max_y: 48
+     *   veins_per_chunk: 6       # 1 to 64
+     *   rarity: 1                # a chunk gets veins with chance 1 in rarity (default 1: every chunk)
+     *   size: 8                  # blocks per vein, 1 to 32
+     * }</pre>
+     * Veins stay inside their chunk, so generation never loads a neighbour. Generated blocks get their first variant
+     * and face north; place behaviors do not run (load behaviors and ticking start as for any loaded block). Chunks
+     * generated before the mod was installed get no veins.
+     */
+    public static final ComponentType<Ore> ORE = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "ore"),
+            Ore.class,
+            section -> {
+                java.util.List<ConfigSection> specs = section.has("value")
+                        ? section.getSectionList("value") : java.util.List.of(section);
+                if (specs.isEmpty()) {
+                    throw section.error("expected a vein mapping or a list of them");
+                }
+                java.util.List<Ore.Vein> veins = new java.util.ArrayList<>();
+                for (ConfigSection spec : specs) {
+                    veins.add(Ore.Vein.decode(spec));
+                }
+                return new Ore(java.util.List.copyOf(veins));
+            });
+
     /** @see #VARIANTS */
     public record Variants(java.util.List<String> names) {}
+
+    /** @see #ORE */
+    public record Ore(java.util.List<Vein> veins) {
+
+        /** One vein spec of {@link #ORE}; {@code replace} holds vanilla block keys. */
+        public record Vein(String dimension, java.util.List<PrismKey> replace, int minY, int maxY, int veinsPerChunk,
+                int rarity, int size) {
+
+            public static final java.util.Set<String> DIMENSIONS = java.util.Set.of("normal", "nether", "the_end");
+
+            /** The vanilla blocks a vein replaces when {@code replace} is not given. */
+            public static java.util.List<PrismKey> defaultReplace(String dimension) {
+                return switch (dimension) {
+                    case "nether" -> java.util.List.of(PrismKey.parse("minecraft:netherrack"));
+                    case "the_end" -> java.util.List.of(PrismKey.parse("minecraft:end_stone"));
+                    default -> java.util.List.of(PrismKey.parse("minecraft:stone"), PrismKey.parse("minecraft:granite"),
+                            PrismKey.parse("minecraft:diorite"), PrismKey.parse("minecraft:andesite"));
+                };
+            }
+
+            static Vein decode(ConfigSection spec) throws ContentException {
+                spec.rejectUnknownKeys(java.util.Set.of("dimension", "replace", "min_y", "max_y", "veins_per_chunk",
+                        "rarity", "size"));
+                String dimension = spec.getString("dimension").orElse("normal");
+                if (!DIMENSIONS.contains(dimension)) {
+                    throw spec.error("dimension must be normal, nether or the_end, got " + dimension);
+                }
+                java.util.List<PrismKey> replace = new java.util.ArrayList<>();
+                for (String key : spec.getStringList("replace")) {
+                    PrismKey parsed;
+                    try {
+                        parsed = PrismKey.parse(key);
+                    } catch (IllegalArgumentException e) {
+                        throw spec.error("replace: " + e.getMessage());
+                    }
+                    if (!parsed.namespace().equals("minecraft")) {
+                        throw spec.error("replace takes vanilla blocks (minecraft:...), got " + key);
+                    }
+                    replace.add(parsed);
+                }
+                int minY = spec.getInt("min_y").orElse(-64);
+                int maxY = spec.getInt("max_y").orElse(64);
+                if (minY > maxY) {
+                    throw spec.error("min_y " + minY + " is above max_y " + maxY);
+                }
+                int perChunk = spec.getInt("veins_per_chunk").orElse(4);
+                int rarity = spec.getInt("rarity").orElse(1);
+                int size = spec.getInt("size").orElse(8);
+                if (perChunk < 1 || perChunk > 64) {
+                    throw spec.error("veins_per_chunk must be 1 to 64, got " + perChunk);
+                }
+                if (rarity < 1) {
+                    throw spec.error("rarity must be at least 1, got " + rarity);
+                }
+                if (size < 1 || size > 32) {
+                    throw spec.error("size must be 1 to 32, got " + size);
+                }
+                return new Vein(dimension, java.util.List.copyOf(replace.isEmpty() ? defaultReplace(dimension) : replace),
+                        minY, maxY, perChunk, rarity, size);
+            }
+        }
+    }
 
     /** @see #MINING */
     public record Mining(double hardness, String tool) {

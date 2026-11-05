@@ -65,6 +65,23 @@ class ExampleModTest {
     }
 
     @Test
+    void oreGeneratesInTheOverworld() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var veins = harness.block("examplemod:ruby_ore").components().get(PrismComponents.ORE).orElseThrow().veins();
+        assertEquals(1, veins.size());
+        var vein = veins.getFirst();
+        assertEquals("normal", vein.dimension());
+        assertEquals(-48, vein.minY());
+        assertEquals(40, vein.maxY());
+        assertEquals(6, vein.veinsPerChunk());
+        assertEquals(1, vein.rarity());
+        assertEquals(6, vein.size());
+        assertTrue(vein.replace().contains(com.aitchn.prism.api.PrismKey.parse("minecraft:deepslate")));
+        assertEquals("examplemod:ruby", harness.block("examplemod:ruby_ore").drop().orElseThrow().toString());
+    }
+
+    @Test
     void recipesLoadForPrismAndModTypes() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());

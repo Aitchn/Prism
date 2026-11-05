@@ -20,6 +20,11 @@ neighbour changes and ticks (`BlockTickBehavior`, batched per chunk). `CustomBlo
 `BlockCapability` and `BlockCapabilityProvider`; Prism defines only the lookup and `PrismCapabilities.INVENTORY`.
 `prism:rotation` makes a block face the player; `prism:mining` sets how long it takes to break in survival.
 
+**Ores.** `prism:ore` generates a block as veins in newly generated chunks: `dimension`, `replace` (vanilla blocks),
+`min_y`, `max_y`, `veins_per_chunk`, `rarity` and `size`, or a list of such specs. Veins stay inside their chunk.
+Chunks that existed before the mod was installed get none. `examplemod:ruby_ore` is an example; it is a note block
+state, so Bedrock players see it too.
+
 **Getting items.** `/prism give <player> <item> [amount]` and `/prism items` (a browser menu) work for every mod.
 Permission: `prism.command.give` (operators by default).
 

@@ -68,6 +68,7 @@ final class PrismBlockService implements BlockService, Listener {
     private final BehaviorDispatcher dispatcher;
     private final PlatformScheduler scheduler;
     private final Logger log;
+    private final OreGenerator ores;
 
     /**
      * @param backend {@code auto} (note block states for every block that has no BetterModel model, so Bedrock sees
@@ -85,6 +86,7 @@ final class PrismBlockService implements BlockService, Listener {
         this.dispatcher = dispatcher;
         this.scheduler = scheduler;
         this.log = log;
+        this.ores = new OreGenerator(definitions, log);
     }
 
     /** A custom block handle. Cheap; created per lookup. */
@@ -120,6 +122,27 @@ final class PrismBlockService implements BlockService, Listener {
                 d -> BlockEventContext.of(handle, placer).placedFrom(from), (b, c) -> b.onPlace(c));
         startTicking(handle);
         notifyNeighbors(block);
+        return true;
+    }
+
+    /** The resolved {@code prism:ore} specs, for the self test. */
+    List<OreGenerator.Target> oreTargets() {
+        return ores.targets();
+    }
+
+    /**
+     * World generation: draws and indexes the block without place behaviors or neighbour notifications (the chunk is
+     * still loading). Load behaviors and ticking start with the rest of the chunk one tick later.
+     */
+    private boolean placeGenerated(Block block, BlockDefinition definition) {
+        if (index.get(block).isPresent()) {
+            return false;
+        }
+        String variant = Appearances.variants(definition).getFirst();
+        if (!appearanceFor(definition).spawn(block, definition, BlockFace.NORTH, variant)) {
+            return false;
+        }
+        index.put(block, new BlockIndex.Entry(definition.key(), BlockFace.NORTH, variant));
         return true;
     }
 
@@ -270,6 +293,9 @@ final class PrismBlockService implements BlockService, Listener {
     public void onChunkLoad(ChunkLoadEvent event) {
         Chunk chunk = event.getChunk();
         index.load(chunk);
+        if (event.isNewChunk()) {
+            ores.generate(chunk, this::placeGenerated);
+        }
         // Behaviors run one tick later, outside the chunk load, so they may look at neighbours safely.
         scheduler.runAt(center(chunk), () -> activate(chunk));
     }
@@ -321,6 +347,7 @@ final class PrismBlockService implements BlockService, Listener {
      * removed ones stop.
      */
     void contentChanged() {
+        ores.contentChanged();
         for (BlockIndex.Loaded mirror : index.allLoaded()) {
             scheduler.runAt(new Location(mirror.world, (mirror.chunkX << 4) + 8, 64, (mirror.chunkZ << 4) + 8), () -> {
                 if (mirror.world.isChunkLoaded(mirror.chunkX, mirror.chunkZ)) {
