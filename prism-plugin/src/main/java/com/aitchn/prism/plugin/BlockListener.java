@@ -69,10 +69,11 @@ final class BlockListener implements Listener {
         if (custom.isPresent() && !player.isSneaking()) {
             BlockEventContext ctx = new BlockEventContext(custom.get(), player, event.getBlockFace(),
                     hit(event, clicked), EquipmentSlot.HAND);
-            int ran = dispatcher.dispatchBlock(custom.get().key(), clicked.getLocation(), BlockInteractBehavior.class,
-                    d -> ctx, (b, c) -> b.onInteract(c));
-            if (ctx.isCancelled() || ran > 0) {
-                // A block that reacted owns the click: no item use, no vanilla placement next to it.
+            dispatcher.dispatchBlock(custom.get().key(), clicked.getLocation(), BlockInteractBehavior.class,
+                    d -> ctx, (b, c) -> ctx.interact(b));
+            if (ctx.isCancelled() || ctx.handled()) {
+                // A block that used the click owns it: no item use, no vanilla placement next to it. A behavior that
+                // called pass() lets the click through.
                 event.setCancelled(true);
                 return;
             }
@@ -91,7 +92,7 @@ final class BlockListener implements Listener {
         event.setCancelled(true);
         Block target = clicked.isReplaceable() && blocks.identify(clicked).isEmpty()
                 ? clicked : clicked.getRelative(event.getBlockFace());
-        if (placeFromItem(player, placed.get(), target, clicked) && player.getGameMode() != GameMode.CREATIVE) {
+        if (placeFromItem(player, placed.get(), target, clicked, held) && player.getGameMode() != GameMode.CREATIVE) {
             held.subtract();
         }
     }
@@ -102,7 +103,7 @@ final class BlockListener implements Listener {
         return point == null ? null : point.toVector().subtract(block.getLocation().toVector());
     }
 
-    private boolean placeFromItem(Player player, PrismKey key, Block target, Block against) {
+    private boolean placeFromItem(Player player, PrismKey key, Block target, Block against, ItemStack from) {
         Optional<BlockDefinition> definition = blocks.definition(key);
         if (definition.isEmpty() || !(target.isEmpty() || target.isReplaceable())) {
             return false;
@@ -127,7 +128,7 @@ final class BlockListener implements Listener {
         PrismComponents.Rotation rotation = definition.get().components().get(PrismComponents.ROTATION)
                 .orElse(PrismComponents.Rotation.NONE);
         BlockFace facing = BlockFace.valueOf(Facings.facing(rotation, player.getYaw(), player.getPitch()));
-        if (!blocks.place(key, target.getLocation(), player, facing)) {
+        if (!blocks.place(key, target.getLocation(), player, facing, from)) {
             return false;
         }
         player.swingMainHand();

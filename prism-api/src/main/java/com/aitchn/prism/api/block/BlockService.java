@@ -27,7 +27,17 @@ public interface BlockService {
      * Places {@code key} at {@code location}'s block and runs its {@link BlockPlaceBehavior}s. Returns false if the key
      * is unknown or the spot is not free. The facing is ignored for blocks without {@code prism:rotation}.
      */
-    boolean place(@NotNull PrismKey key, @NotNull Location location, @Nullable Player placer, @NotNull BlockFace facing);
+    default boolean place(@NotNull PrismKey key, @NotNull Location location, @Nullable Player placer,
+            @NotNull BlockFace facing) {
+        return place(key, location, placer, facing, null);
+    }
+
+    /**
+     * Like {@link #place(PrismKey, Location, Player, BlockFace)}, from {@code from}: place behaviors see a copy of it in
+     * {@link BlockContext#placedFrom()}, for blocks that take back data their dropped item carries.
+     */
+    boolean place(@NotNull PrismKey key, @NotNull Location location, @Nullable Player placer, @NotNull BlockFace facing,
+            @Nullable org.bukkit.inventory.ItemStack from);
 
     /** The custom block at {@code block}, if there is one. Constant time; safe to call every tick. */
     @NotNull Optional<CustomBlock> get(@NotNull Block block);

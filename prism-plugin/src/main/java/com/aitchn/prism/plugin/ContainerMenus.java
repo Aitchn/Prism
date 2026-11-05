@@ -112,6 +112,11 @@ final class ContainerMenus implements Listener {
         }
 
         @Override
+        public boolean isChangePending(int slot) {
+            return pending.contains(slot);
+        }
+
+        @Override
         public boolean isOpen() {
             return open;
         }
@@ -182,6 +187,9 @@ final class ContainerMenus implements Listener {
             scheduler.runOn(view.player, () -> guard(view, () -> view.menu.onButton(view, slot, kind)), null);
             return;
         }
+        if (top && outcome == SlotRules.Outcome.ALLOW && !allowChange(view, slot)) {
+            outcome = SlotRules.Outcome.DENY;
+        }
         switch (outcome) {
             case DENY -> event.setCancelled(true);
             case INSERT -> {
@@ -206,7 +214,8 @@ final class ContainerMenus implements Listener {
         List<Integer> changed = new ArrayList<>();
         for (int pass = 0; pass < 2 && !moving.isEmpty(); pass++) {
             for (int slot = 0; slot < view.inventory.getSize() && !moving.isEmpty(); slot++) {
-                if (role(view, slot) != SlotRules.Role.INPUT || !accepts(view, slot, moving)) {
+                if (role(view, slot) != SlotRules.Role.INPUT || !accepts(view, slot, moving)
+                        || !allowChange(view, slot)) {
                     continue;
                 }
                 ItemStack there = view.inventory.getItem(slot);
@@ -243,9 +252,11 @@ final class ContainerMenus implements Listener {
         boolean accepts = true;
         for (int raw : event.getRawSlots()) {
             if (raw < view.inventory.getSize()) {
-                touched.add(role(view, raw));
+                SlotRules.Role role = role(view, raw);
+                touched.add(role);
                 topSlots.add(raw);
-                accepts &= accepts(view, raw, event.getOldCursor());
+                accepts &= accepts(view, raw, event.getOldCursor())
+                        && (role == SlotRules.Role.BUTTON || allowChange(view, raw));
             }
         }
         if (!SlotRules.allowDrag(touched, accepts)) {
@@ -287,6 +298,15 @@ final class ContainerMenus implements Listener {
             return role == null ? SlotRules.Role.BUTTON : SlotRules.Role.valueOf(role.name());
         } catch (RuntimeException e) {
             return SlotRules.Role.BUTTON;
+        }
+    }
+
+    private boolean allowChange(View view, int slot) {
+        try {
+            return view.menu.allowChange(view, slot);
+        } catch (RuntimeException e) {
+            log.log(Level.SEVERE, "Menu " + view.menu.getClass().getName() + " failed in allowChange", e);
+            return false;
         }
     }
 

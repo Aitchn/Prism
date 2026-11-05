@@ -42,6 +42,11 @@ public final class PaperPlatformScheduler implements PlatformScheduler {
     }
 
     @Override
+    public @NotNull ScheduledTask runGlobalTimer(@NotNull Runnable task, long delayTicks, long periodTicks) {
+        return wrap(Bukkit.getScheduler().runTaskTimer(plugin, task, Math.max(1, delayTicks), Math.max(1, periodTicks)));
+    }
+
+    @Override
     public void runAsync(@NotNull Runnable task) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, task);
     }
