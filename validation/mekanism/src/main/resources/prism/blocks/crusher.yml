@@ -1,0 +1,7 @@
+# Key: mekanism:crusher. Invisible carrier; the look is a placeholder texture (real art is never published).
+base: minecraft:barrier
+drop: mekanism:crusher
+behaviors:
+  - type: mekanism:block
+    kind: machine
+    machine: crusher

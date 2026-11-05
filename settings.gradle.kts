@@ -14,6 +14,7 @@ include(
     "prism-testkit",
     "examples:example-mod",
     "validation:ae2",
+    "validation:mekanism",
 )
 
 dependencyResolutionManagement {
