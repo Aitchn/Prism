@@ -104,6 +104,10 @@ public final class PrismComponents {
                     throw section.error("variants needs at least one name");
                 }
                 for (String name : names) {
+                    if (name.equals("true") || name.equals("false")) {
+                        throw section.error("variant name " + name + " came from an unquoted YAML boolean "
+                                + "(on, off, yes, no, true, false); quote it or pick another name");
+                    }
                     if (!name.matches("[a-z0-9_]+")) {
                         throw section.error("variant names must match [a-z0-9_]+, got " + name);
                     }

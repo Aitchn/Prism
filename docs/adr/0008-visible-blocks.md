@@ -30,7 +30,7 @@ large builds. Rows 14-16 and 29 of [platform-triage.md](../platform-triage.md).
   It warns if Geyser's `enable-custom-content` is off. Without a local Geyser (Geyser on a proxy) the same files go to
   `plugins/Prism/geyser/` to copy over (`PRISM_GEYSER_EXPORTED`).
 - **The Bedrock pack version follows its content** (hash), because Bedrock caches packs by uuid and version.
-- **Variants.** `prism:variants: [off, on]` declares named looks; the first is used on placement.
+- **Variants.** `prism:variants: [idle, active]` declares named looks; the first is used on placement (unquoted `on`/`off`/`yes`/`no` are YAML booleans and are rejected).
   `BlockService.setVariant(block, name)` switches at runtime and `CustomBlock.variant()` reads it back. Variant
   `v` of `ns:x` is drawn with model `ns:block/x_v` (generated from texture `block/x_v.png` when no model file exists).
 - **Breaking.** Note block carriers are broken by the client at note block speed (0.8 hardness, axe); Prism's

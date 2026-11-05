@@ -66,9 +66,9 @@ final class PlatformSelfTest implements Listener {
             boolean placeRan = custom.map(c -> c.data().has(placedKey, PersistentDataType.LONG)).orElse(false);
             // Variants: placed with the first, switched at runtime, unknown names refused, the look follows.
             String before = block.getBlockData().getAsString();
-            boolean variant = custom.map(c -> c.variant().equals("off")).orElse(false)
-                    && blocks.setVariant(block, "on")
-                    && blocks.get(block).map(c -> c.variant().equals("on")).orElse(false)
+            boolean variant = custom.map(c -> c.variant().equals("idle")).orElse(false)
+                    && blocks.setVariant(block, "active")
+                    && blocks.get(block).map(c -> c.variant().equals("active")).orElse(false)
                     && !blocks.setVariant(block, "missing")
                     && !before.equals(block.getBlockData().getAsString());
 

@@ -25,7 +25,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * A block that counts: one per {@code interval} ticks, stored in its per-block data so it survives restarts. It
  * counts neighbour changes too, offers its count to neighbours as a capability, and on right click switches between
- * its {@code off} and {@code on} looks and shows its numbers.
+ * its {@code idle} and {@code active} looks and shows its numbers.
  */
 public record CounterBehavior(int interval) implements BlockPlaceBehavior, BlockTickBehavior, BlockNeighborBehavior,
         BlockInteractBehavior, BlockCapabilityProvider {
@@ -73,7 +73,7 @@ public record CounterBehavior(int interval) implements BlockPlaceBehavior, Block
             return;
         }
         CustomBlock custom = context.custom();
-        String next = "on".equals(custom.variant()) ? "off" : "on";
+        String next = "active".equals(custom.variant()) ? "idle" : "active";
         Prism.blocks().setVariant(custom.block(), next);
         PersistentDataContainer data = custom.data();
         context.player().sendActionBar(Component.text("Counter " + next + ", facing " + custom.facing()
