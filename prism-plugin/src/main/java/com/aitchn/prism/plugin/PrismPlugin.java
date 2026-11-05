@@ -94,7 +94,7 @@ public final class PrismPlugin extends JavaPlugin {
         }
         String platformSelfTest = System.getProperty("prism.selftest.platform");
         if (platformSelfTest != null) {
-            getServer().getPluginManager().registerEvents(new PlatformSelfTest(this, this,
+            getServer().getPluginManager().registerEvents(new PlatformSelfTest(this,
                     com.aitchn.prism.api.PrismKey.parse(platformSelfTest),
                     com.aitchn.prism.api.PrismKey.parse(System.getProperty("prism.selftest", platformSelfTest)),
                     blocks, scheduler, getLogger()), this);
