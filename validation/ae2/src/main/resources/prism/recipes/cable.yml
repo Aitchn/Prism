@@ -1,0 +1,10 @@
+# cable
+type: prism:shaped
+pattern:
+  - "GCG"
+key:
+  G: minecraft:glass
+  C: ae2:certus_quartz_crystal
+result:
+  item: ae2:cable
+  count: 4

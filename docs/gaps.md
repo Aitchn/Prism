@@ -10,6 +10,7 @@ promise. Update it when a milestone closes a gap or finds a new one.
 | Items | definitions, components, use behavior | M1 done |
 | Items | more events (hit, equip, tick in inventory), item tooltips, durability, cooldowns | open |
 | Blocks | definitions, place/break/interact behaviors, display-entity appearance | M2 done |
+| Blocks | place/remove lifecycle behaviors | done (AE2 validation) |
 | Blocks | block states/rotation from placement, hardness and tool rules, sounds, light, redstone | open |
 | Blocks | very large counts (one display entity per block) | open; NativeStateBackend in M5 |
 | Blocks | place/remove/load/neighbour lifecycle, facing, survival breaking | done (ADR-0007) |
@@ -37,6 +38,18 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 - `DataStore` is a string key-value store. Machines and networks (AE2, Mekanism) need transactional multi-key writes,
   per-chunk or per-block attachment with automatic cleanup on unload/removal, and async access; none exist yet.
+
+## Found in the AE2 validation
+
+Details are in [validation/ae2.md](validation/ae2.md). The first version found the gaps that the block platform, slot
+menus, item data and recipes (ADR-0007 to ADR-0010) then closed; AE2 has been migrated to them. What remains:
+
+- A slotless item-handler capability (or a virtual `Inventory`) so a network's storage can feed hoppers and other mods.
+- Connection-dependent block shapes and thin hitboxes (cables).
+- Text input in menus (terminal search, crafting amounts).
+- Batched variant switching for many blocks.
+- Recipes that take items with per-stack data.
+- Per-player translated lore; world generation for certus ore.
 
 ## Found in the Mekanism rebuild (`validation/mekanism`)
 

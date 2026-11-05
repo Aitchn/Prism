@@ -1,0 +1,7 @@
+# charged_certus_quartz_crystal
+type: prism:shapeless
+ingredients:
+  - ae2:certus_quartz_crystal
+  - minecraft:redstone
+  - minecraft:copper_ingot
+result: ae2:charged_certus_quartz_crystal

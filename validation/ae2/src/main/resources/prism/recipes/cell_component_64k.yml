@@ -1,0 +1,11 @@
+# cell_component_64k
+type: prism:shaped
+pattern:
+  - "PCP"
+  - "CKC"
+  - "PCP"
+key:
+  P: ae2:engineering_processor
+  C: ae2:certus_quartz_crystal
+  K: ae2:cell_component_16k
+result: ae2:cell_component_64k

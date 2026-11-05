@@ -1,0 +1,11 @@
+# Block ae2:energy_cell. The look comes from assets/ae2/textures/block/energy_cell.png (one texture per variant where it has any).
+base: minecraft:barrier
+drop: ae2:energy_cell
+components:
+  prism:mining:
+    hardness: 1.5
+    tool: pickaxe
+behaviors:
+  - type: ae2:node
+    kind: energy_cell
+  - type: ae2:energy_sink
