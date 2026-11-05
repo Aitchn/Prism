@@ -88,7 +88,9 @@ public record CounterBehavior(int interval) implements BlockPlaceBehavior, Block
     public void onRemove(@NotNull BlockContext context) {
         CustomBlock custom = context.custom();
         byte[] stored = custom.data().get(CounterMenu.STORED, PersistentDataType.BYTE_ARRAY);
-        if (stored != null && !CounterMenu.blockRemoved(custom.block().getLocation())) {
+        // Always tell an open menu, even with nothing stored: the viewer may put an item in before it closes.
+        boolean viewed = CounterMenu.blockRemoved(custom.block().getLocation());
+        if (stored != null && !viewed) {
             custom.block().getWorld().dropItemNaturally(custom.block().getLocation().toCenterLocation(),
                     ItemStack.deserializeBytes(stored));
         }

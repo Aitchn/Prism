@@ -37,7 +37,10 @@ public interface ContainerMenu {
     /** A {@link SlotRole#BUTTON} slot was clicked. */
     default void onButton(@NotNull MenuView view, int slot, @NotNull ClickKind click) {}
 
-    /** The item in an input or output slot changed because of the player; runs one tick after the click. */
+    /**
+     * The item in an input or output slot changed because of the player; runs one tick after the click, or just
+     * before {@link #onClose} if the menu closes first, so every change is reported.
+     */
     default void onSlotChanged(@NotNull MenuView view, int slot) {}
 
     /** Ticks between {@link #onRefresh} calls while open; 0 (the default) means never. */

@@ -54,6 +54,8 @@ final class ContainerMenus implements Listener {
         Inventory inventory;
         boolean open;
         ScheduledTask refresh;
+        /** Slots changed by a click whose onSlotChanged has not run yet; flushed on close so no change is lost. */
+        final java.util.Set<Integer> pending = new java.util.LinkedHashSet<>();
 
         View(Player player, ContainerMenu menu) {
             this.player = player;
@@ -256,17 +258,24 @@ final class ContainerMenus implements Listener {
     @EventHandler
     public void onClose(InventoryCloseEvent event) {
         if (event.getInventory().getHolder() instanceof View view && view.open) {
-            view.open = false;
             if (view.refresh != null) {
                 view.refresh.cancel();
             }
+            // The click results are applied by now, so pending changes can be reported before the close.
+            List<Integer> flush = new ArrayList<>(view.pending);
+            view.pending.clear();
+            flush.forEach(slot -> guard(view, () -> view.menu.onSlotChanged(view, slot)));
+            view.open = false;
             guard(view, () -> view.menu.onClose(view));
         }
     }
 
     private void changedLater(View view, int slot) {
+        if (!view.pending.add(slot)) {
+            return; // already scheduled for this tick
+        }
         scheduler.runOn(view.player, () -> {
-            if (view.open) {
+            if (view.open && view.pending.remove(slot)) {
                 guard(view, () -> view.menu.onSlotChanged(view, slot));
             }
         }, null);
