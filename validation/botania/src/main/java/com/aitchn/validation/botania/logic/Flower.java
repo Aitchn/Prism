@@ -120,11 +120,13 @@ public final class Flower implements BlockEntity {
 
     @Override
     public synchronized String serialize() {
-        return "flower;" + type.id() + ";" + buffer + ";" + (bound == null ? "-" : bound.coords());
+        return "flower;" + type.id() + ";" + buffer + ";" + (bound == null ? "-" : bound.coords()) + ";" + burnTicks;
     }
 
     static Flower fromParts(Pos pos, String[] parts) {
         Pos bound = parts[3].equals("-") ? null : Pos.parseCoords(pos.world(), parts[3]);
-        return new Flower(pos, FlowerType.byId(parts[1]), Integer.parseInt(parts[2]), bound);
+        Flower flower = new Flower(pos, FlowerType.byId(parts[1]), Integer.parseInt(parts[2]), bound);
+        flower.burnTicks = parts.length > 4 ? Integer.parseInt(parts[4]) : 0;
+        return flower;
     }
 }

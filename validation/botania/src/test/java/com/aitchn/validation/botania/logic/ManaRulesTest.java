@@ -230,6 +230,18 @@ class ManaRulesTest {
     }
 
     @Test
+    void endoflameKeepsItsRemainingBurnTimeAcrossSaveAndLoad() {
+        var flower = new Flower(at(0, 64, 0), FlowerType.ENDOFLAME, 0, null);
+        var world = new FakeWorld();
+        world.dropped.add("minecraft:coal");
+        flower.tick(world, new ManaNetwork());
+        assertTrue(flower.serialize().endsWith(";1599"), flower.serialize());
+
+        var copy = BlockEntity.deserialize(flower.pos(), flower.serialize());
+        assertEquals(flower.serialize(), copy.serialize());
+    }
+
+    @Test
     void storeKeysGroupByChunk() {
         assertEquals("be/world/0,0/", at(15, 64, 15).chunkPrefix());
         assertEquals("be/world/-1,1/", at(-1, 64, 16).chunkPrefix());
