@@ -100,6 +100,44 @@ class GasTest {
     }
 
     @Test
+    void twoStorageTanksMoveTheContentOnceAndNeverBackAndForth() {
+        MachineType tank = new MachineType("chemical_tank", List::of, 1, 1, 64_000, 0, c -> true);
+        TestWorld w = new TestWorld();
+        w.placeMachine(TestWorld.at(0, 0, 0), tank);
+        w.placeMachine(TestWorld.at(0, 0, 2), tank);
+        w.placePipe(TestWorld.at(0, 0, 1));
+        w.machine(TestWorld.at(0, 0, 0)).inTank().set(Chemical.HYDROGEN, 100);
+        for (int i = 0; i < 5; i++) {
+            w.plant.tickNetworks();
+            assertEquals(100, w.machine(TestWorld.at(0, 0, 0)).inTank().amount()
+                    + w.machine(TestWorld.at(0, 0, 2)).inTank().amount());
+        }
+        assertEquals(0, w.machine(TestWorld.at(0, 0, 0)).inTank().amount() % 100);
+        assertEquals(100, Math.max(w.machine(TestWorld.at(0, 0, 0)).inTank().amount(),
+                w.machine(TestWorld.at(0, 0, 2)).inTank().amount()), "all in one tank, nothing lost");
+    }
+
+    @Test
+    void anAlmostFullTankDoesNotStopTheRestOfASourceReachingAnEmptyOne() {
+        MachineType big = new MachineType("chemical_tank", List::of, 1, 1, 64_000, 0, c -> true);
+        MachineType small = new MachineType("small_tank", List::of, 1, 1, 100, 0, c -> true);
+        TestWorld w = new TestWorld();
+        Pos src = TestWorld.at(0, 0, 0);
+        Pos full = TestWorld.at(2, 0, 0);
+        Pos empty = TestWorld.at(1, 0, 1);
+        w.placeMachine(src, big);
+        w.placeMachine(full, small);
+        w.placeMachine(empty, big);
+        w.placePipe(TestWorld.at(1, 0, 0));
+        w.machine(src).inTank().set(Chemical.HYDROGEN, 200);
+        w.machine(full).inTank().set(Chemical.HYDROGEN, 99);
+        w.plant.tickNetworks();
+        assertEquals(100, w.machine(full).inTank().amount(), "the nearly full tank got its last millibucket");
+        assertEquals(199, w.machine(src).inTank().amount() + w.machine(empty).inTank().amount(), "nothing lost");
+        assertTrue(w.machine(empty).inTank().amount() > 100, "the empty tank got more than an even third");
+    }
+
+    @Test
     void facesTankContentsAndUpgradesSurviveSavingAndPickingUp() {
         Machine m = new Machine(infuser());
         m.setFace(0, Side.IN1);

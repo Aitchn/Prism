@@ -248,6 +248,7 @@ public final class Networks {
             }
             offered.putIfAbsent(move.src(), move.src().drain(null, Long.MAX_VALUE, true));
         }
+        java.util.IdentityHashMap<ChemicalTank, Long> unsent = new java.util.IdentityHashMap<>(offered);
         long moved = 0;
         java.util.IdentityHashMap<ChemicalTank, Integer> seen = new java.util.IdentityHashMap<>();
         for (Move move : moves) {
@@ -268,6 +269,7 @@ public final class Networks {
             move.src().drain(null, accepted, false);
             budget[move.network()] -= accepted;
             moved += accepted;
+            unsent.merge(move.src(), -accepted, Long::sum);
         }
         // Shares a full destination could not take are offered to the others, so a nearly full
         // consumer never starves the rest of the network.
@@ -276,9 +278,12 @@ public final class Networks {
             if (type == null || budget[move.network()] <= 0) {
                 continue;
             }
-            long possible = Math.min(budget[move.network()], move.src().drain(null, Long.MAX_VALUE, true));
+            // only the part of the source's own offer that found no taker: never what it received this tick
+            long left = unsent.getOrDefault(move.src(), 0L);
+            long possible = Math.min(Math.min(budget[move.network()], left), move.src().drain(null, left, true));
             long accepted = possible <= 0 ? 0 : move.dst().fill(type, possible, false);
             if (accepted > 0) {
+                unsent.merge(move.src(), -accepted, Long::sum);
                 move.src().drain(null, accepted, false);
                 budget[move.network()] -= accepted;
                 moved += accepted;
