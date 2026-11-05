@@ -19,7 +19,10 @@ class NativeBlockstatesTest {
                 3, new NativeBlockstates.StateModel(PrismKey.parse("m:block/press"), 0, 90)));
         Map<String, Object> variants = (Map<String, Object>) ((Map<String, Object>) YamlFiles.parse("t", json))
                 .get("variants");
-        assertEquals(NoteBlockStates.COUNT, variants.size());
+        assertEquals(NoteBlockStates.COUNT + NativeBlockstates.HEAD_INSTRUMENTS.size() * NoteBlockStates.NOTES * 2,
+                variants.size());
+        assertEquals("minecraft:block/note_block",
+                ((Map<String, Object>) variants.get("instrument=zombie,note=3,powered=false")).get("model"));
         assertEquals("m:custom/shiny", ((Map<String, Object>) variants.get(NoteBlockStates.state(1).variant())).get("model"));
         assertEquals(90, ((Map<String, Object>) variants.get(NoteBlockStates.state(3).variant())).get("y"));
         assertEquals("minecraft:block/note_block",

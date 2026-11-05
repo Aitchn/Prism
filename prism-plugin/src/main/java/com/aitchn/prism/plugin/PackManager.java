@@ -223,11 +223,12 @@ final class PackManager implements Listener {
             return looks;
         }
         for (BlockDefinition block : blocks) {
-            if (!PrismBlockService.usesNoteBlocks(backend, block)) {
-                continue;
-            }
+            // Blocks that no longer get note block states for new placements (blocks.backend: display) keep the
+            // looks they already own, so blocks placed earlier still draw correctly.
+            boolean allocate = PrismBlockService.usesNoteBlocks(backend, block);
             for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
-                allocator.allocate(look.id()).ifPresent(index -> looks.put(look.id(), index));
+                (allocate ? allocator.allocate(look.id()) : allocator.indexOf(look.id()))
+                        .ifPresent(index -> looks.put(look.id(), index));
             }
         }
         return looks;
