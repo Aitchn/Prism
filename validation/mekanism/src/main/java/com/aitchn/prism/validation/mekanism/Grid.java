@@ -174,6 +174,24 @@ final class Grid {
         }
     }
 
+    /** The item a machine drops carries its energy, upgrades and tank contents (not the item slots, which drop as items). */
+    void storeSettings(Machine machine, ItemStack drop) {
+        String settings = locked(machine::saveSettings);
+        Prism.items().editData(drop, data -> data.set(STATE, PersistentDataType.STRING, settings));
+    }
+
+    /** A block placed from an item that carries settings starts with them. */
+    static void restoreFromItem(BlockContext context) {
+        ItemStack from = context.placedFrom();
+        if (from == null || !from.hasItemMeta()) {
+            return;
+        }
+        String state = from.getItemMeta().getPersistentDataContainer().get(STATE, PersistentDataType.STRING);
+        if (state != null) {
+            context.custom().data().set(STATE, PersistentDataType.STRING, state);
+        }
+    }
+
     /** The chunk unloads: keep the state in the block's data and stop tracking it. */
     void unloadMachine(CustomBlock block, MachineBehavior spec) {
         Pos pos = pos(block.block());
@@ -213,10 +231,7 @@ final class Grid {
         });
         if (machine != null && !viewed) {
             Location at = block.block().getLocation().add(0.5, 0.5, 0.5);
-            for (Stack stack : locked(() -> new Stack[] {machine.input(), machine.extra(), machine.output(),
-                    machine.speedUpgrades() > 0 ? new Stack("mekanism:speed_upgrade", machine.speedUpgrades()) : null,
-                    machine.energyUpgrades() > 0 ? new Stack("mekanism:energy_upgrade", machine.energyUpgrades())
-                            : null})) {
+            for (Stack stack : locked(() -> new Stack[] {machine.input(), machine.extra(), machine.output()})) {
                 if (stack != null) {
                     create(stack).ifPresent(item -> block.block().getWorld().dropItemNaturally(at, item));
                 }

@@ -46,8 +46,8 @@ Prism**: joules, chemicals, machine recipes and the energy tablet are all in thi
    makes an infused alloy, + diamond dust reinforced, + refined obsidian atomic. The osmium compressor makes refined
    obsidian and glowstone ingots (obsidian or glowstone dust + osmium dust). Control circuits are crafted from alloys.
 7. **Upgrades.** Right click a machine holding a speed or energy upgrade (up to eight of each): speed adds one
-   progress per tick per upgrade (and costs as much more energy), each energy upgrade saves 8%. Broken machines drop
-   them.
+   progress per tick per upgrade (and costs as much more energy), each energy upgrade saves 8%. A picked-up machine keeps
+   its upgrades, energy and tank contents in the item (items in its slots drop separately); placing it restores them.
 8. **Energy cubes** (four tiers) are batteries: cables fill them and drain them. **Precision sawmill:** logs to six
    planks. **Combiner:** dust + 2 cobblestone to ore.
 9. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.

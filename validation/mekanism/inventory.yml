@@ -254,7 +254,7 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   item_transport: missing         # logistical transporter with colours and filters (3)
   heat: missing                   # heat transfer, thermoelectric (5)
   ore_generation: missing         # needs the Prism world-generation hook (1, blocked)
-  block_drops_keep_data: missing  # machines and cubes keep contents when broken (needs Prism gap)
+  block_drops_keep_data: done     # machines and cubes keep energy, upgrades and tanks in the dropped item
   redstone_control: missing       # per-machine redstone mode (3)
   security: missing               # owner and access levels (6)
   radiation: missing              # radiation sources and exposure (6)

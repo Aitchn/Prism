@@ -315,6 +315,21 @@ public final class Machine {
         return out.toString();
     }
 
+    /**
+     * What a machine keeps when it is picked up: energy, upgrades and tank contents, but not the item slots (those drop
+     * as items) and not a running operation. {@link #load} reads it like a full state.
+     */
+    public String saveSettings() {
+        StringBuilder out = new StringBuilder("e=").append(energy.stored());
+        if (speedUpgrades > 0 || energyUpgrades > 0) {
+            out.append("|u=").append(speedUpgrades).append(',').append(energyUpgrades);
+        }
+        appendTank(out, 'a', inTank);
+        appendTank(out, 'b', outTank);
+        appendTank(out, 'c', outTank2);
+        return out.toString();
+    }
+
     private static void appendTank(StringBuilder out, char key, ChemicalTank tank) {
         if (tank.type() != null && tank.amount() > 0) {
             out.append('|').append(key).append('=').append(tank.type().id()).append(',').append(tank.amount());

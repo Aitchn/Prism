@@ -4,6 +4,7 @@ import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.block.BlockCapability;
 import com.aitchn.prism.api.block.BlockCapabilityProvider;
 import com.aitchn.prism.api.block.BlockContext;
+import com.aitchn.prism.api.block.BlockDropBehavior;
 import com.aitchn.prism.api.block.BlockInteractBehavior;
 import com.aitchn.prism.api.block.BlockLoadBehavior;
 import com.aitchn.prism.api.block.BlockPlaceBehavior;
@@ -36,7 +37,7 @@ import org.jetbrains.annotations.Nullable;
 public record MachineBehavior(String machine, int energyCapacity, int maxReceive, int tankCapacity,
         int maxExtract)
         implements BlockPlaceBehavior, BlockLoadBehavior, BlockTickBehavior, BlockRemoveBehavior,
-        BlockInteractBehavior, BlockCapabilityProvider {
+        BlockInteractBehavior, BlockCapabilityProvider, BlockDropBehavior {
 
     static MachineBehavior fromYaml(ConfigSection section) throws ContentException {
         section.rejectUnknownKeys(Set.of("machine", "energy_capacity", "max_receive", "tank_capacity", "max_extract"));
@@ -52,7 +53,13 @@ public record MachineBehavior(String machine, int energyCapacity, int maxReceive
 
     @Override
     public void onPlace(@NotNull BlockContext context) {
+        Grid.restoreFromItem(context);
         Grid.get().machine(context.custom(), this);
+    }
+
+    @Override
+    public void onDrop(@NotNull BlockContext context, @NotNull org.bukkit.inventory.ItemStack drop) {
+        Grid.get().storeSettings(Grid.get().machine(context.custom(), this), drop);
     }
 
     @Override

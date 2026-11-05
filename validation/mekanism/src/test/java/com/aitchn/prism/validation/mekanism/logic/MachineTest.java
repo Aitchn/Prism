@@ -218,4 +218,23 @@ class MachineTest {
         assertNull(m.extra());
         assertNull(m.input());
     }
+
+    @Test
+    void pickedUpMachineKeepsEnergyUpgradesAndTanksButNotItsItems() {
+        Machine m = new Machine(TestMachines.purification());
+        m.energy().set(7_000);
+        m.addUpgrades(true, 2);
+        m.addUpgrades(false, 5);
+        m.inTank().set(Chemical.OXYGEN, 40);
+        m.insertInput(new Stack("mekanism:osmium_ore", 3));
+        m.setOutput(new Stack("mekanism:osmium_clump", 9));
+        Machine placed = new Machine(TestMachines.purification());
+        placed.load(m.saveSettings());
+        assertEquals(7_000, placed.energy().stored());
+        assertEquals(2, placed.speedUpgrades());
+        assertEquals(5, placed.energyUpgrades());
+        assertEquals(40, placed.inTank().amount());
+        assertNull(placed.input(), "items drop as items, they are not in the settings");
+        assertNull(placed.output());
+    }
 }

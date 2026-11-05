@@ -150,7 +150,8 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
 11. Second slot: in a combiner and in a metallurgic infuser the extra slot sits right of the main slot; shift-click
     puts coal/redstone/tin dust into the right slot; other machines show a grey pane there.
 12. Upgrades: right click a machine with a speed upgrade ten times: the action bar counts to 8 / 8, then says it
-    cannot take more; the arrow fills much faster. Break the machine: the upgrades drop.
+    cannot take more; the arrow fills much faster. Break the machine (survival) and place the dropped item again: the
+    upgrades and the stored energy are still there.
 13. Energy cube: place next to a cable; it charges from a generator and feeds machines when the generator is gone; its
-    GUI shows the meter. (Breaking it loses its charge until drops can carry block data; see the Prism note.)
+    GUI shows the meter. Break it and place it again: the charge is kept.
 14. All eight storage blocks place and break; nuggets/ingots/blocks craft both ways.
