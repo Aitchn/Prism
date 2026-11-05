@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Ultimate Logistical Transporter"
+  prism:places_block: mekanism:ultimate_logistical_transporter

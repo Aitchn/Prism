@@ -153,6 +153,7 @@ final class Grid {
         boolean[] state = new boolean[2]; // worked, idle
         underLock(() -> {
             Machine machine = machine(custom, spec);
+            machine.setPowered(custom.block().isBlockIndirectlyPowered());
             state[0] = machine.tick();
             state[1] = machine.idleTicks() >= Machine.IDLE_AFTER;
             if (Math.floorMod(machine.ticks() + pos.hashCode(), SAVE_EVERY) == 0) {
@@ -310,18 +311,42 @@ final class Grid {
         };
     }
 
-    /** Right click on a machine with the Configurator: the clicked face takes the next chemical side mode. */
+    /**
+     * Right click on a machine with a setting tool. Configurator: the clicked face takes the next chemical side mode;
+     * sneaking, the next item access instead. Redstone dust: next redstone mode. Hopper: auto-eject on or off.
+     */
     boolean configure(BlockContext context, Machine machine) {
         ItemStack held = context.heldItem();
         Player player = context.player();
-        int face = faceIndex(context.face());
-        if (held == null || player == null || face < 0 || !itemId(held).equals("mekanism:configurator")) {
+        if (held == null || player == null) {
             return false;
         }
-        String text = locked(() -> {
-            machine.setFace(face, machine.face(face).next());
-            return Text.title(Side.FACE_NAMES[face]) + " face: " + machine.face(face).label();
-        });
+        String id = itemId(held);
+        int face = faceIndex(context.face());
+        String text;
+        if (id.equals("mekanism:configurator") && face >= 0) {
+            boolean items = player.isSneaking();
+            text = locked(() -> {
+                if (items) {
+                    machine.setItemFace(face, machine.itemFace(face).next());
+                    return Text.title(Side.FACE_NAMES[face]) + " face (items): " + machine.itemFace(face).label();
+                }
+                machine.setFace(face, machine.face(face).next());
+                return Text.title(Side.FACE_NAMES[face]) + " face: " + machine.face(face).label();
+            });
+        } else if (id.equals("minecraft:redstone")) {
+            text = locked(() -> {
+                machine.setRedstone(machine.redstone().next());
+                return machine.redstone().label();
+            });
+        } else if (id.equals("minecraft:hopper")) {
+            text = locked(() -> {
+                machine.setAutoEject(!machine.autoEject());
+                return "Auto-eject " + (machine.autoEject() ? "on" : "off");
+            });
+        } else {
+            return false;
+        }
         Prism.scheduler().runOn(player, () -> player.sendActionBar(Component.text(text)), null);
         return true;
     }
@@ -459,19 +484,30 @@ final class Grid {
 
     // ---------------------------------------------------------------- conduits
 
-    void addConduit(Block block, boolean cable) {
+    enum Kind { CABLE, PIPE, ITEM }
+
+    private Set<Pos> conduits(Kind kind) {
+        return switch (kind) {
+            case CABLE -> cables;
+            case PIPE -> pipes;
+            case ITEM -> plant.transporters();
+        };
+    }
+
+    void addConduit(Block block, Kind kind, int tier) {
         Pos pos = pos(block);
         underLock(() -> {
-            (cable ? cables : pipes).add(pos);
+            conduits(kind).add(pos);
+            plant.setTier(pos, tier);
             plant.markDirty();
         });
     }
 
-    void removeConduit(Block block, boolean cable) {
+    void removeConduit(Block block, Kind kind) {
         Pos pos = pos(block);
         underLock(() -> {
-            (cable ? cables : pipes).remove(pos);
-            plant.markDirty();
+            conduits(kind).remove(pos);
+            plant.forgetConduit(pos);
         });
     }
 
@@ -504,6 +540,12 @@ final class Grid {
                 int connected = (int) pipe.endpoints().stream().filter(machines::containsKey).count();
                 return "Pipe network: " + pipe.conduits().size() + " pipes, " + connected + " machines, moving "
                         + Text.number(plant.chemicalMoved()) + " mB/t (all networks)";
+            }
+            Networks.Network items = Networks.containing(plant.itemNets(), pos);
+            if (items != null) {
+                int connected = (int) items.touches().stream().filter(e -> machines.containsKey(e.pos())).count();
+                return "Transporter network: " + items.conduits().size() + " transporters, " + connected
+                        + " machine faces, moving " + plant.itemsMoved() + " items/t (all networks)";
             }
             return null;
         });

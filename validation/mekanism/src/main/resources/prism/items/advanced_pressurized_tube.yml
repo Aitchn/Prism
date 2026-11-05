@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Advanced Pressurized Tube"
+  prism:places_block: mekanism:advanced_pressurized_tube

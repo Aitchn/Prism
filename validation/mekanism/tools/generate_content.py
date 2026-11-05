@@ -488,9 +488,44 @@ def gen2():
     shapeless("hdpe_rod", ["mekanism:hdpe_sheet"], "mekanism:hdpe_rod", 2)
 
 
+# ---------------------------------------------------------------------------------------------- stage 3
+
+TIERS = ("basic", "advanced", "elite", "ultimate")
+TIER_ALLOY = {"advanced": "mekanism:alloy_infused", "elite": "mekanism:alloy_reinforced", "ultimate": "mekanism:alloy_atomic"}
+CONDUITS = {  # base id -> (behavior, display name, texture colour, crafting ring, ring ingredient)
+    "universal_cable": ("cable", "Universal Cable", (170, 170, 175)),
+    "pressurized_tube": ("pipe", "Pressurized Tube", (120, 150, 190)),
+    "logistical_transporter": ("transporter", "Logistical Transporter", (190, 150, 90)),
+}
+
+
+def gen3():
+    for base, (behavior, label, col) in CONDUITS.items():
+        prev = base
+        for tier_no, tier in enumerate(TIERS):
+            name = base if tier_no == 0 else f"{tier}_{base}"
+            if not (tier_no == 0 and base != "logistical_transporter"):  # the first two exist by hand
+                tier_line = f"    tier: {tier_no}\n" if tier_no else ""
+                put(PRISM / f"blocks/{name}.yml",
+                    f"# Key: mekanism:{name}. {tier.title()} tier {label.lower()}: limit scales with the tier.\n"
+                    f"base: minecraft:barrier\ndrop: mekanism:{name}\nbehaviors:\n  - type: mekanism:{behavior}\n{tier_line}")
+                block_item(name, label if tier_no == 0 else f"{tier.title()} {label}")
+                shade_col = tuple(min(255, c + 30 * tier_no) for c in col)
+                tex_cube(name, shade_col)
+            if tier_no == 0:
+                if base == "logistical_transporter":
+                    shaped(name, ["OOO", "RGR", "OOO"], {"O": "mekanism:osmium_ingot", "R": "minecraft:redstone",
+                                                         "G": "minecraft:glass"}, f"mekanism:{name}", 6)
+            else:
+                shaped(name, ["CCC", "CAC", "CCC"], {"C": f"mekanism:{prev}", "A": TIER_ALLOY[tier]},
+                       f"mekanism:{name}", 8)
+            prev = name
+
+
 if __name__ == "__main__":
     if Image is None:
         print("Pillow is missing: textures were not generated")
     gen()
     gen2()
+    gen3()
     print(f"wrote {len(written)} files")

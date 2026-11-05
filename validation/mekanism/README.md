@@ -70,12 +70,15 @@ Prism**: joules, chemicals, machine recipes and the energy tablet are all in thi
      crafts two rods.
    - *Chemical tank* (any gas, 64,000 mB) and *fluid tank* (water, 32,000 mB) store chemicals; pipes fill and drain
      them.
-10. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
+10. **Item transport.** Logistical transporters join machines into an item network. Hopper on a machine: auto-eject
+   on or off; Configurator (sneaking): item access per face; redstone dust: redstone mode. Cables, tubes and
+   transporters come in four tiers (8 of the tier below around the matching alloy).
+11. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
    Right click a cable or tube: read the network. The charge is in the item's lore.
 
 Differences from the real mod that are on purpose for now: infusion types are items in a second slot (no infusion
 tank), the osmium compressor takes osmium dust instead of osmium gas, the sawmill has no sawdust, tiers exist only for
-energy cubes, ore and salt and sulfur are crafted, only chemical faces can be configured. [inventory.yml](inventory.yml) tracks all of it.
+energy cubes, cables, tubes and transporters, ore and salt and sulfur are crafted, chemical and item faces can be configured but not energy faces, transporters have no filters or sorters and no colouring tool. [inventory.yml](inventory.yml) tracks all of it.
 
 ## Layout
 

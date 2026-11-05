@@ -1,0 +1,6 @@
+# Key: mekanism:advanced_pressurized_tube. Advanced tier pressurized tube: limit scales with the tier.
+base: minecraft:barrier
+drop: mekanism:advanced_pressurized_tube
+behaviors:
+  - type: mekanism:pipe
+    tier: 1
