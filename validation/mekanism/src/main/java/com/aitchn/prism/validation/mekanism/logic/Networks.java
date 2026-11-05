@@ -29,12 +29,21 @@ public final class Networks {
 
     /** The connected components of {@code conduits} (face-adjacent) with their endpoints. */
     public static List<Network> build(Set<Pos> conduits) {
-        return components(conduits).stream()
+        return build(conduits, (a, b) -> true);
+    }
+
+    /** Like {@link #build(Set)} but two adjacent conduits only join when {@code link} says so (e.g. same colour). */
+    public static List<Network> build(Set<Pos> conduits, java.util.function.BiPredicate<Pos, Pos> link) {
+        return components(conduits, link).stream()
                 .map(c -> new Network(c, endpoints(c, conduits), touches(c, conduits))).toList();
     }
 
     /** The connected components of {@code cables} (face-adjacent). */
     public static List<Set<Pos>> components(Set<Pos> cables) {
+        return components(cables, (a, b) -> true);
+    }
+
+    public static List<Set<Pos>> components(Set<Pos> cables, java.util.function.BiPredicate<Pos, Pos> link) {
         Set<Pos> seen = new LinkedHashSet<>();
         List<Set<Pos>> result = new ArrayList<>();
         for (Pos start : cables) {
@@ -47,7 +56,7 @@ public final class Networks {
                 Pos current = queue.poll();
                 component.add(current);
                 for (Pos next : current.neighbors()) {
-                    if (cables.contains(next) && seen.add(next)) {
+                    if (cables.contains(next) && link.test(current, next) && seen.add(next)) {
                         queue.add(next);
                     }
                 }
@@ -105,9 +114,15 @@ public final class Networks {
      */
     public static long distributeEnergy(List<Network> networks, Function<Pos, EnergyBuffer> sources,
             Function<Pos, EnergyBuffer> sinks, long perCableLimit) {
+        return distributeEnergy(networks, sources, sinks, n -> perCableLimit * n.conduits().size());
+    }
+
+    /** Like the other overload but each network's per-tick limit comes from {@code budget} (tiered cables). */
+    public static long distributeEnergy(List<Network> networks, Function<Pos, EnergyBuffer> sources,
+            Function<Pos, EnergyBuffer> sinks, java.util.function.ToLongFunction<Network> budget) {
         long moved = 0;
         for (Network network : networks) {
-            long limit = perCableLimit * network.conduits().size();
+            long limit = budget.applyAsLong(network);
             List<EnergyBuffer> givers = new ArrayList<>();
             List<EnergyBuffer> takers = new ArrayList<>();
             for (Pos end : network.endpoints()) {
@@ -191,12 +206,19 @@ public final class Networks {
      */
     public static long distributeChemicalByFace(List<Network> networks, Function<Endpoint, List<ChemicalTank>> from,
             Function<Endpoint, List<ChemicalTank>> to, long perPipeLimit, long round) {
+        return distributeChemicalByFace(networks, from, to, n -> perPipeLimit * n.conduits().size(), round);
+    }
+
+    /** Like the other overload but each network's per-tick limit comes from {@code budgetOf} (tiered pipes). */
+    public static long distributeChemicalByFace(List<Network> networks, Function<Endpoint, List<ChemicalTank>> from,
+            Function<Endpoint, List<ChemicalTank>> to, java.util.function.ToLongFunction<Network> budgetOf,
+            long round) {
         record Move(ChemicalTank src, ChemicalTank dst, int network) {}
         List<Move> moves = new ArrayList<>();
         long[] budget = new long[networks.size()];
         for (int n = 0; n < networks.size(); n++) {
             Network network = networks.get(n);
-            budget[n] = perPipeLimit * network.conduits().size();
+            budget[n] = budgetOf.applyAsLong(network);
             List<Endpoint> ends = new ArrayList<>(network.touches());
             for (Endpoint source : ends) {
                 List<ChemicalTank> sources = from.apply(source);
