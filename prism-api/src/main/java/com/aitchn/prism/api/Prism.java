@@ -6,6 +6,7 @@ import com.aitchn.prism.api.data.DataService;
 import com.aitchn.prism.api.menu.MenuService;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.mod.ModRegistrar;
+import com.aitchn.prism.api.scheduler.PrismScheduler;
 import java.util.Objects;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
@@ -41,6 +42,11 @@ public final class Prism {
         return current().data();
     }
 
+    /** Thread-correct scheduling for Paper, Folia and Purpur. */
+    public static @NotNull PrismScheduler scheduler() {
+        return current().scheduler();
+    }
+
     private static Services current() {
         Services current = services;
         if (current == null) {
@@ -57,10 +63,11 @@ public final class Prism {
             @NotNull BlockService blocks,
             @NotNull ClientService clients,
             @NotNull MenuService menus,
-            @NotNull DataService data) {
+            @NotNull DataService data,
+            @NotNull PrismScheduler scheduler) {
         services = new Services(Objects.requireNonNull(mods), Objects.requireNonNull(items),
                 Objects.requireNonNull(blocks), Objects.requireNonNull(clients), Objects.requireNonNull(menus),
-                Objects.requireNonNull(data));
+                Objects.requireNonNull(data), Objects.requireNonNull(scheduler));
     }
 
     @ApiStatus.Internal
@@ -69,5 +76,5 @@ public final class Prism {
     }
 
     private record Services(ModRegistrar mods, ItemService items, BlockService blocks, ClientService clients,
-            MenuService menus, DataService data) {}
+            MenuService menus, DataService data, PrismScheduler scheduler) {}
 }

@@ -48,7 +48,58 @@ public final class PrismComponents {
             ModelRef.class,
             section -> new ModelRef(section.requireKey("value")));
 
+    /**
+     * How long a custom block takes to break in survival. {@code hardness} is seconds by hand (default 1.0, 0 breaks
+     * instantly, -1 cannot be broken); {@code tool} ({@code pickaxe}, {@code axe}, {@code shovel}, {@code hoe},
+     * {@code sword} or {@code none}) is the tool type that breaks it faster, scaled by the tool's material like
+     * vanilla. Scalar form: {@code prism:mining: 2.5}. Blocks without this component use hardness 1.0 and no tool.
+     */
+    public static final ComponentType<Mining> MINING = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "mining"),
+            Mining.class,
+            section -> {
+                section.rejectUnknownKeys(java.util.Set.of("value", "hardness", "tool"));
+                double hardness = section.has("value") ? section.requireDouble("value")
+                        : section.getDouble("hardness").orElse(Mining.DEFAULT.hardness());
+                if (hardness < 0 && hardness != -1) {
+                    throw section.error("hardness must be 0 or more, or -1 for unbreakable, got " + hardness);
+                }
+                String tool = section.getString("tool").orElse("none");
+                if (!Mining.TOOLS.contains(tool)) {
+                    throw section.error("tool must be one of " + Mining.TOOLS + ", got " + tool);
+                }
+                return new Mining(hardness, tool);
+            });
+
+    /**
+     * Lets a block face a direction chosen when a player places it: {@code horizontal} (north, east, south, west,
+     * toward the player, like a furnace) or {@code all} (also up and down, like a dispenser). Without it blocks face
+     * north. Scalar form: {@code prism:rotation: horizontal}.
+     */
+    public static final ComponentType<Rotation> ROTATION = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "rotation"),
+            Rotation.class,
+            section -> {
+                String mode = section.requireString("value");
+                return switch (mode) {
+                    case "horizontal" -> Rotation.HORIZONTAL;
+                    case "all" -> Rotation.ALL;
+                    case "none" -> Rotation.NONE;
+                    default -> throw section.error("rotation must be none, horizontal or all, got " + mode);
+                };
+            });
+
     private PrismComponents() {}
+
+    /** @see #MINING */
+    public record Mining(double hardness, String tool) {
+        public static final Mining DEFAULT = new Mining(1.0, "none");
+        public static final java.util.Set<String> TOOLS =
+                java.util.Set.of("none", "pickaxe", "axe", "shovel", "hoe", "sword");
+    }
+
+    /** @see #ROTATION */
+    public enum Rotation { NONE, HORIZONTAL, ALL }
 
     public record ModelRef(PrismKey model) {}
 
