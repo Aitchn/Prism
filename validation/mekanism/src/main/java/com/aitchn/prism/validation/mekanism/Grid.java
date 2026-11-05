@@ -307,20 +307,32 @@ final class Grid {
         if (!speed && !id.equals("mekanism:energy_upgrade")) {
             return false;
         }
-        int taken = locked(() -> machine.addUpgrades(speed, 1));
         EquipmentSlot hand = context.hand();
-        Prism.scheduler().runOn(player, () -> {
+        String wanted = id;
+        // One transaction on the player's thread: check the hand still holds the upgrade, install, then take one.
+        Runnable transaction = () -> {
+            ItemStack now = hand == null ? null : player.getInventory().getItem(hand);
+            boolean creative = player.getGameMode() == org.bukkit.GameMode.CREATIVE;
+            if (!creative && (now == null || !itemId(now).equals(wanted))) {
+                return;
+            }
+            int taken = locked(() -> machine.addUpgrades(speed, 1));
             if (taken > 0) {
-                if (hand != null && player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
-                    held.setAmount(held.getAmount() - 1);
-                    player.getInventory().setItem(hand, held.getAmount() > 0 ? held : null);
+                if (!creative) {
+                    now.setAmount(now.getAmount() - 1);
+                    player.getInventory().setItem(hand, now.getAmount() > 0 ? now : null);
                 }
                 player.sendActionBar(Component.text(locked(() -> (speed ? "Speed upgrades " : "Energy upgrades ")
                         + (speed ? machine.speedUpgrades() : machine.energyUpgrades()) + " / " + Machine.MAX_UPGRADES)));
             } else {
                 player.sendActionBar(Component.text("This machine cannot take more of those"));
             }
-        }, null);
+        };
+        if (Prism.scheduler().isOwnedByCurrentThread(player)) {
+            transaction.run();
+        } else {
+            Prism.scheduler().runOn(player, transaction, null);
+        }
         return true;
     }
 
