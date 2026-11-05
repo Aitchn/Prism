@@ -170,7 +170,7 @@ final class VanillaRecipes implements Listener {
         }
         Optional<ItemStack> custom = items.create(ingredient.item(), 1);
         if (custom.isPresent()) {
-            return new RecipeChoice.ExactChoice(custom.get());
+            return RecipeChoice.exactChoice(custom.get());
         }
         return new RecipeChoice.MaterialChoice(VanillaItems.material(ingredient.item())
                 .orElseThrow(() -> new IllegalArgumentException("unknown item " + ingredient.item())));
