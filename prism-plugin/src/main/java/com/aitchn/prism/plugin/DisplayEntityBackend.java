@@ -74,7 +74,7 @@ final class DisplayEntityBackend implements BlockService {
             anchors.attach(anchor, key);
         }
         dispatcher.dispatchBlockPlace(key, block.getLocation(),
-                definition -> new BlockEventContext(block, null).with(definition));
+                def -> new BlockEventContext(block, null).with(def));
         return true;
     }
 
@@ -101,7 +101,7 @@ final class DisplayEntityBackend implements BlockService {
             return false;
         }
         dispatcher.dispatchBlockRemove(key.get(), block.getLocation(),
-                definition -> new BlockEventContext(block, null).with(definition));
+                def -> new BlockEventContext(block, null).with(def));
         Location center = block.getLocation().add(0.5, 0.5, 0.5);
         for (ItemDisplay display : block.getWorld().getNearbyEntitiesByType(ItemDisplay.class, center, SEARCH_RADIUS)) {
             if (display.getPersistentDataContainer().has(markerKey, PersistentDataType.STRING)) {
