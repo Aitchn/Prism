@@ -27,6 +27,9 @@ public interface PlatformScheduler {
      */
     void runOn(@NotNull Entity entity, @NotNull Runnable task, @Nullable Runnable retired);
 
+    /** Runs {@code task} repeatedly on the global tick thread until cancelled. */
+    @NotNull ScheduledTask runGlobalTimer(@NotNull Runnable task, long delayTicks, long periodTicks);
+
     /** Runs off the tick threads. Must not touch world state. */
     void runAsync(@NotNull Runnable task);
 

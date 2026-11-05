@@ -39,6 +39,11 @@ final class SchedulerAdapter implements PrismScheduler {
     }
 
     @Override
+    public @NotNull PrismTask runGlobalTimer(@NotNull Runnable task, long delayTicks, long periodTicks) {
+        return wrap(platform.runGlobalTimer(task, delayTicks, periodTicks));
+    }
+
+    @Override
     public @NotNull PrismTask runAtLater(@NotNull Location location, @NotNull Runnable task, long delayTicks) {
         return wrap(platform.runAtLater(location, task, delayTicks));
     }

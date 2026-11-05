@@ -5,6 +5,7 @@ import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockCapability;
 import com.aitchn.prism.api.block.BlockCapabilityProvider;
 import com.aitchn.prism.api.block.BlockContext;
+import com.aitchn.prism.api.block.BlockDropBehavior;
 import com.aitchn.prism.api.block.BlockInteractBehavior;
 import com.aitchn.prism.api.block.BlockNeighborBehavior;
 import com.aitchn.prism.api.block.BlockPlaceBehavior;
@@ -28,10 +29,12 @@ import org.jetbrains.annotations.Nullable;
  * A block that counts: one per {@code interval} ticks, stored in its per-block data so it survives restarts. It
  * counts neighbour changes too and offers its count to neighbours as a capability. Right click opens
  * {@link CounterMenu}: a live count, a button switching between the {@code idle} and {@code active} looks, and one
- * slot that stores an item in the block (dropped when the block is broken).
+ * slot that stores an item in the block (dropped when the block is broken). A click while holding a block passes the
+ * click on, so the block is placed against the counter as with any vanilla block. Broken in survival, the dropped counter keeps
+ * its tick count, and placing it again continues from there.
  */
 public record CounterBehavior(int interval) implements BlockPlaceBehavior, BlockTickBehavior, BlockNeighborBehavior,
-        BlockInteractBehavior, BlockRemoveBehavior, BlockCapabilityProvider {
+        BlockInteractBehavior, BlockDropBehavior, BlockRemoveBehavior, BlockCapabilityProvider {
 
     /** What this block offers to its neighbours. A mod-defined capability: Prism only does the lookup. */
     public static final BlockCapability<IntSupplier> COUNT =
@@ -57,7 +60,21 @@ public record CounterBehavior(int interval) implements BlockPlaceBehavior, Block
 
     @Override
     public void onPlace(@NotNull BlockContext context) {
-        context.custom().data().set(PLACED, PersistentDataType.LONG, System.currentTimeMillis());
+        PersistentDataContainer data = context.custom().data();
+        data.set(PLACED, PersistentDataType.LONG, System.currentTimeMillis());
+        ItemStack from = context.placedFrom();
+        Integer carried = from == null ? null : from.getPersistentDataContainer().get(TICKS, PersistentDataType.INTEGER);
+        if (carried != null) {
+            data.set(TICKS, PersistentDataType.INTEGER, carried);
+        }
+    }
+
+    @Override
+    public void onDrop(@NotNull BlockContext context, @NotNull ItemStack drop) {
+        int ticks = context.custom().data().getOrDefault(TICKS, PersistentDataType.INTEGER, 0);
+        if (ticks > 0) {
+            Prism.items().editData(drop, data -> data.set(TICKS, PersistentDataType.INTEGER, ticks));
+        }
     }
 
     @Override
@@ -73,6 +90,11 @@ public record CounterBehavior(int interval) implements BlockPlaceBehavior, Block
     @Override
     public void onInteract(@NotNull BlockContext context) {
         if (context.player() == null) {
+            return;
+        }
+        ItemStack held = context.heldItem();
+        if (held != null && held.getType().isBlock() && !held.isEmpty()) {
+            context.pass(); // holding a block: place it against the counter, as with a vanilla block
             return;
         }
         CounterMenu menu = CounterMenu.of(context.custom());

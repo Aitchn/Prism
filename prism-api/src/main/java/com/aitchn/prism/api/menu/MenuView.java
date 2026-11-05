@@ -29,6 +29,12 @@ public interface MenuView {
      */
     void setIcon(int slot, @NotNull PrismKey icon, @NotNull String name, @NotNull List<String> lore);
 
+    /**
+     * Whether the player changed {@code slot} and {@link ContainerMenu#onSlotChanged} has not reported it yet. While
+     * true, the slot's content may still be moving; do not copy it into your model or overwrite it.
+     */
+    boolean isChangePending(int slot);
+
     /** Closes the menu (on the next tick). {@link ContainerMenu#onClose} still runs. */
     void close();
 
