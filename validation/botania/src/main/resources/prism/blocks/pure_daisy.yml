@@ -1,0 +1,6 @@
+# Key: botania:pure_daisy. Placeholder texture generated for this validation; no original assets are included.
+base: minecraft:barrier
+drop: botania:pure_daisy
+behaviors:
+  - type: botania:block_entity
+    kind: flower:pure_daisy

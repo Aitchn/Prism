@@ -1,0 +1,5 @@
+# Item form of botania:livingwood: placing it places the block.
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Livingwood"
+  prism:places_block: botania:livingwood

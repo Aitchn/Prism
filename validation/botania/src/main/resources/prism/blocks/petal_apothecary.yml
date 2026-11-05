@@ -1,0 +1,6 @@
+# Key: botania:petal_apothecary. Placeholder texture generated for this validation; no original assets are included.
+base: minecraft:barrier
+drop: botania:petal_apothecary
+behaviors:
+  - type: botania:block_entity
+    kind: apothecary

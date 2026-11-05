@@ -21,6 +21,9 @@ cp "$PRISM_JAR" "$WORK/plugins/Prism.jar"
 # The example mod proves the whole path: discovery, YAML validation, registration and item creation on a real server.
 EXAMPLE_JAR="${EXAMPLE_MOD_JAR:-$(ls "$ROOT"/examples/example-mod/build/libs/*.jar | grep -v -- '-sources' | head -n1)}"
 cp "$EXAMPLE_JAR" "$WORK/plugins/ExampleMod.jar"
+# The Botania validation mod exercises ticking, persistence and cross-region work on top of Prism (optional).
+BOTANIA_JAR="${BOTANIA_MOD_JAR:-$(ls "$ROOT"/validation/botania/build/libs/*.jar 2>/dev/null | grep -v -- '-sources' | head -n1 || true)}"
+if [[ -n "$BOTANIA_JAR" ]]; then cp "$BOTANIA_JAR" "$WORK/plugins/Botania.jar"; fi
 
 download_server() {
   case "$PLATFORM" in
@@ -93,7 +96,21 @@ for marker in 'PRISM_MOD_ACTIVE ExampleMod items=2 blocks=2' 'PRISM_MODELS_SYNCE
     exit 1
   fi
 done
-if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL'; then
+if [[ -n "$BOTANIA_JAR" ]]; then
+  for marker in 'PRISM_MOD_ACTIVE Botania items=28 blocks=8' 'BOTANIA_SELFTEST_OK'; do
+    found=""
+    for ((i = 0; i < 120; i++)); do
+      if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
+      sleep 1
+    done
+    if [[ -z "$found" ]]; then
+      echo "FAIL: expected log line not seen: $marker" >&2
+      docker logs "$NAME" 2>&1 | grep -E 'PRISM_|BOTANIA_|Botania' >&2 || true
+      exit 1
+    fi
+  done
+fi
+if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|BOTANIA_SELFTEST_FAIL'; then
   echo "FAIL: a mod failed to activate" >&2
   exit 1
 fi

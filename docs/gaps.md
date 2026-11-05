@@ -9,6 +9,7 @@ promise. Update it when a milestone closes a gap or finds a new one.
 | Items | definitions, components, use behavior | M1 done |
 | Items | more events (hit, equip, tick in inventory), item tooltips, durability, cooldowns | open |
 | Blocks | definitions, place/break/interact behaviors, display-entity appearance | M2 done |
+| Blocks | place hook | done (found by the Botania validation) |
 | Blocks | block states/rotation from placement, hardness and tool rules, sounds, light, redstone | open |
 | Blocks | very large counts (one display entity per block) | open; NativeStateBackend in M5 |
 | Block state | per-block persistent data, chunk-safe, versioned | open; carrier + display give identity only |
@@ -34,3 +35,17 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 - `DataStore` is a string key-value store. Machines and networks (AE2, Mekanism) need transactional multi-key writes,
   per-chunk or per-block attachment with automatic cleanup on unload/removal, and async access; none exist yet.
+
+## Found in the Botania validation
+
+Details and numbering in [validation/botania.md](validation/botania.md). Fixed: a block place hook
+(`BlockPlaceBehavior`) and break behaviors on explosions. Still open:
+
+- A block ticking API and per-block data with lifecycle (cleanup, chunk load/unload callbacks, async, transactions).
+- A position-indexed `identify` (today it scans nearby entities).
+- Richer click contexts (held item, face, hit position) and an item capability for "use on block".
+- Placement state (facing, rotation) and carriers without full-block collision; breaking a barrier carrier in
+  survival must be verified.
+- A recipe content type, content variants/templates, per-stack item data and dynamic tooltips.
+- Region-aware scheduler helpers and runtime control of a block's model (animation, rotation).
+- An effects API (particles, sounds) that is Bedrock-aware.

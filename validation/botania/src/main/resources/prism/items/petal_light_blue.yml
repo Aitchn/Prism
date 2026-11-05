@@ -1,0 +1,4 @@
+# Key: botania:petal_light_blue
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Light Blue Petal"

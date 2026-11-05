@@ -1,0 +1,4 @@
+# Key: botania:manasteel_ingot
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Manasteel Ingot"

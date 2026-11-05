@@ -1,0 +1,4 @@
+# Key: botania:mana_diamond
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Mana Diamond"

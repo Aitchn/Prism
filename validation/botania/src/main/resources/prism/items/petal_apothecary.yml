@@ -1,0 +1,5 @@
+# Item form of botania:petal_apothecary: placing it places the block.
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Petal Apothecary"
+  prism:places_block: botania:petal_apothecary

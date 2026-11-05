@@ -1,0 +1,6 @@
+# Key: botania:daybloom. Placeholder texture generated for this validation; no original assets are included.
+base: minecraft:barrier
+drop: botania:daybloom
+behaviors:
+  - type: botania:block_entity
+    kind: flower:daybloom

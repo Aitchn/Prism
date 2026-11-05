@@ -1,0 +1,4 @@
+# Key: botania:petal_yellow
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Yellow Petal"

@@ -1,0 +1,8 @@
+name: Botania
+version: '${version}'
+main: com.aitchn.validation.botania.BotaniaPlugin
+api-version: '1.21.4'
+folia-supported: true
+description: Botania rebuilt on Prism, a validation of the Prism API. Not an official port.
+depend:
+  - Prism

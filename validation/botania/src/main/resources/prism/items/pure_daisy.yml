@@ -1,0 +1,5 @@
+# Item form of botania:pure_daisy: placing it places the block.
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Pure Daisy"
+  prism:places_block: botania:pure_daisy

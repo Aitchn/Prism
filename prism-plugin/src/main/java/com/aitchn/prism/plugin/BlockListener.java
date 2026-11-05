@@ -76,8 +76,12 @@ final class BlockListener implements Listener {
         }
         event.setCancelled(true);
         Block target = clicked.getRelative(event.getBlockFace());
-        if (blocks.place(placed.get(), target.getLocation()) && player.getGameMode() != GameMode.CREATIVE) {
-            held.subtract();
+        if (blocks.place(placed.get(), target.getLocation())) {
+            Ctx placedCtx = new Ctx(target, player);
+            dispatcher.dispatchBlockPlace(placed.get(), target.getLocation(), definition -> placedCtx.with(definition));
+            if (player.getGameMode() != GameMode.CREATIVE) {
+                held.subtract();
+            }
         }
     }
 
@@ -126,8 +130,11 @@ final class BlockListener implements Listener {
     private void removeExploded(Iterator<Block> exploded) {
         while (exploded.hasNext()) {
             Block block = exploded.next();
-            if (blocks.identify(block).isPresent()) {
+            Optional<PrismKey> custom = blocks.identify(block);
+            if (custom.isPresent()) {
                 exploded.remove();
+                Ctx ctx = new Ctx(block, null);
+                dispatcher.dispatchBlockBreak(custom.get(), block.getLocation(), definition -> ctx.with(definition));
                 blocks.remove(block, true);
             }
         }
