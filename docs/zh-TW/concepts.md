@@ -10,7 +10,13 @@
 
 **物品。** 原版基底物品＋資料元件＋行為。身分存在持久資料，外觀由指向產生的物品定義之 `item_model` 決定。
 
-**方塊。** 原版載體方塊（如 `barrier`）加上負責繪製模型的持久顯示實體，重啟不需要資料庫。
+**方塊。** 原版載體方塊（如 `barrier`）加上負責繪製模型的持久顯示實體。Prism 把每個區塊裡的自訂方塊索引存在區塊的持久資料中，
+所以方塊、朝向與每格方塊的資料重啟後都還在，不需要資料庫。行為可以回應放置、移除、破壞、區塊載入/卸載、鄰居變化與 tick
+（`BlockTickBehavior`，同一區塊合併成一個工作）。`CustomBlock.data()` 是每格方塊自己的 `PersistentDataContainer`，方塊移除時一起刪除。
+方塊透過 `BlockCapability` 與 `BlockCapabilityProvider` 對鄰居提供服務；Prism 只提供查找機制與 `PrismCapabilities.INVENTORY`。
+`prism:rotation` 讓方塊面向玩家放置，`prism:mining` 設定生存模式挖掘所需時間。
+
+**取得物品。** `/prism give <玩家> <物品> [數量]` 與 `/prism items`（物品瀏覽選單）適用所有模組，權限 `prism.command.give`（預設 OP）。
 
 **模型。** 方塊可用 Blockbench 動畫模型：`prism:model_ref: <ns>:<name>` 加上 jar 內的 `prism/models/<name>.bbmodel`，
 由 BetterModel 呈現（Prism 唯一會寫檔的地方，因為 BetterModel 只讀自己的資料夾）。
@@ -22,4 +28,5 @@
 
 **客戶端。** `Prism.clients().profile(player)` 回報版本（Java/基岩）與客戶端能力。
 
-**Folia。** 行為在擁有該玩家或位置的執行緒上執行；延後的工作請用 Prism 的排程抽象，不要用 Bukkit 排程器。
+**Folia。** 行為在擁有該玩家或位置的執行緒上執行；延後的工作請用 `Prism.scheduler()`，不要用 Bukkit 排程器。
+只在擁有該方塊的執行緒（`runAt`）上碰方塊；跨區域的工作自己保持執行緒安全，並切到每個方塊的執行緒再操作。
