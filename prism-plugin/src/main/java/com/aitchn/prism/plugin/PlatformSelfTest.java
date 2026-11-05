@@ -28,13 +28,15 @@ import org.bukkit.persistence.PersistentDataType;
  */
 final class PlatformSelfTest implements Listener {
 
+    private final org.bukkit.plugin.Plugin prism;
     private final PrismKey key;
     private final PrismKey neighbor;
     private final PrismBlockService blocks;
     private final PlatformScheduler scheduler;
     private final Logger log;
 
-    PlatformSelfTest(PrismKey key, PrismKey neighbor, PrismBlockService blocks, PlatformScheduler scheduler, Logger log) {
+    PlatformSelfTest(org.bukkit.plugin.Plugin prism, PrismKey key, PrismKey neighbor, PrismBlockService blocks, PlatformScheduler scheduler, Logger log) {
+        this.prism = prism;
         this.key = key;
         this.neighbor = neighbor;
         this.blocks = blocks;
@@ -54,6 +56,8 @@ final class PlatformSelfTest implements Listener {
 
     private void start(Block block) {
         try {
+            // No player is online, so the chunk would unload (and stop ticking) during the wait.
+            block.getChunk().addPluginChunkTicket(prism);
             NamespacedKey placedKey = NamespacedKey.fromString("examplemod:placed");
             NamespacedKey neighborsKey = NamespacedKey.fromString("examplemod:neighbors");
             boolean placed = blocks.place(key, block.getLocation(), null, BlockFace.EAST);
@@ -92,6 +96,7 @@ final class PlatformSelfTest implements Listener {
                     && blocks.get(block)
                             .map(c -> !c.data().has(NamespacedKey.fromString("examplemod:ticks"))).orElse(false);
             blocks.remove(block, false);
+            block.getChunk().removePluginChunkTicket(prism);
             boolean ok = earlyOk && ticks >= 2 && removed && gone && replacedClean;
             log.info((ok ? "PRISM_PLATFORM_SELFTEST_OK " : "PRISM_PLATFORM_SELFTEST_FAIL ") + key + " " + early
                     + " ticks=" + ticks + " removed=" + removed + " gone=" + gone + " dataCleared=" + replacedClean
