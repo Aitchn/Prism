@@ -1,0 +1,11 @@
+# Key: mekanism:pressurized_reaction_chamber. Two looks (block/pressurized_reaction_chamber_idle.png and block/pressurized_reaction_chamber_active.png); recipes: prism/recipes/machine/pressurized_reaction_chamber/.
+base: minecraft:barrier
+drop: mekanism:pressurized_reaction_chamber
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: pressurized_reaction_chamber
+    energy_capacity: 20000
+    max_receive: 2000
+    tank_capacity: 10000

@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "IXI"
+  - "BCB"
+  - "IXI"
+key:
+  I: minecraft:iron_ingot
+  X: minecraft:amethyst_shard
+  B: mekanism:basic_control_circuit
+  C: mekanism:steel_casing
+result: mekanism:chemical_crystallizer

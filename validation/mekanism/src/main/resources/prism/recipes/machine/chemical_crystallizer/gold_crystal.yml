@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: chemical_crystallizer
+output: mekanism:gold_crystal
+chemical_in: {chemical: clean_gold_slurry, amount: 200}
+ticks: 200
+energy: 50

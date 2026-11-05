@@ -50,12 +50,32 @@ Prism**: joules, chemicals, machine recipes and the energy tablet are all in thi
    its upgrades, energy and tank contents in the item (items in its slots drop separately); placing it restores them.
 8. **Energy cubes** (four tiers) are batteries: cables fill them and drain them. **Precision sawmill:** logs to six
    planks. **Combiner:** dust + 2 cobblestone to ore.
-9. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
+9. **Chemistry (stage 2).** Gases and slurries are chemicals in tanks; pipes move them between machines.
+   - Gas plant: *salt* in a chemical oxidizer makes chlorine, *sulfur dust* makes sulfur dioxide. A chemical infuser
+     combines two gases: hydrogen + chlorine = hydrogen chloride, sulfur dioxide + oxygen = sulfur trioxide, sulfur
+     trioxide + water = sulfuric acid (the last two on two separate infusers). Salt and sulfur dust are crafted for now
+     (salt = bone meal + sand, sulfur dust = gunpowder + coal dust).
+   - **5x chain:** ore + sulfuric acid in a *chemical dissolution chamber* gives dirty slurry; the *chemical washer*
+     (slurry + water) makes clean slurry; the *chemical crystallizer* makes five crystals per ore. A crystal goes to the
+     *injection chamber* with hydrogen chloride to become a shard, then the usual clump -> dirty dust -> dust -> ingot.
+     The ore -> 4 shards step of stage 1 now needs hydrogen chloride too, as in the real mod.
+   - **Tanks and faces.** A machine has up to two input tanks and two output tanks. By default every face of a machine
+     talks to all of them, which is what a single gas needs. With two gases that goes wrong (the wrong gas fills the
+     tank first), so right click a face with a **Configurator** to cycle what that face does: all tanks, first input,
+     second input, first output, second output, off. Faces are kept when the machine is picked up and in saves.
+   - Water goes into whichever tank takes it (washer and infuser: the second tank) with a bucket. Pipes share what a
+     tank has between the machines that accept it, so one thirsty machine does not take everything.
+   - *Pressurized reaction chamber* and plastics: bio fuel (crusher, from crops) + water + hydrogen = substrate;
+     substrate + hydrogen + water = ethylene; ethylene + oxygen = HDPE pellet; four pellets craft a sheet, a sheet
+     crafts two rods.
+   - *Chemical tank* (any gas, 64,000 mB) and *fluid tank* (water, 32,000 mB) store chemicals; pipes fill and drain
+     them.
+10. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
    Right click a cable or tube: read the network. The charge is in the item's lore.
 
 Differences from the real mod that are on purpose for now: infusion types are items in a second slot (no infusion
 tank), the osmium compressor takes osmium dust instead of osmium gas, the sawmill has no sawdust, tiers exist only for
-energy cubes, ore is crafted. [inventory.yml](inventory.yml) tracks all of it.
+energy cubes, ore and salt and sulfur are crafted, only chemical faces can be configured. [inventory.yml](inventory.yml) tracks all of it.
 
 ## Layout
 

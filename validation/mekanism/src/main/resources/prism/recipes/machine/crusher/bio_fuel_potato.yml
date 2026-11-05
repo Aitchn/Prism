@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: crusher
+input: minecraft:potato
+output: mekanism:bio_fuel
+ticks: 100
+energy: 50

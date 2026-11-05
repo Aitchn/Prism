@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: pressurized_reaction_chamber
+output: mekanism:hdpe_pellet
+chemical_in: {chemical: ethylene, amount: 100}
+chemical_in2: {chemical: oxygen, amount: 100}
+ticks: 300
+energy: 50

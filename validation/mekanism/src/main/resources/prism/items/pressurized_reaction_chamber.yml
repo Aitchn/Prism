@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Pressurized Reaction Chamber"
+  prism:places_block: mekanism:pressurized_reaction_chamber

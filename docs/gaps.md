@@ -155,3 +155,18 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
 13. Energy cube: place next to a cable; it charges from a generator and feeds machines when the generator is gone; its
     GUI shows the meter. Break it and place it again: the charge is kept.
 14. All eight storage blocks place and break; nuggets/ingots/blocks craft both ways.
+
+### Stage 2 additions (hand tests)
+
+15. Gas plant on Java and Bedrock: separator filled with a water bucket, a chemical oxidizer with salt, a chemical
+    infuser between them; use the Configurator on the infuser's faces (action bar names the face and its mode) so
+    hydrogen enters the first tank and chlorine the second; hydrogen chloride appears in the output tank and the tank
+    icons change (green dye).
+16. The 5x chain by hand: sulfur -> acid line into the dissolution chamber, an osmium ore in its slot; slurry in the
+    washer (put water in with a bucket), crystals in the crystallizer, five crystals out. Carry them to the injection
+    chamber, then purification, crusher, enrichment chamber and smelter: five ingots from one ore.
+17. Second tank slot: machines with two gas inputs show a second tank icon left of the first; other machines show a
+    grey pane there.
+18. Pick up and place a configured machine: faces, upgrades and tank contents come back.
+19. Storage tanks: pipes fill a chemical tank, a second pipe on another face drains it into a machine; the fluid tank
+    only takes water.

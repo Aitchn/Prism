@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "IXI"
+  - "BCB"
+  - "IXI"
+key:
+  I: minecraft:iron_ingot
+  X: minecraft:water_bucket
+  B: mekanism:basic_control_circuit
+  C: mekanism:steel_casing
+result: mekanism:chemical_washer

@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: chemical_crystallizer
+output: mekanism:tin_crystal
+chemical_in: {chemical: clean_tin_slurry, amount: 200}
+ticks: 200
+energy: 50

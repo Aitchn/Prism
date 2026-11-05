@@ -15,7 +15,7 @@ items:  # resource, dust-chain, material and tool items
   osmium_dirty_dust: done
   osmium_clump: done
   osmium_shard: done
-  osmium_crystal: missing
+  osmium_crystal: done
   tin_ore: done
   raw_tin: missing
   raw_tin_block: missing
@@ -26,7 +26,7 @@ items:  # resource, dust-chain, material and tool items
   tin_dirty_dust: done
   tin_clump: done
   tin_shard: done
-  tin_crystal: missing
+  tin_crystal: done
   lead_ore: done
   raw_lead: missing
   raw_lead_block: missing
@@ -37,7 +37,7 @@ items:  # resource, dust-chain, material and tool items
   lead_dirty_dust: done
   lead_clump: done
   lead_shard: done
-  lead_crystal: missing
+  lead_crystal: done
   uranium_ore: done
   raw_uranium: missing
   raw_uranium_block: missing
@@ -48,22 +48,22 @@ items:  # resource, dust-chain, material and tool items
   uranium_dirty_dust: done
   uranium_clump: done
   uranium_shard: done
-  uranium_crystal: missing
+  uranium_crystal: done
   iron_dust: done
   iron_dirty_dust: done
   iron_clump: done
   iron_shard: done
-  iron_crystal: missing
+  iron_crystal: done
   gold_dust: done
   gold_dirty_dust: done
   gold_clump: done
   gold_shard: done
-  gold_crystal: missing
+  gold_crystal: done
   copper_dust: done
   copper_dirty_dust: done
   copper_clump: done
   copper_shard: done
-  copper_crystal: missing
+  copper_crystal: done
   steel_ingot: done
   steel_nugget: done
   steel_block: done
@@ -88,8 +88,8 @@ items:  # resource, dust-chain, material and tool items
   quartz_dust: done
   obsidian_dust: done
   netherite_dust: missing
-  sulfur_dust: missing
-  salt: missing
+  sulfur_dust: done
+  salt: done
   fluorite_gem: missing
   fluorite_dust: missing
   lithium_dust: missing
@@ -101,11 +101,11 @@ items:  # resource, dust-chain, material and tool items
   enriched_gold: missing
   enriched_tin: missing
   enriched_glowstone: missing
-  bio_fuel: missing
-  hdpe_pellet: missing
-  hdpe_sheet: missing
-  hdpe_rod: missing
-  substrate: missing
+  bio_fuel: done
+  hdpe_pellet: done
+  hdpe_sheet: done
+  hdpe_rod: done
+  substrate: done
   polonium_pellet: missing
   plutonium_pellet: missing
   antimatter_pellet: missing
@@ -128,7 +128,7 @@ items:  # resource, dust-chain, material and tool items
   gas_upgrade: missing
   anchor_upgrade: missing
   stone_generator_upgrade: missing
-  configurator: missing
+  configurator: done
   configuration_card: missing
   gauge_dropper: missing
   energy_tablet: done
@@ -180,8 +180,8 @@ blocks:  # non-machine blocks and transmitter kinds (tiers count under mechanics
   digital_miner: missing
   logistical_sorter: missing
   radioactive_waste_barrel: missing
-  chemical_tank: missing
-  fluid_tank: missing
+  chemical_tank: done
+  fluid_tank: done
   fluidic_plenisher: missing
   electric_pump: missing
   oredictionificator: missing
@@ -206,13 +206,13 @@ machines:  # machine blocks with their own recipes or behavior
   precision_sawmill: partial
   energized_smelter: done
   electrolytic_separator: done
-  chemical_oxidizer: missing
-  chemical_infuser: missing
-  chemical_washer: missing
-  chemical_crystallizer: missing
-  chemical_dissolution_chamber: missing
+  chemical_oxidizer: done
+  chemical_infuser: done
+  chemical_washer: done
+  chemical_crystallizer: done
+  chemical_dissolution_chamber: done
   rotary_condensentrator: missing
-  pressurized_reaction_chamber: missing
+  pressurized_reaction_chamber: done
   solar_neutron_activator: missing
   isotopic_centrifuge: missing
   nutritional_liquifier: missing
@@ -240,21 +240,21 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   machine_gui: partial            # two input slots, one output, upgrades by right click; no side tabs (3)
   machine_persistence: done       # state in per-block data, chunk unload and restart
   energy_network: done            # cables share energy between generators and machines
-  chemical_network: partial       # one pipe tier, water/hydrogen/oxygen only (2)
+  chemical_network: done          # pipes with per-face tank choice, fair sharing, storage tanks; one pipe tier (tiers are counted under tiers)
   dust_chain_single_step: done    # ore -> dust/clump in one machine
   dust_chain_3x: done             # ore -> clump -> dirty dust -> dust -> ingot for all seven metals, FactoryChainTest
-  dust_chain_5x: missing          # ore -> slurry -> crystal -> shard -> clump -> dirty dust -> dust (2)
+  dust_chain_5x: done             # ore -> slurry -> clean slurry -> crystal -> shard -> clump -> dirty dust -> dust -> ingot, osmium chain test
   infusion_system: partial        # infuse items sit in the second slot instead of an infusion tank (steel, bronze, alloys)
   smelting_machines: done         # energized smelter, dust to ingot for all metals and alloys
   alloys: done                    # steel, bronze, infused/reinforced/atomic alloy, refined obsidian and glowstone
   upgrades: partial               # speed and energy upgrades only; muffling, filter, gas, anchor missing
   tiers: partial                  # energy cube has four tiers; cables, pipes and factories still have one
-  side_configuration: missing     # per-side input/output/off, configurator tool (3)
+  side_configuration: partial     # configurator sets which tank a face uses for pipes; items and energy faces still open (3)
   auto_eject: missing             # machines push outputs to neighbours (3)
   item_transport: missing         # logistical transporter with colours and filters (3)
   heat: missing                   # heat transfer, thermoelectric (5)
   ore_generation: missing         # needs the Prism world-generation hook (1, blocked)
-  block_drops_keep_data: done     # machines and cubes keep energy, upgrades and tanks in the dropped item
+  block_drops_keep_data: done     # machines and cubes keep energy, upgrades, tanks and face settings in the dropped item
   redstone_control: missing       # per-machine redstone mode (3)
   security: missing               # owner and access levels (6)
   radiation: missing              # radiation sources and exposure (6)
@@ -263,7 +263,7 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   digital_miner: missing          # filters, radius, quarry loop (4)
   teleporter_system: missing      # frequencies, linking, energy cost (4)
   factory_system: missing         # 3 to 4 tiers of 8 machine kinds (4)
-  chemical_tanks: missing         # gas tank and fluid tank with tiers (2)
+  chemical_tanks: partial         # chemical and fluid tank, one tier each
   qio_storage: missing            # QIO drive array network (6)
   worldgen_salt_and_fluorite: missing  # world generation again (1, blocked)
   portable_tools: partial         # tablet done; jetpack, disassembler, flamethrower etc. (6)

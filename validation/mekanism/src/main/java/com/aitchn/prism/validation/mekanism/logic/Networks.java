@@ -18,11 +18,19 @@ public final class Networks {
     private Networks() {}
 
     /** One connected group: its conduits and the non-conduit positions touching them. */
-    public record Network(Set<Pos> conduits, Set<Pos> endpoints) {}
+    public record Network(Set<Pos> conduits, Set<Pos> endpoints, Set<Endpoint> touches) {
+        public Network(Set<Pos> conduits, Set<Pos> endpoints) {
+            this(conduits, endpoints, Set.of());
+        }
+    }
+
+    /** A block position and which of its faces ({@link Pos#neighbors()} order) a conduit touches. */
+    public record Endpoint(Pos pos, int face) {}
 
     /** The connected components of {@code conduits} (face-adjacent) with their endpoints. */
     public static List<Network> build(Set<Pos> conduits) {
-        return components(conduits).stream().map(c -> new Network(c, endpoints(c, conduits))).toList();
+        return components(conduits).stream()
+                .map(c -> new Network(c, endpoints(c, conduits), touches(c, conduits))).toList();
     }
 
     /** The connected components of {@code cables} (face-adjacent). */
@@ -47,6 +55,20 @@ public final class Networks {
             result.add(component);
         }
         return result;
+    }
+
+    /** The faces of non-conduit blocks that touch the network, in stable order. */
+    public static Set<Endpoint> touches(Set<Pos> component, Set<Pos> allConduits) {
+        Set<Endpoint> out = new LinkedHashSet<>();
+        for (Pos conduit : component) {
+            List<Pos> around = conduit.neighbors();
+            for (int i = 0; i < around.size(); i++) {
+                if (!allConduits.contains(around.get(i))) {
+                    out.add(new Endpoint(around.get(i), i ^ 1)); // the neighbour's face that points back at the conduit
+                }
+            }
+        }
+        return out;
     }
 
     /** Non-cable positions touching the network, in stable order. */
@@ -156,6 +178,74 @@ public final class Networks {
                     }
                 }
             }
+        }
+        return moved;
+    }
+
+    /**
+     * Pipes with faces: like {@link #distributeChemical(List, Function, Function, long)} but the tanks a block offers
+     * depend on which face the pipe touches, and a block never feeds itself through two of its own faces. A tank that
+     * can give to several places (through several faces or several networks) shares what it has between the places
+     * that currently accept it, so one thirsty machine cannot starve the others. {@code round} (any number that
+     * changes every tick) rotates who gets the odd unit when the amount does not divide evenly.
+     */
+    public static long distributeChemicalByFace(List<Network> networks, Function<Endpoint, List<ChemicalTank>> from,
+            Function<Endpoint, List<ChemicalTank>> to, long perPipeLimit, long round) {
+        record Move(ChemicalTank src, ChemicalTank dst, int network) {}
+        List<Move> moves = new ArrayList<>();
+        long[] budget = new long[networks.size()];
+        for (int n = 0; n < networks.size(); n++) {
+            Network network = networks.get(n);
+            budget[n] = perPipeLimit * network.conduits().size();
+            List<Endpoint> ends = new ArrayList<>(network.touches());
+            for (Endpoint source : ends) {
+                List<ChemicalTank> sources = from.apply(source);
+                if (sources == null) {
+                    continue;
+                }
+                for (ChemicalTank src : sources) {
+                    for (Endpoint target : ends) {
+                        List<ChemicalTank> targets = target.pos().equals(source.pos()) ? null : to.apply(target);
+                        if (targets == null) {
+                            continue;
+                        }
+                        for (ChemicalTank dst : targets) {
+                            if (dst != src) {
+                                moves.add(new Move(src, dst, n));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        java.util.IdentityHashMap<ChemicalTank, Integer> acceptors = new java.util.IdentityHashMap<>();
+        java.util.IdentityHashMap<ChemicalTank, Long> offered = new java.util.IdentityHashMap<>();
+        for (Move move : moves) {
+            if (move.src().type() != null && move.dst().fill(move.src().type(), 1, true) > 0) {
+                acceptors.merge(move.src(), 1, Integer::sum);
+            }
+            offered.putIfAbsent(move.src(), move.src().drain(null, Long.MAX_VALUE, true));
+        }
+        long moved = 0;
+        java.util.IdentityHashMap<ChemicalTank, Integer> seen = new java.util.IdentityHashMap<>();
+        for (Move move : moves) {
+            Chemical type = move.src().type();
+            int count = acceptors.getOrDefault(move.src(), 0);
+            if (type == null || count == 0 || budget[move.network()] <= 0
+                    || move.dst().fill(type, 1, true) == 0) {
+                continue;
+            }
+            int index = seen.merge(move.src(), 1, Integer::sum) - 1;
+            long total = offered.get(move.src());
+            long share = total / count + (Math.floorMod(index + round, count) < total % count ? 1 : 0);
+            if (share == 0) {
+                continue;
+            }
+            long possible = Math.min(Math.min(share, budget[move.network()]), move.src().drain(null, share, true));
+            long accepted = move.dst().fill(type, possible, false);
+            move.src().drain(null, accepted, false);
+            budget[move.network()] -= accepted;
+            moved += accepted;
         }
         return moved;
     }

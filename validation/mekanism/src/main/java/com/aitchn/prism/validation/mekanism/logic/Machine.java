@@ -16,11 +16,13 @@ public final class Machine {
     private final MachineType type;
     private final EnergyBuffer energy;
     private final ChemicalTank inTank;
+    private final ChemicalTank inTank2;
     private final ChemicalTank outTank;
     private final ChemicalTank outTank2;
     private final ChemicalPorts ports;
     private Stack input;
     private Stack extra;
+    private final Side[] faces = new Side[6];
     private int speedUpgrades;
     private int energyUpgrades;
     private Stack output;
@@ -33,10 +35,21 @@ public final class Machine {
     public Machine(MachineType type) {
         this.type = type;
         this.energy = new EnergyBuffer(type.energyCapacity(), type.maxReceive(), type.maxExtract());
-        this.inTank = new ChemicalTank(type.tankCapacity(), c -> type.inputChemicals().contains(c));
-        this.outTank = new ChemicalTank(type.tankCapacity());
-        this.outTank2 = new ChemicalTank(type.tankCapacity());
-        this.ports = new ChemicalPorts(List.of(inTank), List.of(outTank, outTank2));
+        java.util.Arrays.fill(faces, Side.ALL);
+        if (type.buffer() != null) {
+            // A storage tank: one tank that takes what the filter allows and gives it all back out.
+            this.inTank = new ChemicalTank(type.tankCapacity(), type.buffer());
+            this.inTank2 = new ChemicalTank(0);
+            this.outTank = inTank;
+            this.outTank2 = new ChemicalTank(0);
+            this.ports = new ChemicalPorts(List.of(inTank), List.of(inTank));
+        } else {
+            this.inTank = new ChemicalTank(type.tankCapacity(), c -> type.inputChemicals().contains(c));
+            this.inTank2 = new ChemicalTank(type.tankCapacity(), c -> type.inputChemicals2().contains(c));
+            this.outTank = new ChemicalTank(type.tankCapacity());
+            this.outTank2 = new ChemicalTank(type.tankCapacity());
+            this.ports = new ChemicalPorts(List.of(inTank, inTank2), List.of(outTank, outTank2));
+        }
     }
 
     public MachineType type() {
@@ -49,6 +62,50 @@ public final class Machine {
 
     public ChemicalTank inTank() {
         return inTank;
+    }
+
+    /** The second chemical input (washer water, infuser's second gas); never accepts anything on machines without one. */
+    public ChemicalTank inTank2() {
+        return inTank2;
+    }
+
+    /** The input tank that takes {@code chemical}, or null (a bucket of water goes where water is accepted). */
+    public ChemicalTank tankFor(Chemical chemical) {
+        if (type.tankCapacity() <= 0) {
+            return null;
+        }
+        if (inTank.fill(chemical, 1, true) > 0) {
+            return inTank;
+        }
+        return inTank2.fill(chemical, 1, true) > 0 ? inTank2 : null;
+    }
+
+    public Side face(int face) {
+        return faces[face];
+    }
+
+    public void setFace(int face, Side mode) {
+        faces[face] = mode;
+    }
+
+    /** Tanks pipes may fill through {@code face}. */
+    public List<ChemicalTank> takeTanks(int face) {
+        return switch (faces[face]) {
+            case ALL -> ports.inputs();
+            case IN1 -> List.of(inTank);
+            case IN2 -> type.buffer() != null ? List.of() : List.of(inTank2);
+            default -> List.of();
+        };
+    }
+
+    /** Tanks pipes may drain through {@code face}. */
+    public List<ChemicalTank> giveTanks(int face) {
+        return switch (faces[face]) {
+            case ALL -> ports.outputs();
+            case OUT1 -> List.of(outTank);
+            case OUT2 -> type.buffer() != null ? List.of() : List.of(outTank2);
+            default -> List.of();
+        };
     }
 
     public ChemicalTank outTank() {
@@ -238,6 +295,10 @@ public final class Machine {
             if (r.itemOut() != null && !canFitOutput(r.itemOut())) {
                 continue;
             }
+            if (r.chemicalIn2() != null && inTank2.drain(r.chemicalIn2(), r.chemicalIn2Amount(), true)
+                    < r.chemicalIn2Amount()) {
+                continue;
+            }
             if (r.chemicalOut() != null && outTank.fill(r.chemicalOut(), r.chemicalOutAmount(), true)
                     < r.chemicalOutAmount()) {
                 continue;
@@ -270,6 +331,9 @@ public final class Machine {
         if (r.chemicalIn() != null) {
             inTank.drain(r.chemicalIn(), r.chemicalInAmount(), false);
         }
+        if (r.chemicalIn2() != null) {
+            inTank2.drain(r.chemicalIn2(), r.chemicalIn2Amount(), false);
+        }
     }
 
     private void finishOperation(Recipe r) {
@@ -300,6 +364,7 @@ public final class Machine {
         if (speedUpgrades > 0 || energyUpgrades > 0) {
             out.append("|u=").append(speedUpgrades).append(',').append(energyUpgrades);
         }
+        appendFaces(out);
         if (input != null) {
             out.append("|i=").append(input.id()).append(',').append(input.count());
         }
@@ -312,6 +377,7 @@ public final class Machine {
         appendTank(out, 'a', inTank);
         appendTank(out, 'b', outTank);
         appendTank(out, 'c', outTank2);
+        appendTank(out, 'd', inTank2);
         return out.toString();
     }
 
@@ -324,10 +390,24 @@ public final class Machine {
         if (speedUpgrades > 0 || energyUpgrades > 0) {
             out.append("|u=").append(speedUpgrades).append(',').append(energyUpgrades);
         }
+        appendFaces(out);
         appendTank(out, 'a', inTank);
         appendTank(out, 'b', outTank);
         appendTank(out, 'c', outTank2);
+        appendTank(out, 'd', inTank2);
         return out.toString();
+    }
+
+    private void appendFaces(StringBuilder out) {
+        boolean any = false;
+        StringBuilder digits = new StringBuilder();
+        for (Side face : faces) {
+            digits.append(face.ordinal());
+            any |= face != Side.ALL;
+        }
+        if (any) {
+            out.append("|f=").append(digits);
+        }
     }
 
     private static void appendTank(StringBuilder out, char key, ChemicalTank tank) {
@@ -353,6 +433,11 @@ public final class Machine {
                     case 'r' -> recipeIndex = Integer.parseInt(value);
                     case 'i' -> setInput(stack(value));
                     case 'x' -> setExtra(stack(value));
+                    case 'f' -> {
+                        for (int i = 0; i < 6 && i < value.length(); i++) {
+                            faces[i] = Side.values()[Character.digit(value.charAt(i), 10)];
+                        }
+                    }
                     case 'u' -> {
                         String[] parts = value.split(",");
                         speedUpgrades = Math.max(0, Math.min(MAX_UPGRADES, Integer.parseInt(parts[0])));
@@ -362,6 +447,7 @@ public final class Machine {
                     case 'a' -> loadTank(inTank, value);
                     case 'b' -> loadTank(outTank, value);
                     case 'c' -> loadTank(outTank2, value);
+                    case 'd' -> loadTank(inTank2, value);
                     default -> { }
                 }
             } catch (RuntimeException e) {
