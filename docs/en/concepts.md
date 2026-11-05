@@ -38,6 +38,13 @@ chest container, which Geyser shows to Bedrock players. Keep the items in your o
 re-renders its lore. `prism:lore` holds static lines, and an `ItemLoreBehavior` adds lines computed from the stack.
 Both editions show the lore. `examplemod:ruby` counts its uses this way (`UseCounterBehavior`).
 
+**Recipes.** Put recipes in `prism/recipes/**.yml`. `type: prism:shaped`, `prism:shapeless`, `prism:smelting`,
+`prism:blasting`, `prism:smoking` and `prism:campfire_cooking` become real crafting table and furnace recipes, so
+players craft your items in survival on both editions. A custom item is never used as its carrier material. A machine
+registers its own type with `context.registerRecipeType("polishing", Polishing.class, Polishing::decode)` and reads
+the recipes with `Prism.recipes().all(type)`. Any mod can add recipes of that type, and `Ingredient`, `ItemResult`
+and `Prism.items().matches(...)` handle custom and vanilla items alike. See `examples/example-mod/src/main/resources/prism/recipes/`.
+
 **Data.** `Prism.data().store("examplemod")` is a persistent string key-value store per namespace (SQLite file
 `plugins/Prism/data.db`). Calls block on disk, so batch writes and keep them off hot paths.
 

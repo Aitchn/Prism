@@ -30,6 +30,12 @@
 **物品資料與說明文字。** `Prism.items().editData(stack, data -> ...)` 寫入該物品堆疊自己的持久資料並重新產生說明文字。
 `prism:lore` 是固定說明，`ItemLoreBehavior` 可依堆疊內容加上動態行。兩個版本都看得到。`examplemod:ruby` 用這個方式記錄使用次數。
 
+**配方。** 配方放在 `prism/recipes/**.yml`。`type: prism:shaped`、`prism:shapeless`、`prism:smelting`、`prism:blasting`、
+`prism:smoking` 與 `prism:campfire_cooking` 會成為真正的工作台與熔爐配方，玩家在兩個版本的生存模式都能合成你的物品。自訂物品
+不會被當成它的載體材質使用。機器可以用 `context.registerRecipeType("polishing", Polishing.class, Polishing::decode)` 註冊自己的
+配方類型，再以 `Prism.recipes().all(type)` 讀取。任何模組都能加入這個類型的配方，`Ingredient`、`ItemResult` 與
+`Prism.items().matches(...)` 會同樣處理自訂與原版物品。範例見 `examples/example-mod/src/main/resources/prism/recipes/`。
+
 **資料。** `Prism.data().store("examplemod")` 提供各命名空間獨立的持久化字串鍵值儲存（SQLite 檔
 `plugins/Prism/data.db`）。呼叫會讀寫磁碟，請批次寫入並避開高頻路徑。
 

@@ -11,6 +11,10 @@ import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.api.mod.ContentView;
 import com.aitchn.prism.api.mod.ModContext;
+import com.aitchn.prism.api.recipe.PrismRecipe;
+import com.aitchn.prism.api.recipe.PrismRecipes;
+import com.aitchn.prism.api.recipe.RecipeDecoder;
+import com.aitchn.prism.api.recipe.RecipeType;
 import com.aitchn.prism.api.registry.Registry;
 import com.aitchn.prism.api.registry.RegistrySnapshot;
 import com.aitchn.prism.core.content.ContentLoader;
@@ -39,6 +43,8 @@ public final class ModManager {
     private final MutableRegistry<BehaviorType<? extends Behavior>> behaviorTypes = new MutableRegistry<>();
     private final MutableRegistry<ItemDefinition> items = new MutableRegistry<>();
     private final MutableRegistry<BlockDefinition> blocks = new MutableRegistry<>();
+    private final MutableRegistry<RecipeType<?>> recipeTypes = new MutableRegistry<>();
+    private final MutableRegistry<PrismRecipe<?>> recipes = new MutableRegistry<>();
     private final Map<String, Map<String, byte[]>> assets = new LinkedHashMap<>();
     private final Map<String, Map<PrismKey, byte[]>> models = new LinkedHashMap<>();
     private final Map<String, ModCandidate> active = new HashMap<>();
@@ -60,6 +66,9 @@ public final class ModManager {
                 PrismComponents.ROTATION.key(), PrismComponents.ROTATION,
                 PrismComponents.VARIANTS.key(), PrismComponents.VARIANTS,
                 PrismComponents.LORE.key(), PrismComponents.LORE));
+        Map<PrismKey, RecipeType<?>> builtinRecipes = new LinkedHashMap<>();
+        PrismRecipes.ALL.forEach(type -> builtinRecipes.put(type.key(), type));
+        recipeTypes.publish(BUILTIN_OWNER, builtinRecipes);
     }
 
     public @NotNull Registry<ItemDefinition> items() {
@@ -83,6 +92,16 @@ public final class ModManager {
         Map<PrismKey, byte[]> all = new LinkedHashMap<>();
         models.values().forEach(all::putAll);
         return java.util.Collections.unmodifiableMap(all);
+    }
+
+    /** Recipe types: Prism's vanilla ones plus every active mod's. */
+    public @NotNull Registry<RecipeType<?>> recipeTypes() {
+        return recipeTypes;
+    }
+
+    /** Every active mod's recipes, keyed by recipe id. */
+    public @NotNull Registry<PrismRecipe<?>> recipes() {
+        return recipes;
     }
 
     public @NotNull Registry<ComponentType<?>> componentTypes() {
@@ -146,6 +165,8 @@ public final class ModManager {
             behaviorTypes.publish(mod.id(), staging.behaviors);
             items.publish(mod.id(), loaded.items());
             blocks.publish(mod.id(), loaded.blocks());
+            recipeTypes.publish(mod.id(), staging.recipeTypes);
+            recipes.publish(mod.id(), loaded.recipes());
         } catch (IllegalStateException e) {
             rollback(mod.id());
             problems.add(new Problem("", e.getMessage()));
@@ -193,6 +214,8 @@ public final class ModManager {
     }
 
     private void rollback(String id) {
+        recipes.unregisterOwner(id);
+        recipeTypes.unregisterOwner(id);
         items.unregisterOwner(id);
         blocks.unregisterOwner(id);
         behaviorTypes.unregisterOwner(id);
@@ -276,6 +299,7 @@ public final class ModManager {
         private final ModCandidate mod;
         final Map<PrismKey, ComponentType<?>> components = new LinkedHashMap<>();
         final Map<PrismKey, BehaviorType<? extends Behavior>> behaviors = new LinkedHashMap<>();
+        final Map<PrismKey, RecipeType<?>> recipeTypes = new LinkedHashMap<>();
         final List<Problem> problems = new ArrayList<>();
 
         Staging(ModCandidate mod) {
@@ -310,6 +334,22 @@ public final class ModManager {
                 problems.add(new Problem("", "behavior type " + type.key() + " registered twice"));
             }
             return type;
+        }
+
+        @Override
+        public <R> @NotNull RecipeType<R> registerRecipeType(
+                @NotNull String path, @NotNull Class<R> valueType, @NotNull RecipeDecoder<R> decoder) {
+            RecipeType<R> type = new RecipeType<>(key(path), valueType, decoder);
+            if (recipeTypes.putIfAbsent(type.key(), type) != null) {
+                problems.add(new Problem("", "recipe type " + type.key() + " registered twice"));
+            }
+            return type;
+        }
+
+        @Override
+        public @NotNull Optional<RecipeType<?>> recipe(@NotNull PrismKey key) {
+            RecipeType<?> staged = recipeTypes.get(key);
+            return staged != null ? Optional.of(staged) : ModManager.this.recipeTypes.get(key);
         }
 
         private PrismKey key(String path) {

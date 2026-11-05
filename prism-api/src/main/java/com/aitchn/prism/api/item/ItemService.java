@@ -33,6 +33,16 @@ public interface ItemService {
     /** Re-renders the name and lore of a custom item stack (static {@code prism:lore} then {@link ItemLoreBehavior}). */
     void refresh(@NotNull ItemStack stack);
 
+    /**
+     * Whether {@code stack} satisfies {@code ingredient}: the same custom item (by identity, whatever its per-stack
+     * data), or the vanilla item or a member of the vanilla tag (custom items never count as their carrier), with at
+     * least {@code ingredient.count()} items. For mods matching their own machine recipes.
+     */
+    boolean matches(@NotNull com.aitchn.prism.api.recipe.Ingredient ingredient, @NotNull ItemStack stack);
+
+    /** A new stack for a recipe result, custom or vanilla; empty when the item does not exist. */
+    @NotNull Optional<ItemStack> create(@NotNull com.aitchn.prism.api.recipe.ItemResult result);
+
     /** The definition of the custom item {@code stack} is, if it is one. */
     default @NotNull Optional<ItemDefinition> definition(@NotNull ItemStack stack) {
         return identify(stack).flatMap(this::definition);

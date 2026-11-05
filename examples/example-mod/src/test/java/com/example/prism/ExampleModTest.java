@@ -23,6 +23,7 @@ class ExampleModTest {
             context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
             context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
             context.registerBehavior("use_counter", UseCounterBehavior.class, UseCounterBehavior::fromYaml);
+            ExampleMod.polishing = context.registerRecipeType("polishing", Polishing.class, Polishing::decode);
         }
     }
 
@@ -61,6 +62,23 @@ class ExampleModTest {
                 counter.components().get(PrismComponents.VARIANTS).orElseThrow().names());
         assertEquals(20, counter.behaviors(com.aitchn.prism.api.block.BlockTickBehavior.class).getFirst()
                 .tickInterval());
+    }
+
+    @Test
+    void recipesLoadForPrismAndModTypes() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var recipes = harness.recipes();
+        var block = recipes.get(com.aitchn.prism.api.recipe.PrismRecipes.SHAPED,
+                com.aitchn.prism.api.PrismKey.parse("examplemod:ruby_block")).orElseThrow().value();
+        assertEquals(java.util.List.of("RRR", "RRR", "RRR"), block.pattern());
+        assertEquals("examplemod:ruby", block.key().get('R').item().toString());
+        assertEquals(2, recipes.all(com.aitchn.prism.api.recipe.PrismRecipes.SHAPED).size());
+        assertEquals(9, recipes.all(com.aitchn.prism.api.recipe.PrismRecipes.SHAPELESS).getFirst().value().result().count());
+        assertEquals(1, recipes.all(com.aitchn.prism.api.recipe.PrismRecipes.SMELTING).size());
+        var polish = recipes.all(ExampleMod.polishing);
+        assertEquals(1, polish.size());
+        assertEquals(100, polish.getFirst().value().ticks());
     }
 
     @Test
