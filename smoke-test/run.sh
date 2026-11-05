@@ -94,6 +94,8 @@ for marker in 'PRISM_MOD_ACTIVE ExampleMod items=3 blocks=3' 'PRISM_MODELS_SYNCE
   if [[ -z "$found" ]]; then
     echo "FAIL: expected log line not seen: $marker" >&2
     docker logs "$NAME" 2>&1 | grep -E 'PRISM_|EXAMPLE_|ExampleMod|MEKANISM_|Mekanism' >&2 || true
+    echo "--- errors and stack traces ---" >&2
+    docker logs "$NAME" 2>&1 | grep -E 'ERROR|SEVERE|Exception|Caused by|^[[:space:]]+at (com\.aitchn|io\.papermc\.paper\.threadedregions)' | head -80 >&2 || true
     exit 1
   fi
 done
