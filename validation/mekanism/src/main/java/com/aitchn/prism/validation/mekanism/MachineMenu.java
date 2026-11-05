@@ -59,7 +59,6 @@ final class MachineMenu implements ContainerMenu {
         this.id = id;
     }
 
-    /** Whether someone has this menu open (or is about to). */
     /** The menu is gone: transporters may take from the output slot again. */
     void releaseMachine() {
         grid.locked(() -> {
@@ -68,6 +67,7 @@ final class MachineMenu implements ContainerMenu {
         });
     }
 
+    /** Whether someone has this menu open (or is about to). */
     boolean active() {
         MenuView current = view;
         return current != null ? current.isOpen() : System.currentTimeMillis() - created < 5_000;
