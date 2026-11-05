@@ -213,6 +213,7 @@ class MekanismContentTest {
                         r.chemicalIn2().amount(), false), entry.id() + " second chemical accepted");
             }
             for (int i = 0; i <= r.ticks() + 1; i++) {
+                machine.energy().set(spec.energyCapacity()); // long recipes may need more than one buffer: cables refill it
                 machine.tick();
             }
             if (r.output() != null) {
