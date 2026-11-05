@@ -4,6 +4,8 @@ import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockBreakBehavior;
 import com.aitchn.prism.api.block.BlockContext;
 import com.aitchn.prism.api.block.BlockInteractBehavior;
+import com.aitchn.prism.api.block.BlockPlaceBehavior;
+import com.aitchn.prism.api.block.BlockRemoveBehavior;
 import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.item.ItemUseBehavior;
@@ -87,6 +89,18 @@ public final class BehaviorDispatcher {
     public int dispatchBlockBreak(
             @NotNull PrismKey key, @NotNull Location at, @NotNull Function<BlockDefinition, BlockContext> context) {
         return dispatchBlock(key, at, BlockBreakBehavior.class, context, (b, c) -> b.onBreak(c));
+    }
+
+    /** Runs the place behaviors of block {@code key}. Returns how many ran. */
+    public int dispatchBlockPlace(
+            @NotNull PrismKey key, @NotNull Location at, @NotNull Function<BlockDefinition, BlockContext> context) {
+        return dispatchBlock(key, at, BlockPlaceBehavior.class, context, (b, c) -> b.onPlace(c));
+    }
+
+    /** Runs the remove behaviors of block {@code key}. Returns how many ran. */
+    public int dispatchBlockRemove(
+            @NotNull PrismKey key, @NotNull Location at, @NotNull Function<BlockDefinition, BlockContext> context) {
+        return dispatchBlock(key, at, BlockRemoveBehavior.class, context, (b, c) -> b.onRemove(c));
     }
 
     private <B> int dispatchBlock(

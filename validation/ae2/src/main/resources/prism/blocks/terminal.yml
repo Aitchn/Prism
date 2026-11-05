@@ -1,0 +1,6 @@
+# Block ae2:terminal. The carrier is invisible; the look comes from assets/ae2/textures/block/terminal.png.
+base: minecraft:barrier
+drop: ae2:terminal
+behaviors:
+  - type: ae2:node
+    kind: terminal

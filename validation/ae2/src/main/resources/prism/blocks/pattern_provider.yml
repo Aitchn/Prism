@@ -1,0 +1,6 @@
+# Block ae2:pattern_provider. The carrier is invisible; the look comes from assets/ae2/textures/block/pattern_provider.png.
+base: minecraft:barrier
+drop: ae2:pattern_provider
+behaviors:
+  - type: ae2:node
+    kind: pattern_provider

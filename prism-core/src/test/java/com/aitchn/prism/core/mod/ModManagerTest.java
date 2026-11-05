@@ -33,6 +33,21 @@ class ModManagerTest {
         }
     }
 
+    record Lifecycle(List<String> log) implements com.aitchn.prism.api.block.BlockPlaceBehavior,
+            com.aitchn.prism.api.block.BlockRemoveBehavior {
+        @Override
+        public void onPlace(com.aitchn.prism.api.block.BlockContext context) {
+            log.add("place");
+        }
+
+        @Override
+        public void onRemove(com.aitchn.prism.api.block.BlockContext context) {
+            log.add("remove");
+        }
+    }
+
+    static final List<String> LIFECYCLE_LOG = new ArrayList<>();
+
     static final AtomicInteger HEAL_CALLS = new AtomicInteger();
 
     static class TestMod implements PrismMod {
@@ -42,6 +57,7 @@ class ModManagerTest {
         public void onInitialize(ModContext ctx) {
             events.add("init");
             ctx.registerComponent("food", Food.class, s -> new Food(s.requireInt("nutrition")));
+            ctx.registerBehavior("lifecycle", Lifecycle.class, s -> new Lifecycle(LIFECYCLE_LOG));
             ctx.registerBehavior("heal", Heal.class, s -> {
                 s.rejectUnknownKeys(java.util.Set.of("amount"));
                 return new Heal(s.requireInt("amount"), HEAL_CALLS);
@@ -217,6 +233,25 @@ class ModManagerTest {
         manager.deactivate("TestMod");
         assertEquals(0, manager.blocks().size());
         assertTrue(manager.assets().isEmpty());
+    }
+
+    @Test
+    void blockPlaceAndRemoveBehaviorsAreDispatched() {
+        ModManager manager = manager();
+        LIFECYCLE_LOG.clear();
+        var report = manager.activate(candidate("TestMod", "testmod", new MemoryContentSource()
+                .put("prism/blocks/node.yml", "base: barrier\nbehaviors:\n  - type: testmod:lifecycle\n"),
+                new TestMod()));
+        assertTrue(report.active(), report.problems().toString());
+        boolean[] owned = {true};
+        var dispatcher = new BehaviorDispatcher(manager.items(), manager.blocks(), p -> true, l -> owned[0],
+                Logger.getLogger("test"));
+        PrismKey node = new PrismKey("testmod", "node");
+        assertEquals(1, dispatcher.dispatchBlockPlace(node, null, def -> null));
+        assertEquals(1, dispatcher.dispatchBlockRemove(node, null, def -> null));
+        assertEquals(List.of("place", "remove"), LIFECYCLE_LOG);
+        owned[0] = false;
+        assertEquals(0, dispatcher.dispatchBlockPlace(node, null, def -> null));
     }
 
     @Test

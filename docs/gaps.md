@@ -9,6 +9,7 @@ promise. Update it when a milestone closes a gap or finds a new one.
 | Items | definitions, components, use behavior | M1 done |
 | Items | more events (hit, equip, tick in inventory), item tooltips, durability, cooldowns | open |
 | Blocks | definitions, place/break/interact behaviors, display-entity appearance | M2 done |
+| Blocks | place/remove lifecycle behaviors | done (AE2 validation) |
 | Blocks | block states/rotation from placement, hardness and tool rules, sounds, light, redstone | open |
 | Blocks | very large counts (one display entity per block) | open; NativeStateBackend in M5 |
 | Block state | per-block persistent data, chunk-safe, versioned | open; carrier + display give identity only |
@@ -34,3 +35,19 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 - `DataStore` is a string key-value store. Machines and networks (AE2, Mekanism) need transactional multi-key writes,
   per-chunk or per-block attachment with automatic cleanup on unload/removal, and async access; none exist yet.
+
+## Found in the AE2 validation
+
+Details and workarounds are in [validation/ae2.md](validation/ae2.md).
+
+- Per-stack item data (cells, encoded patterns) and a canonical "same item" key: not in `ItemService`.
+- Per-block data, listing custom blocks in a chunk, chunk load/unload callbacks, and cleanup when a block vanishes.
+- `DataStore`: blocking, string-only, no transactions.
+- `MenuSpec`: no slots or dragging, no click type, no live refresh, no text input, no fixed button positions.
+- Block appearance: no neighbour-dependent models, thin hitboxes, per-state looks or placement facing.
+- No neighbour-update callback or multiblock helper.
+- No capability lookup between blocks (energy, items, fluids); a mod cannot feed or drain another mod's machines.
+- No recipe registry, creative tab or item list for mod content.
+- `BlockService.place` has no placing player, so place behaviors see `player() == null`.
+- No public runtime lookup of item and block definitions.
+- Folia: grid-style state spans regions; the rule and the schedulers mods may use are not documented.

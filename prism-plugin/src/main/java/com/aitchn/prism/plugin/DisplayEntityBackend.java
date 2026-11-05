@@ -4,6 +4,7 @@ import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockService;
 import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.item.ItemService;
+import com.aitchn.prism.core.mod.BehaviorDispatcher;
 import com.aitchn.prism.api.registry.Registry;
 import java.util.Optional;
 import org.bukkit.Location;
@@ -31,9 +32,11 @@ final class DisplayEntityBackend implements BlockService {
     private final ItemService items;
     private final Appearance appearance;
     private final ModelAnchors anchors;
+    private final BehaviorDispatcher dispatcher;
 
     DisplayEntityBackend(Plugin prism, Registry<BlockDefinition> definitions, ItemService items, Appearance appearance,
-            ModelAnchors anchors) {
+            ModelAnchors anchors, BehaviorDispatcher dispatcher) {
+        this.dispatcher = dispatcher;
         this.markerKey = new NamespacedKey(prism, "block");
         this.anchors = anchors;
         this.definitions = definitions;
@@ -70,6 +73,8 @@ final class DisplayEntityBackend implements BlockService {
         if (modelled) {
             anchors.attach(anchor, key);
         }
+        dispatcher.dispatchBlockPlace(key, block.getLocation(),
+                definition -> new BlockEventContext(block, null).with(definition));
         return true;
     }
 
@@ -95,6 +100,8 @@ final class DisplayEntityBackend implements BlockService {
         if (key.isEmpty()) {
             return false;
         }
+        dispatcher.dispatchBlockRemove(key.get(), block.getLocation(),
+                definition -> new BlockEventContext(block, null).with(definition));
         Location center = block.getLocation().add(0.5, 0.5, 0.5);
         for (ItemDisplay display : block.getWorld().getNearbyEntitiesByType(ItemDisplay.class, center, SEARCH_RADIUS)) {
             if (display.getPersistentDataContainer().has(markerKey, PersistentDataType.STRING)) {

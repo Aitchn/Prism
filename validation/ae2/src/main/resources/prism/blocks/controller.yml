@@ -1,0 +1,6 @@
+# Block ae2:controller. The carrier is invisible; the look comes from assets/ae2/textures/block/controller.png.
+base: minecraft:barrier
+drop: ae2:controller
+behaviors:
+  - type: ae2:node
+    kind: controller

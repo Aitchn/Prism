@@ -1,0 +1,6 @@
+# Block ae2:crafting_storage_64k. The carrier is invisible; the look comes from assets/ae2/textures/block/crafting_storage_64k.png.
+base: minecraft:barrier
+drop: ae2:crafting_storage_64k
+behaviors:
+  - type: ae2:node
+    kind: crafting_storage_64k

@@ -1,7 +1,6 @@
 package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.PrismKey;
-import com.aitchn.prism.api.block.BlockContext;
 import com.aitchn.prism.api.block.BlockService;
 import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
@@ -26,8 +25,6 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /** Translates Bukkit block events into capability dispatches and keeps custom blocks from being moved or lost. */
 final class BlockListener implements Listener {
@@ -56,9 +53,9 @@ final class BlockListener implements Listener {
         Player player = event.getPlayer();
         Optional<PrismKey> custom = blocks.identify(clicked);
         if (custom.isPresent()) {
-            Ctx ctx = new Ctx(clicked, player);
+            BlockEventContext ctx = new BlockEventContext(clicked, player);
             dispatcher.dispatchBlockInteract(custom.get(), clicked.getLocation(), definition -> ctx.with(definition));
-            if (ctx.cancelled) {
+            if (ctx.cancelled()) {
                 event.setCancelled(true);
                 return;
             }
@@ -88,9 +85,9 @@ final class BlockListener implements Listener {
         if (custom.isEmpty()) {
             return;
         }
-        Ctx ctx = new Ctx(block, event.getPlayer());
+        BlockEventContext ctx = new BlockEventContext(block, event.getPlayer());
         dispatcher.dispatchBlockBreak(custom.get(), block.getLocation(), definition -> ctx.with(definition));
-        if (ctx.cancelled) {
+        if (ctx.cancelled()) {
             event.setCancelled(true);
             return;
         }
@@ -130,43 +127,6 @@ final class BlockListener implements Listener {
                 exploded.remove();
                 blocks.remove(block, true);
             }
-        }
-    }
-
-    private static final class Ctx implements BlockContext {
-        private final Block block;
-        private final Player player;
-        private BlockDefinition definition;
-        boolean cancelled;
-
-        Ctx(Block block, @Nullable Player player) {
-            this.block = block;
-            this.player = player;
-        }
-
-        Ctx with(BlockDefinition definition) {
-            this.definition = definition;
-            return this;
-        }
-
-        @Override
-        public @NotNull Block block() {
-            return block;
-        }
-
-        @Override
-        public @NotNull BlockDefinition definition() {
-            return definition;
-        }
-
-        @Override
-        public @Nullable Player player() {
-            return player;
-        }
-
-        @Override
-        public void cancel() {
-            cancelled = true;
         }
     }
 }

@@ -1,0 +1,6 @@
+# Block ae2:dense_cable. The carrier is invisible; the look comes from assets/ae2/textures/block/dense_cable.png.
+base: minecraft:barrier
+drop: ae2:dense_cable
+behaviors:
+  - type: ae2:node
+    kind: dense_cable

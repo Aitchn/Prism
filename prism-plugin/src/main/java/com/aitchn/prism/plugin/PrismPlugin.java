@@ -49,16 +49,17 @@ public final class PrismPlugin extends JavaPlugin {
         runtime = new PrismRuntime(info, scheduler, mods);
         BukkitItemService items = new BukkitItemService(this, mods.items(), appearance);
         ModelAnchors anchors = new ModelAnchors(new NamespacedKey(this, "block"), mods.blocks(), scheduler, getLogger());
-        DisplayEntityBackend blocks = new DisplayEntityBackend(this, mods.blocks(), items, appearance, anchors);
+        BehaviorDispatcher dispatcher = new BehaviorDispatcher(
+                mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
+                location -> scheduler.isOwnedByCurrentThread(location), getLogger());
+        DisplayEntityBackend blocks =
+                new DisplayEntityBackend(this, mods.blocks(), items, appearance, anchors, dispatcher);
         packManager = new PackManager(this, mods, scheduler, info, appearance, getConfig());
         ModelSync modelSync = new ModelSync(this, mods, scheduler, packManager, anchors);
         ModLifecycle lifecycle = new ModLifecycle(this, mods, () -> {
             packManager.contentChanged();
             modelSync.contentChanged();
         });
-        BehaviorDispatcher dispatcher = new BehaviorDispatcher(
-                mods.items(), mods.blocks(), player -> scheduler.isOwnedByCurrentThread(player),
-                location -> scheduler.isOwnedByCurrentThread(location), getLogger());
         try {
             getDataFolder().mkdirs();
             data = new SqliteDataService(getDataFolder().toPath().resolve("data.db"));
