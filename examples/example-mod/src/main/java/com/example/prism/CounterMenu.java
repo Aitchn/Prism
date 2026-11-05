@@ -102,6 +102,12 @@ final class CounterMenu implements ContainerMenu {
         Prism.scheduler().runAt(at, () -> Prism.blocks().setVariant(at.getBlock(), next));
     }
 
+    /** Once the block is gone the slot is frozen: whatever is in it goes back to the viewer on close. */
+    @Override
+    public boolean allowChange(@NotNull MenuView view, int slot) {
+        return !removed;
+    }
+
     @Override
     public void onSlotChanged(@NotNull MenuView view, int slot) {
         ItemStack item = view.item(STORE_SLOT);

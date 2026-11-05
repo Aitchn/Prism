@@ -1,6 +1,7 @@
 package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.block.BlockContext;
+import com.aitchn.prism.api.block.BlockInteractBehavior;
 import com.aitchn.prism.api.block.CustomBlock;
 import com.aitchn.prism.api.content.BlockDefinition;
 import org.bukkit.block.Block;
@@ -21,6 +22,9 @@ final class BlockEventContext implements BlockContext {
     private final Vector hit;
     private final EquipmentSlot hand;
     private boolean cancelled;
+    private ItemStack placedFrom;
+    private boolean passed;
+    private boolean handled;
 
     BlockEventContext(CustomBlock custom, @Nullable Player player, @Nullable BlockFace face, @Nullable Vector hit,
             @Nullable EquipmentSlot hand) {
@@ -73,6 +77,34 @@ final class BlockEventContext implements BlockContext {
     @Override
     public @Nullable ItemStack heldItem() {
         return player == null || hand == null ? null : player.getInventory().getItem(hand);
+    }
+
+    /** The placing stack for place behaviors; returns this. */
+    BlockEventContext placedFrom(@Nullable ItemStack from) {
+        this.placedFrom = from == null ? null : from.asOne();
+        return this;
+    }
+
+    @Override
+    public @Nullable ItemStack placedFrom() {
+        return placedFrom == null ? null : placedFrom.clone();
+    }
+
+    @Override
+    public void pass() {
+        passed = true;
+    }
+
+    /** Runs one interact behavior and records whether it used the click. */
+    void interact(BlockInteractBehavior behavior) {
+        passed = false;
+        behavior.onInteract(this);
+        handled |= !passed;
+    }
+
+    /** Whether some interact behavior used the click. */
+    boolean handled() {
+        return handled;
     }
 
     @Override

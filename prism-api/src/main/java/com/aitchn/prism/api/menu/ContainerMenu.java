@@ -31,6 +31,17 @@ public interface ContainerMenu {
         return true;
     }
 
+    /**
+     * Last say before the player changes input or output slot {@code slot} (click, shift-click, number key, drop or
+     * drag), asked synchronously while the click is being handled, so the answer always matches the current state of
+     * your model. Return false to refuse; the click is cancelled and nothing moves. For a shift-click into the menu,
+     * a refused slot is skipped and the next accepting slot is tried. Runs after {@link #role} and {@link #accepts}.
+     * Keep it cheap and side-effect free; react to the result in {@link #onSlotChanged}.
+     */
+    default boolean allowChange(@NotNull MenuView view, int slot) {
+        return true;
+    }
+
     /** Fill the slots. Runs once when the menu opens. */
     void onOpen(@NotNull MenuView view);
 
@@ -38,8 +49,10 @@ public interface ContainerMenu {
     default void onButton(@NotNull MenuView view, int slot, @NotNull ClickKind click) {}
 
     /**
-     * The item in an input or output slot changed because of the player; runs one tick after the click, or just
-     * before {@link #onClose} if the menu closes first, so every change is reported.
+     * The item in an input or output slot changed because of the player; runs one tick after the click (once the
+     * click's result is in the slot), or just before {@link #onClose} if the menu closes first, so every change is
+     * reported. Until then {@link MenuView#isChangePending} is true for the slot: a machine that ticks in between
+     * should leave that slot alone.
      */
     default void onSlotChanged(@NotNull MenuView view, int slot) {}
 

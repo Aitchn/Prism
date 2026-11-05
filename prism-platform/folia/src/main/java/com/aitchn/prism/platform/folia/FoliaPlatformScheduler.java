@@ -43,6 +43,12 @@ public final class FoliaPlatformScheduler implements PlatformScheduler {
     }
 
     @Override
+    public @NotNull ScheduledTask runGlobalTimer(@NotNull Runnable task, long delayTicks, long periodTicks) {
+        return wrap(Bukkit.getGlobalRegionScheduler()
+                .runAtFixedRate(plugin, t -> task.run(), Math.max(1, delayTicks), Math.max(1, periodTicks)));
+    }
+
+    @Override
     public void runAsync(@NotNull Runnable task) {
         Bukkit.getAsyncScheduler().runNow(plugin, t -> task.run());
     }
