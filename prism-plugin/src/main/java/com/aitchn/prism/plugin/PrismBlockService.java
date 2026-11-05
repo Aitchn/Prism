@@ -130,6 +130,11 @@ final class PrismBlockService implements BlockService, Listener {
         return ores.targets();
     }
 
+    /** New chunks generated into and ore blocks placed so far, for the self test. */
+    String oreStats() {
+        return "newChunks=" + ores.chunks.get() + " orePlaced=" + ores.placedBlocks.get();
+    }
+
     /**
      * World generation: draws and indexes the block without place behaviors or neighbour notifications (the chunk is
      * still loading). Load behaviors and ticking start with the rest of the chunk one tick later.

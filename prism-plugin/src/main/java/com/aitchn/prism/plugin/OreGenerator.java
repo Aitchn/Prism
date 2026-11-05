@@ -34,6 +34,9 @@ final class OreGenerator {
     private final Registry<BlockDefinition> definitions;
     private final Logger log;
     private volatile List<Target> targets;
+    /** New chunks seen and blocks placed, for the self test's report. */
+    final java.util.concurrent.atomic.AtomicLong chunks = new java.util.concurrent.atomic.AtomicLong();
+    final java.util.concurrent.atomic.AtomicLong placedBlocks = new java.util.concurrent.atomic.AtomicLong();
 
     OreGenerator(Registry<BlockDefinition> definitions, Logger log) {
         this.definitions = definitions;
@@ -74,6 +77,8 @@ final class OreGenerator {
                 }
             }
         }
+        chunks.incrementAndGet();
+        placedBlocks.addAndGet(placed);
         return placed;
     }
 

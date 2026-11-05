@@ -64,8 +64,10 @@ final class OreSelfTest implements Listener {
             boolean visible = !ores.isEmpty() && ores.stream().allMatch(b -> b.block().getType() == Material.NOTE_BLOCK);
             int targets = (int) blocks.oreTargets().stream().filter(t -> t.block().equals(key)).count();
             boolean ok = targets > 0 && visible;
+            // What the ore could replace, to tell "no stone here" from "generation did not run".
+            String sample = chunk.getBlock(8, -40, 8).getType() + "," + chunk.getBlock(8, -20, 8).getType();
             log.info((ok ? "PRISM_ORE_SELFTEST_OK " : "PRISM_ORE_SELFTEST_FAIL ") + key + " targets=" + targets
-                    + " blocks=" + ores.size() + " noteBlocks=" + visible + " chunk=" + chunkX + "," + chunkZ);
+                    + " blocks=" + ores.size() + " noteBlocks=" + visible + " chunk=" + chunkX + "," + chunkZ + " sample=" + sample + " " + blocks.oreStats());
         } catch (RuntimeException e) {
             log.severe("PRISM_ORE_SELFTEST_FAIL " + e);
         }
