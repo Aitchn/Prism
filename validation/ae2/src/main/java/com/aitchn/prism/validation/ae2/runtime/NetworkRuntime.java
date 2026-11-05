@@ -33,6 +33,7 @@ public final class NetworkRuntime {
     private final Map<GridPos, CraftingJob> jobs = new TreeMap<>();
     private volatile GridNetwork topology;
     private volatile List<Pattern> patterns = List.of();
+    private final List<CraftingJob> draining = new ArrayList<>();
     private volatile boolean powered;
 
     NetworkRuntime(@NotNull GridPos id, @NotNull GridNetwork topology) {
@@ -84,6 +85,9 @@ public final class NetworkRuntime {
                 return false;
             }
             entry.getValue().cancel();
+            if (entry.getValue().holdsItems()) {
+                draining.add(entry.getValue());
+            }
             return true;
         });
     }
@@ -122,12 +126,23 @@ public final class NetworkRuntime {
         return true;
     }
 
-    /** Called every server tick from the global scheduler. */
-    synchronized void tick() {
+    /** The cells currently backing the network's storage. */
+    List<com.aitchn.prism.validation.ae2.storage.StorageCell> cells() {
+        return storage.target.cells();
+    }
+
+    /**
+     * Called every server tick from the global scheduler. Returns true when jobs ran, which means cell contents may
+     * have changed and must be saved.
+     */
+    synchronized boolean tick() {
         powered = power.tick(topology);
         if (!powered) {
-            return;
+            return false;
         }
+        boolean active = !jobs.isEmpty() || !draining.isEmpty();
+        draining.forEach(CraftingJob::tick);
+        draining.removeIf(job -> !job.holdsItems());
         List<GridPos> finished = new ArrayList<>();
         jobs.forEach((anchor, job) -> {
             job.tick();
@@ -136,6 +151,7 @@ public final class NetworkRuntime {
             }
         });
         finished.forEach(jobs::remove);
+        return active;
     }
 
     /** Forwards to whichever {@link NetworkStorage} is current, so running jobs survive a topology change. */

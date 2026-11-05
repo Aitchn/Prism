@@ -151,4 +151,22 @@ class CraftingTest {
         assertTrue(all.containsAll(ALL));
         assertTrue(com.aitchn.prism.validation.ae2.crafting.PatternCodec.decode("junk").isEmpty());
     }
+
+    @Test
+    void cancelWaitsForRoomInAFullNetwork() {
+        StorageCell cell = new StorageCell(UUID.randomUUID(), StorageCell.Tier.K1);
+        NetworkStorage network = new NetworkStorage(List.of(cell));
+        network.insert(COBBLE, 3);
+        network.insert(STICK, 2);
+        CraftingJob job = new CraftingJob(CraftingPlanner.plan(PICK, 1, network.snapshot(), ALL), network, 1, 10);
+        job.start();
+        network.insert(new ItemKey("filler"), 1_000_000); // someone fills the cell while the job runs
+        job.cancel();
+        assertEquals(CraftingJob.Status.CANCELLING, job.status());
+        assertTrue(job.holdsItems());
+        network.extract(new ItemKey("filler"), 1_000_000);
+        job.tick();
+        assertEquals(CraftingJob.Status.CANCELLED, job.status());
+        assertEquals(3, network.count(COBBLE));
+    }
 }

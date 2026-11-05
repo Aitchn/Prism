@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class CraftingJob {
 
-    public enum Status { PENDING, RUNNING, FINISHING, DONE, CANCELLED }
+    public enum Status { PENDING, RUNNING, FINISHING, CANCELLING, DONE, CANCELLED }
 
     private record Running(Pattern pattern, int ticksLeft) {}
 
@@ -90,19 +90,27 @@ public final class CraftingJob {
                     status = Status.FINISHING;
                 }
             }
-            case FINISHING -> flush();
+            case FINISHING, CANCELLING -> flush();
             default -> { }
         }
     }
 
-    /** Stops the job and returns whatever is in the buffer to the network. */
+    /**
+     * Stops the job and returns whatever is in the buffer to the network. When the network is full the job stays in
+     * {@link Status#CANCELLING} and keeps retrying on every tick until the buffer is empty.
+     */
     public void cancel() {
-        if (status == Status.DONE || status == Status.CANCELLED) {
+        if (status == Status.DONE || status == Status.CANCELLED || status == Status.CANCELLING) {
             return;
         }
         inFlight.clear();
+        status = Status.CANCELLING;
         flush();
-        status = Status.CANCELLED;
+    }
+
+    /** True while the job still holds items that must go back to the network. */
+    public boolean holdsItems() {
+        return !buffer.isEmpty();
     }
 
     private void finishCrafts() {
@@ -159,8 +167,12 @@ public final class CraftingJob {
                 buffer.put(entry.getKey(), entry.getValue() - accepted);
             }
         }
-        if (buffer.isEmpty() && status == Status.FINISHING) {
-            status = Status.DONE;
+        if (buffer.isEmpty()) {
+            if (status == Status.FINISHING) {
+                status = Status.DONE;
+            } else if (status == Status.CANCELLING) {
+                status = Status.CANCELLED;
+            }
         }
     }
 }

@@ -53,7 +53,9 @@ public final class GridManager {
         List<GridNetwork> networks = GridCalculator.compute(state.nodes());
         Map<GridPos, NetworkRuntime> oldById = new HashMap<>();
         Map<NetworkRuntime, Double> oldEnergy = new HashMap<>();
+        Map<NetworkRuntime, java.util.Set<GridPos>> oldMembers = new HashMap<>();
         for (NetworkRuntime runtime : runtimes) {
+            oldMembers.put(runtime, java.util.Set.copyOf(runtime.topology().kinds().keySet()));
             oldById.put(runtime.id(), runtime);
             oldEnergy.put(runtime, runtime.power().stored());
         }
@@ -84,7 +86,7 @@ public final class GridManager {
         // Each old network hands its energy to the new network that contains most of its blocks (merge or split).
         for (NetworkRuntime old : runtimes) {
             Map<NetworkRuntime, Integer> overlap = new HashMap<>();
-            for (GridPos pos : old.topology().kinds().keySet()) {
+            for (GridPos pos : oldMembers.get(old)) {
                 NetworkRuntime now = members.get(pos);
                 if (now != null) {
                     overlap.merge(now, 1, Integer::sum);
@@ -128,7 +130,9 @@ public final class GridManager {
     /** One server tick: power drain and crafting progress for every network; also mirrors energy into the state. */
     public void tick() {
         for (NetworkRuntime runtime : runtimes) {
-            runtime.tick();
+            if (runtime.tick()) {
+                runtime.cells().forEach(state::markCell);
+            }
         }
     }
 
