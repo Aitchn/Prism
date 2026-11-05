@@ -28,12 +28,14 @@ server (used by the smoke test) and checks the grid end to end.
 Each gap says what AE2 needed, what was done instead, and what Prism could add. The consolidated list is in
 [`docs/gaps.md`](../gaps.md).
 
-### Fixed in this change
+### Closed by the block platform (#15), not yet used by AE2
 
-- **Block lifecycle.** There was no way to learn that a custom block had been placed or removed, so no network could
-  track its members. Added the `BlockPlaceBehavior` and `BlockRemoveBehavior` capabilities, fired from
-  `BlockService.place` and `BlockService.remove` (player break, explosions and mod calls all go through them).
-  Still missing: the placing player (`place` takes none), chunk load and unload, and changes made by other plugins.
+AE2 was written against the API as it was before #15, and found these gaps first:
+
+- **Block lifecycle.** No way to learn that a custom block was placed or removed, so no network could track its
+  members. #15 added `BlockPlaceBehavior` and `BlockRemoveBehavior` (same names and semantics AE2 relied on), plus the
+  placing player, facing and per-block data. AE2 still keeps its own position index and ignores facing; migrating it is
+  a follow-up.
 
 ### Open
 
@@ -42,7 +44,7 @@ Each gap says what AE2 needed, what was done instead, and what Prism could add. 
    Prism should offer a typed, per-stack data component (`ItemStack` data with a codec) that survives the per-viewer
    presentation rewrite. Related: there is no "are these two stacks the same item" key; the network keys on the whole
    serialized stack.
-2. **Per-block data and enumeration.** There is no per-block data, no list of custom blocks in a chunk and no cleanup
+2. **Per-block data and enumeration.** (Per-block data and facing exist since #15.) There is no list of custom blocks in a chunk and no cleanup
    when a block disappears. AE2 keeps a position index in `DataStore` (`node/…`, `drive/…`, `provider/…`) and cannot
    notice a block removed by WorldEdit. Needed: block-attached data with chunk-scoped load/unload callbacks.
 3. **Storage API.** `DataStore` is blocking and string-only. AE2 batches dirty keys and flushes them from an async

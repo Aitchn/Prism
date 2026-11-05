@@ -50,7 +50,7 @@ Details and workarounds are in [validation/ae2.md](validation/ae2.md).
 - No neighbour-update callback or multiblock helper.
 - No capability lookup between blocks (energy, items, fluids); a mod cannot feed or drain another mod's machines.
 - No recipe registry, creative tab or item list for mod content.
-- `BlockService.place` has no placing player, so place behaviors see `player() == null`.
+- Closed by the block platform (#15) after AE2 was written: place/remove behaviors, the placing player, facing and per-block data. AE2 has not been migrated to them yet.
 - No public runtime lookup of item and block definitions.
 - Folia: grid-style state spans regions; the rule and the schedulers mods may use are not documented.
 
