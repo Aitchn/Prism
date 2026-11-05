@@ -65,7 +65,8 @@ public final class ModManager {
                 PrismComponents.MINING.key(), PrismComponents.MINING,
                 PrismComponents.ROTATION.key(), PrismComponents.ROTATION,
                 PrismComponents.VARIANTS.key(), PrismComponents.VARIANTS,
-                PrismComponents.LORE.key(), PrismComponents.LORE));
+                PrismComponents.LORE.key(), PrismComponents.LORE,
+                PrismComponents.ORE.key(), PrismComponents.ORE));
         Map<PrismKey, RecipeType<?>> builtinRecipes = new LinkedHashMap<>();
         PrismRecipes.ALL.forEach(type -> builtinRecipes.put(type.key(), type));
         recipeTypes.publish(BUILTIN_OWNER, builtinRecipes);

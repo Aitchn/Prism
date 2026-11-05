@@ -112,6 +112,11 @@ public final class PrismPlugin extends JavaPlugin {
                     com.aitchn.prism.api.PrismKey.parse(System.getProperty("prism.selftest", platformSelfTest)),
                     blocks, scheduler, getLogger()), this);
         }
+        String oreSelfTest = System.getProperty("prism.selftest.ore");
+        if (oreSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new OreSelfTest(
+                    com.aitchn.prism.api.PrismKey.parse(oreSelfTest), blocks, scheduler, getLogger()), this);
+        }
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {
             getServer().getPluginManager().registerEvents(

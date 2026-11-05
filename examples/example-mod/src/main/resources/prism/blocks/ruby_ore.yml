@@ -1,0 +1,14 @@
+# Key: examplemod:ruby_ore. Generated in new chunks of the overworld (prism:ore) and mined for rubies. Drawn as a note
+# block state, so both editions see it. The look comes from assets/examplemod/textures/block/ruby_ore.png.
+base: minecraft:barrier
+drop: examplemod:ruby
+components:
+  prism:mining:
+    hardness: 3
+    tool: pickaxe
+  prism:ore:
+    replace: [minecraft:stone, minecraft:deepslate, minecraft:andesite, minecraft:diorite, minecraft:granite, minecraft:tuff]
+    min_y: -48
+    max_y: 40
+    veins_per_chunk: 6
+    size: 6
