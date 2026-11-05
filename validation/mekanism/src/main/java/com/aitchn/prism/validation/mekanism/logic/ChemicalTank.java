@@ -1,16 +1,23 @@
 package com.aitchn.prism.validation.mekanism.logic;
 
 import java.util.Objects;
+import java.util.function.Predicate;
 
-/** Holds one kind of chemical at a time. */
+/** Holds one kind of chemical at a time, optionally only kinds the owner accepts. */
 public final class ChemicalTank {
 
     private final long capacity;
+    private final Predicate<Chemical> accepts;
     private Chemical type;
     private long amount;
 
     public ChemicalTank(long capacity) {
+        this(capacity, c -> true);
+    }
+
+    public ChemicalTank(long capacity, Predicate<Chemical> accepts) {
         this.capacity = capacity;
+        this.accepts = accepts;
     }
 
     public Chemical type() {
@@ -27,7 +34,7 @@ public final class ChemicalTank {
 
     public long fill(Chemical chemical, long toAdd, boolean simulate) {
         Objects.requireNonNull(chemical);
-        if (toAdd <= 0 || (type != null && !type.equals(chemical))) {
+        if (toAdd <= 0 || (type != null && !type.equals(chemical)) || !accepts.test(chemical)) {
             return 0;
         }
         long accepted = Math.min(toAdd, capacity - amount);
@@ -54,7 +61,8 @@ public final class ChemicalTank {
     }
 
     public void set(Chemical chemical, long value) {
-        type = value > 0 ? chemical : null;
-        amount = Math.max(0, Math.min(value, capacity));
+        long clamped = Math.max(0, Math.min(value, capacity));
+        type = clamped > 0 ? chemical : null;
+        amount = clamped;
     }
 }

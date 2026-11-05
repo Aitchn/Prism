@@ -1,29 +1,39 @@
 package com.aitchn.prism.validation.mekanism.logic;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
  * State and tick logic of one machine block: input/output slots, energy, three tanks, progress. Mekanism machines
- * are all variations of this shape (recipe machine with energy, optional gas in/out).
+ * are all variations of this shape (recipe machine with energy, optional gas in/out). Not thread-safe: the owner
+ * serialises access (the adapter holds one lock around every call).
  */
 public final class Machine {
+
+    /** Ticks without work before a machine counts as idle (stops flickering between looks). */
+    public static final int IDLE_AFTER = 20;
 
     private final MachineType type;
     private final EnergyBuffer energy;
     private final ChemicalTank inTank;
     private final ChemicalTank outTank;
     private final ChemicalTank outTank2;
+    private final ChemicalPorts ports;
     private Stack input;
     private Stack output;
     private Recipe active;
     private int progress;
+    private int idleTicks = IDLE_AFTER;
+    private long ticks;
+    private boolean dead;
 
     public Machine(MachineType type) {
         this.type = type;
         this.energy = new EnergyBuffer(type.energyCapacity(), type.maxReceive(), 0);
-        this.inTank = new ChemicalTank(type.tankCapacity());
+        this.inTank = new ChemicalTank(type.tankCapacity(), c -> type.inputChemicals().contains(c));
         this.outTank = new ChemicalTank(type.tankCapacity());
         this.outTank2 = new ChemicalTank(type.tankCapacity());
+        this.ports = new ChemicalPorts(List.of(inTank), List.of(outTank, outTank2));
     }
 
     public MachineType type() {
@@ -46,6 +56,11 @@ public final class Machine {
         return outTank2;
     }
 
+    /** The tanks and the sides pipes may use. */
+    public ChemicalPorts ports() {
+        return ports;
+    }
+
     public Stack input() {
         return input;
     }
@@ -54,12 +69,45 @@ public final class Machine {
         return output;
     }
 
+    /** Replaces the input slot; null empties it. */
+    public void setInput(Stack stack) {
+        input = stack == null || stack.isEmpty() ? null : stack;
+    }
+
+    /** Replaces the output slot; null empties it. */
+    public void setOutput(Stack stack) {
+        output = stack == null || stack.isEmpty() ? null : stack;
+    }
+
     public int progress() {
         return progress;
     }
 
+    /** Progress of the running operation, 0 to 1; 0 when idle. */
+    public double progressFraction() {
+        return active == null ? 0 : Math.min(1.0, progress / (double) active.ticks());
+    }
+
     public boolean running() {
         return active != null;
+    }
+
+    /** Ticks since the last tick that did work; below {@link #IDLE_AFTER} the machine counts as working. */
+    public int idleTicks() {
+        return idleTicks;
+    }
+
+    public long ticks() {
+        return ticks;
+    }
+
+    /** Set when the block was removed; open menus must stop using the machine. */
+    public boolean isDead() {
+        return dead;
+    }
+
+    public void markDead() {
+        dead = true;
     }
 
     /** Offers items; returns what did not fit (same stack when rejected). */
@@ -67,8 +115,7 @@ public final class Machine {
         if (input != null && !input.id().equals(stack.id())) {
             return stack;
         }
-        if (input == null && type.recipes().stream().noneMatch(r -> r.itemIn() != null
-                && r.itemIn().id().equals(stack.id()))) {
+        if (input == null && !type.acceptsItem(stack.id())) {
             return stack;
         }
         int have = input == null ? 0 : input.count();
@@ -88,6 +135,13 @@ public final class Machine {
 
     /** Advances one tick. Returns true if work was done (progress made or an operation finished). */
     public boolean tick() {
+        ticks++;
+        boolean worked = work();
+        idleTicks = worked ? 0 : Math.min(idleTicks + 1, IDLE_AFTER);
+        return worked;
+    }
+
+    private boolean work() {
         if (active == null) {
             active = findStartable();
             if (active == null) {
@@ -161,5 +215,78 @@ public final class Machine {
         if (r.chemicalOut2() != null) {
             outTank2.fill(r.chemicalOut2(), r.chemicalOut2Amount(), false);
         }
+    }
+
+    // ---------------------------------------------------------------- persistence
+
+    /**
+     * The machine's state as one line for per-block data: {@code e=<energy>|p=<progress>|r=<recipe index>|i=<id>,<n>|
+     * o=<id>,<n>|a=<chemical>,<mB>|b=..|c=..}. Empty parts are left out. A running operation is stored by the index of
+     * its recipe in the type's list; if the recipes change before the next load it is dropped.
+     */
+    public String save() {
+        StringBuilder out = new StringBuilder("e=").append(energy.stored());
+        if (active != null) {
+            out.append("|p=").append(progress).append("|r=").append(type.recipes().indexOf(active));
+        }
+        if (input != null) {
+            out.append("|i=").append(input.id()).append(',').append(input.count());
+        }
+        if (output != null) {
+            out.append("|o=").append(output.id()).append(',').append(output.count());
+        }
+        appendTank(out, 'a', inTank);
+        appendTank(out, 'b', outTank);
+        appendTank(out, 'c', outTank2);
+        return out.toString();
+    }
+
+    private static void appendTank(StringBuilder out, char key, ChemicalTank tank) {
+        if (tank.type() != null && tank.amount() > 0) {
+            out.append('|').append(key).append('=').append(tank.type().id()).append(',').append(tank.amount());
+        }
+    }
+
+    /** Restores a state written by {@link #save}; unknown or damaged parts are skipped. */
+    public void load(String text) {
+        int recipeIndex = -1;
+        int savedProgress = 0;
+        for (String part : text.split("\\|")) {
+            int eq = part.indexOf('=');
+            if (eq != 1) {
+                continue;
+            }
+            String value = part.substring(2);
+            try {
+                switch (part.charAt(0)) {
+                    case 'e' -> energy.set(Long.parseLong(value));
+                    case 'p' -> savedProgress = Integer.parseInt(value);
+                    case 'r' -> recipeIndex = Integer.parseInt(value);
+                    case 'i' -> setInput(stack(value));
+                    case 'o' -> setOutput(stack(value));
+                    case 'a' -> loadTank(inTank, value);
+                    case 'b' -> loadTank(outTank, value);
+                    case 'c' -> loadTank(outTank2, value);
+                    default -> { }
+                }
+            } catch (RuntimeException e) {
+                // damaged part: skip it, keep the rest
+            }
+        }
+        List<Recipe> recipes = type.recipes();
+        if (recipeIndex >= 0 && recipeIndex < recipes.size() && savedProgress > 0) {
+            active = recipes.get(recipeIndex);
+            progress = Math.min(savedProgress, active.ticks() - 1);
+        }
+    }
+
+    private static Stack stack(String value) {
+        int comma = value.lastIndexOf(',');
+        return new Stack(value.substring(0, comma), Integer.parseInt(value.substring(comma + 1)));
+    }
+
+    private static void loadTank(ChemicalTank tank, String value) {
+        int comma = value.lastIndexOf(',');
+        tank.set(new Chemical(value.substring(0, comma)), Long.parseLong(value.substring(comma + 1)));
     }
 }

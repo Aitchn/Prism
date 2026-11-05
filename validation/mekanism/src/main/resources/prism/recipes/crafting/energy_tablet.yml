@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "RGR"
+  - "LOL"
+  - "RGR"
+key:
+  R: minecraft:redstone
+  G: minecraft:gold_ingot
+  L: mekanism:lead_ingot
+  O: mekanism:osmium_ingot
+result: mekanism:energy_tablet
