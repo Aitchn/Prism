@@ -56,7 +56,7 @@ row below therefore states how it reaches a player on Java and on Bedrock.
    richer contexts, facing, survival breaking, definition lookup, `/prism give`.
 2. **Visibility** (14-16, 29, done in ADR-0008): native block states as the default for Bedrock-visible blocks, Geyser block and item
    mappings installed into Geyser's folders, appearance variants and facing.
-3. **Menus and stacks** (17, 19): slot menus rendered as chest containers (Geyser translates them for Bedrock), per-stack
+3. **Menus and stacks** (17, 19, done in ADR-0009): slot menus rendered as chest containers (Geyser translates them for Bedrock), per-stack
    data and lore.
 4. **Recipes** (21, 22).
 5. Later rows (13, 18, 23, 24, 26-28) after the validation plugins move to 1-4.

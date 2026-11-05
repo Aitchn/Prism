@@ -14,3 +14,4 @@ the ADRs are the authoritative English form.
 | [0006](0006-bedrock.md) | Bedrock support: ClientProfile, Bedrock pack and Geyser mappings | Accepted |
 | [0007](0007-block-platform.md) | Block platform: lifecycle, per-block data, ticking, capabilities | Accepted |
 | [0008](0008-visible-blocks.md) | Blocks both editions can see: note block states, Geyser install, variants | Accepted |
+| [0009](0009-slot-menus-and-item-data.md) | Slot menus and per-stack item data | Accepted |

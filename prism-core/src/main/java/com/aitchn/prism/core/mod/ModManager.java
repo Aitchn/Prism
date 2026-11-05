@@ -58,7 +58,8 @@ public final class ModManager {
                 PrismComponents.MODEL_REF.key(), PrismComponents.MODEL_REF,
                 PrismComponents.MINING.key(), PrismComponents.MINING,
                 PrismComponents.ROTATION.key(), PrismComponents.ROTATION,
-                PrismComponents.VARIANTS.key(), PrismComponents.VARIANTS));
+                PrismComponents.VARIANTS.key(), PrismComponents.VARIANTS,
+                PrismComponents.LORE.key(), PrismComponents.LORE));
     }
 
     public @NotNull Registry<ItemDefinition> items() {

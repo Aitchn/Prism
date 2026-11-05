@@ -8,6 +8,7 @@ import com.aitchn.prism.api.block.BlockContext;
 import com.aitchn.prism.api.block.BlockInteractBehavior;
 import com.aitchn.prism.api.block.BlockNeighborBehavior;
 import com.aitchn.prism.api.block.BlockPlaceBehavior;
+import com.aitchn.prism.api.block.BlockRemoveBehavior;
 import com.aitchn.prism.api.block.BlockTickBehavior;
 import com.aitchn.prism.api.block.CustomBlock;
 import com.aitchn.prism.api.content.ConfigSection;
@@ -17,6 +18,7 @@ import java.util.function.IntSupplier;
 import net.kyori.adventure.text.Component;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.BlockFace;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.jetbrains.annotations.NotNull;
@@ -24,11 +26,12 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * A block that counts: one per {@code interval} ticks, stored in its per-block data so it survives restarts. It
- * counts neighbour changes too, offers its count to neighbours as a capability, and on right click switches between
- * its {@code idle} and {@code active} looks and shows its numbers.
+ * counts neighbour changes too and offers its count to neighbours as a capability. Right click opens
+ * {@link CounterMenu}: a live count, a button switching between the {@code idle} and {@code active} looks, and one
+ * slot that stores an item in the block (dropped when the block is broken).
  */
 public record CounterBehavior(int interval) implements BlockPlaceBehavior, BlockTickBehavior, BlockNeighborBehavior,
-        BlockInteractBehavior, BlockCapabilityProvider {
+        BlockInteractBehavior, BlockRemoveBehavior, BlockCapabilityProvider {
 
     /** What this block offers to its neighbours. A mod-defined capability: Prism only does the lookup. */
     public static final BlockCapability<IntSupplier> COUNT =
@@ -72,14 +75,25 @@ public record CounterBehavior(int interval) implements BlockPlaceBehavior, Block
         if (context.player() == null) {
             return;
         }
-        CustomBlock custom = context.custom();
-        String next = "active".equals(custom.variant()) ? "idle" : "active";
-        Prism.blocks().setVariant(custom.block(), next);
-        PersistentDataContainer data = custom.data();
-        context.player().sendActionBar(Component.text("Counter " + next + ", facing " + custom.facing()
-                + ": " + data.getOrDefault(TICKS, PersistentDataType.INTEGER, 0) + " counts, "
-                + data.getOrDefault(NEIGHBORS, PersistentDataType.INTEGER, 0) + " neighbour changes"));
+        CounterMenu menu = CounterMenu.of(context.custom());
+        if (menu == null) {
+            context.player().sendActionBar(Component.text("Someone else is using this counter"));
+        } else {
+            Prism.menus().open(context.player(), menu);
+        }
         context.cancel();
+    }
+
+    @Override
+    public void onRemove(@NotNull BlockContext context) {
+        CustomBlock custom = context.custom();
+        byte[] stored = custom.data().get(CounterMenu.STORED, PersistentDataType.BYTE_ARRAY);
+        // Always tell an open menu, even with nothing stored: the viewer may put an item in before it closes.
+        boolean viewed = CounterMenu.blockRemoved(custom.block().getLocation());
+        if (stored != null && !viewed) {
+            custom.block().getWorld().dropItemNaturally(custom.block().getLocation().toCenterLocation(),
+                    ItemStack.deserializeBytes(stored));
+        }
     }
 
     @Override
