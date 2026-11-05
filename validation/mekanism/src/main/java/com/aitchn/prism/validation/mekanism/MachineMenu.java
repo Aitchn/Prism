@@ -59,6 +59,14 @@ final class MachineMenu implements ContainerMenu {
         this.id = id;
     }
 
+    /** The menu is gone: transporters may take from the output slot again. */
+    void releaseMachine() {
+        grid.locked(() -> {
+            machine.setMenuOpen(false);
+            return null;
+        });
+    }
+
     /** Whether someone has this menu open (or is about to). */
     boolean active() {
         MenuView current = view;

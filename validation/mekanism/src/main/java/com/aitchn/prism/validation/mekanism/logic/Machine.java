@@ -31,11 +31,17 @@ public final class Machine {
     private int idleTicks = IDLE_AFTER;
     private long ticks;
     private boolean dead;
+    private volatile boolean menuOpen;
+    private boolean autoEject;
+    private Redstone redstone = Redstone.IGNORE;
+    private boolean powered;
+    private final Access[] itemFaces = new Access[6];
 
     public Machine(MachineType type) {
         this.type = type;
         this.energy = new EnergyBuffer(type.energyCapacity(), type.maxReceive(), type.maxExtract());
         java.util.Arrays.fill(faces, Side.ALL);
+        java.util.Arrays.fill(itemFaces, Access.ALL);
         if (type.buffer() != null) {
             // A storage tank: one tank that takes what the filter allows and gives it all back out.
             this.inTank = new ChemicalTank(type.tankCapacity(), type.buffer());
@@ -50,6 +56,70 @@ public final class Machine {
             this.outTank2 = new ChemicalTank(type.tankCapacity());
             this.ports = new ChemicalPorts(List.of(inTank, inTank2), List.of(outTank, outTank2));
         }
+    }
+
+    /** While a player's menu shows the output slot, transporters leave it alone so both views stay in step. */
+    public void setMenuOpen(boolean open) {
+        menuOpen = open;
+    }
+
+    public boolean autoEject() {
+        return autoEject;
+    }
+
+    public void setAutoEject(boolean value) {
+        autoEject = value;
+    }
+
+    public Redstone redstone() {
+        return redstone;
+    }
+
+    public void setRedstone(Redstone mode) {
+        redstone = mode;
+    }
+
+    /** The adapter reports whether the block currently has a redstone signal. */
+    public void setPowered(boolean value) {
+        powered = value;
+    }
+
+    public Access itemFace(int face) {
+        return itemFaces[face];
+    }
+
+    public void setItemFace(int face, Access access) {
+        itemFaces[face] = access;
+    }
+
+    /** What an item transporter touching {@code face} may do with this machine, or null for nothing. */
+    public ItemPort itemPort(int face) {
+        Access access = itemFaces[face];
+        if (access == Access.OFF) {
+            return null;
+        }
+        return new ItemPort() {
+            @Override
+            public Stack offer() {
+                return autoEject && !menuOpen && access.canExtract() && output != null ? output : null;
+            }
+
+            @Override
+            public void taken(int count) {
+                if (output != null) {
+                    output = output.count() > count ? output.withCount(output.count() - count) : null;
+                }
+            }
+
+            @Override
+            public Stack insert(Stack stack) {
+                if (!access.canInsert()) {
+                    return stack;
+                }
+                Stack rest = insertInput(stack);
+                return rest.isEmpty() ? rest : insertExtra(rest);
+            }
+        };
     }
 
     public MachineType type() {
@@ -253,7 +323,7 @@ public final class Machine {
     /** Advances one tick. Returns true if work was done (progress made or an operation finished). */
     public boolean tick() {
         ticks++;
-        boolean worked = work();
+        boolean worked = redstone.allows(powered) && work();
         idleTicks = worked ? 0 : Math.min(idleTicks + 1, IDLE_AFTER);
         return worked;
     }
@@ -365,6 +435,7 @@ public final class Machine {
             out.append("|u=").append(speedUpgrades).append(',').append(energyUpgrades);
         }
         appendFaces(out);
+        appendTransport(out);
         if (input != null) {
             out.append("|i=").append(input.id()).append(',').append(input.count());
         }
@@ -391,11 +462,25 @@ public final class Machine {
             out.append("|u=").append(speedUpgrades).append(',').append(energyUpgrades);
         }
         appendFaces(out);
+        appendTransport(out);
         appendTank(out, 'a', inTank);
         appendTank(out, 'b', outTank);
         appendTank(out, 'c', outTank2);
         appendTank(out, 'd', inTank2);
         return out.toString();
+    }
+
+    private void appendTransport(StringBuilder out) {
+        StringBuilder digits = new StringBuilder();
+        boolean any = autoEject || redstone != Redstone.IGNORE;
+        for (Access access : itemFaces) {
+            digits.append(access.ordinal());
+            any |= access != Access.ALL;
+        }
+        if (any) {
+            out.append("|g=").append(autoEject ? 1 : 0).append(',').append(redstone.ordinal()).append(',')
+                    .append(digits);
+        }
     }
 
     private void appendFaces(StringBuilder out) {
@@ -436,6 +521,14 @@ public final class Machine {
                     case 'f' -> {
                         for (int i = 0; i < 6 && i < value.length(); i++) {
                             faces[i] = Side.values()[Character.digit(value.charAt(i), 10)];
+                        }
+                    }
+                    case 'g' -> {
+                        String[] parts = value.split(",");
+                        autoEject = parts[0].equals("1");
+                        redstone = Redstone.values()[Integer.parseInt(parts[1])];
+                        for (int i = 0; i < 6 && i < parts[2].length(); i++) {
+                            itemFaces[i] = Access.values()[Character.digit(parts[2].charAt(i), 10)];
                         }
                     }
                     case 'u' -> {

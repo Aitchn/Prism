@@ -170,3 +170,17 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
 18. Pick up and place a configured machine: faces, upgrades and tank contents come back.
 19. Storage tanks: pipes fill a chemical tank, a second pipe on another face drains it into a machine; the fluid tank
     only takes water.
+
+### Stage 3 additions (hand tests)
+
+20. Item line without hands: enrichment chamber -> logistical transporter -> a second machine (for example a crusher,
+    fed with ore dust or ingots). Click the enrichment chamber with a hopper: action bar says "Auto-eject on". Items
+    walk across; with auto-eject off they stay.
+21. Item faces: right click a machine face with the Item Configurator (Configurator + hopper) cycles input and output / input only / output
+    only / nothing for transporters. Chemical faces (no sneaking) behave as before.
+22. Redstone: right click with redstone dust cycles ignore / with a signal / without a signal. A lever next to the
+    machine starts and stops it.
+23. Tiers: advanced, elite and ultimate cables, tubes and transporters are crafted from 8 of the tier below around the
+    matching alloy. A long cable run of basic cables starves a big machine; swap in ultimate cable and it fills.
+24. Colours: only the logistical transporter network with equal colour joins; there is no colouring tool yet, so on a real server
+    every transporter is uncoloured.

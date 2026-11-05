@@ -1,0 +1,6 @@
+# Key: mekanism:elite_universal_cable. Elite tier universal cable: limit scales with the tier.
+base: minecraft:barrier
+drop: mekanism:elite_universal_cable
+behaviors:
+  - type: mekanism:cable
+    tier: 2

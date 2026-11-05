@@ -13,30 +13,34 @@ import org.jetbrains.annotations.NotNull;
  * A universal cable: joins the generators and machines touching it into one energy network. It has no interact
  * behavior on purpose, so players can still place blocks against it; the Energy Tablet reads a network out.
  */
-public record CableBehavior() implements BlockPlaceBehavior, BlockLoadBehavior, BlockRemoveBehavior {
+public record CableBehavior(int tier) implements BlockPlaceBehavior, BlockLoadBehavior, BlockRemoveBehavior {
 
     static CableBehavior fromYaml(ConfigSection section) throws ContentException {
-        section.rejectUnknownKeys(Set.of());
-        return new CableBehavior();
+        section.rejectUnknownKeys(Set.of("tier"));
+        int tier = section.getInt("tier").orElse(0);
+        if (tier < 0 || tier > 3) {
+            throw section.error("tier must be 0 to 3");
+        }
+        return new CableBehavior(tier);
     }
 
     @Override
     public void onPlace(@NotNull BlockContext context) {
-        Grid.get().addConduit(context.block(), true);
+        Grid.get().addConduit(context.block(), Grid.Kind.CABLE, tier);
     }
 
     @Override
     public void onLoad(@NotNull BlockContext context) {
-        Grid.get().addConduit(context.block(), true);
+        Grid.get().addConduit(context.block(), Grid.Kind.CABLE, tier);
     }
 
     @Override
     public void onUnload(@NotNull BlockContext context) {
-        Grid.get().removeConduit(context.block(), true);
+        Grid.get().removeConduit(context.block(), Grid.Kind.CABLE);
     }
 
     @Override
     public void onRemove(@NotNull BlockContext context) {
-        Grid.get().removeConduit(context.block(), true);
+        Grid.get().removeConduit(context.block(), Grid.Kind.CABLE);
     }
 }

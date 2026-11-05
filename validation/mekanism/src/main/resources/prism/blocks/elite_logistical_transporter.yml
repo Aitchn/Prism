@@ -1,0 +1,6 @@
+# Key: mekanism:elite_logistical_transporter. Elite tier logistical transporter: limit scales with the tier.
+base: minecraft:barrier
+drop: mekanism:elite_logistical_transporter
+behaviors:
+  - type: mekanism:transporter
+    tier: 2

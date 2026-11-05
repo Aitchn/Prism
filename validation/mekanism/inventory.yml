@@ -156,7 +156,7 @@ blocks:  # non-machine blocks and transmitter kinds (tiers count under mechanics
   universal_cable: done
   pressurized_tube: done
   mechanical_pipe: missing
-  logistical_transporter: missing
+  logistical_transporter: done
   thermodynamic_conductor: missing
   energy_cube: done
   bin: missing
@@ -248,14 +248,14 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   smelting_machines: done         # energized smelter, dust to ingot for all metals and alloys
   alloys: done                    # steel, bronze, infused/reinforced/atomic alloy, refined obsidian and glowstone
   upgrades: partial               # speed and energy upgrades only; muffling, filter, gas, anchor missing
-  tiers: partial                  # energy cube has four tiers; cables, pipes and factories still have one
-  side_configuration: partial     # configurator sets which tank a face uses for pipes; items and energy faces still open (3)
-  auto_eject: missing             # machines push outputs to neighbours (3)
-  item_transport: missing         # logistical transporter with colours and filters (3)
+  tiers: partial                  # cubes, cables, pipes and transporters have four tiers; factories (4) still missing
+  side_configuration: partial     # chemical and item faces done (configurator; item configurator for items); energy faces still open
+  auto_eject: done                # hopper toggles it; output goes out through transporters
+  item_transport: partial         # transporters with colours, tiers and chained machines; filters and sorters missing (4)
   heat: missing                   # heat transfer, thermoelectric (5)
   ore_generation: missing         # needs the Prism world-generation hook (1, blocked)
   block_drops_keep_data: done     # machines and cubes keep energy, upgrades, tanks and face settings in the dropped item
-  redstone_control: missing       # per-machine redstone mode (3)
+  redstone_control: done          # redstone dust cycles ignore / with signal / without signal
   security: missing               # owner and access levels (6)
   radiation: missing              # radiation sources and exposure (6)
   multiblock_dynamic_tank: missing   # needs the Prism structure service (5)
