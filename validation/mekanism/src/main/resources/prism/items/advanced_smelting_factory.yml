@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Advanced Smelting Factory"
+  prism:places_block: mekanism:advanced_smelting_factory

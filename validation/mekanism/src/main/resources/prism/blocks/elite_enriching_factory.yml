@@ -1,0 +1,13 @@
+# Key: mekanism:elite_enriching_factory. Elite enriching factory: runs the recipes of mekanism:enrichment_chamber, 7 at once.
+base: minecraft:barrier
+drop: mekanism:elite_enriching_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: elite_enriching_factory
+    recipes_of: enrichment_chamber
+    lanes: 7
+    energy_capacity: 140000
+    max_receive: 14000
+    tank_capacity: 0

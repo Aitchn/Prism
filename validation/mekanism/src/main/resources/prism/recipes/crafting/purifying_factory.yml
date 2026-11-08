@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "ICI"
+  - "SMS"
+  - "ICI"
+key:
+  I: minecraft:iron_ingot
+  C: mekanism:basic_control_circuit
+  S: mekanism:steel_casing
+  M: mekanism:purification_chamber
+result: mekanism:purifying_factory

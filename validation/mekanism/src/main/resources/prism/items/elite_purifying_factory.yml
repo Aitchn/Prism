@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Elite Purifying Factory"
+  prism:places_block: mekanism:elite_purifying_factory

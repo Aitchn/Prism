@@ -1,0 +1,13 @@
+# Key: mekanism:ultimate_injecting_factory. Ultimate injecting factory: runs the recipes of mekanism:chemical_injection_chamber, 9 at once.
+base: minecraft:barrier
+drop: mekanism:ultimate_injecting_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: ultimate_injecting_factory
+    recipes_of: chemical_injection_chamber
+    lanes: 9
+    energy_capacity: 180000
+    max_receive: 18000
+    tank_capacity: 18000

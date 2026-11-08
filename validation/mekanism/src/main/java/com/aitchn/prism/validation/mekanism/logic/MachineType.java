@@ -11,7 +11,13 @@ import java.util.function.Supplier;
  * recipes are looked up on every call because they are data that can be reloaded.
  */
 public record MachineType(String id, Supplier<List<Recipe>> source, long energyCapacity, long maxReceive,
-        long tankCapacity, long maxExtract, Predicate<Chemical> buffer) {
+        long tankCapacity, long maxExtract, Predicate<Chemical> buffer, int lanes) {
+
+    /** A type with one lane (everything except factories). */
+    public MachineType(String id, Supplier<List<Recipe>> source, long energyCapacity, long maxReceive,
+            long tankCapacity, long maxExtract, Predicate<Chemical> buffer) {
+        this(id, source, energyCapacity, maxReceive, tankCapacity, maxExtract, buffer, 1);
+    }
 
     /** A type that gives no energy to cables (everything except batteries). */
     public MachineType(String id, Supplier<List<Recipe>> source, long energyCapacity, long maxReceive,

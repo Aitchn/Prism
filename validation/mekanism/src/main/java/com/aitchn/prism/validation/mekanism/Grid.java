@@ -132,9 +132,9 @@ final class Grid {
             if (existing != null) {
                 return existing;
             }
-            MachineType type = new MachineType(spec.machine(), () -> recipes.forMachine(spec.machine()),
+            MachineType type = new MachineType(spec.machine(), () -> recipes.forMachine(spec.recipesOf().isEmpty() ? spec.machine() : spec.recipesOf()),
                     spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity(), spec.maxExtract(),
-                    spec.bufferFilter());
+                    spec.bufferFilter(), spec.lanes());
             Machine machine = new Machine(type);
             String state = block.data().get(STATE, PersistentDataType.STRING);
             if (state != null) {

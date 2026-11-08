@@ -1,0 +1,13 @@
+# Key: mekanism:advanced_purifying_factory. Advanced purifying factory: runs the recipes of mekanism:purification_chamber, 5 at once.
+base: minecraft:barrier
+drop: mekanism:advanced_purifying_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: advanced_purifying_factory
+    recipes_of: purification_chamber
+    lanes: 5
+    energy_capacity: 100000
+    max_receive: 10000
+    tank_capacity: 10000

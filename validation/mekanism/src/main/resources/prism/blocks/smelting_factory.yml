@@ -1,0 +1,13 @@
+# Key: mekanism:smelting_factory. Basic smelting factory: runs the recipes of mekanism:energized_smelter, 3 at once.
+base: minecraft:barrier
+drop: mekanism:smelting_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: smelting_factory
+    recipes_of: energized_smelter
+    lanes: 3
+    energy_capacity: 60000
+    max_receive: 6000
+    tank_capacity: 0
