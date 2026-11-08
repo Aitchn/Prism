@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Chemical Crystallizer"
+  prism:places_block: mekanism:chemical_crystallizer

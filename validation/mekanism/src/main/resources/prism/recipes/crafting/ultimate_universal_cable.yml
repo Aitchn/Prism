@@ -1,0 +1,9 @@
+type: prism:shaped
+pattern:
+  - "CCC"
+  - "CAC"
+  - "CCC"
+key:
+  C: mekanism:elite_universal_cable
+  A: mekanism:alloy_atomic
+result: {item: mekanism:ultimate_universal_cable, count: 8}

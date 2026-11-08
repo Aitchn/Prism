@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Bronze Block"
+  prism:places_block: mekanism:bronze_block

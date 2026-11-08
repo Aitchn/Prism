@@ -1,0 +1,8 @@
+type: mekanism:machine
+machine: chemical_infuser
+chemical_in: {chemical: hydrogen, amount: 100}
+chemical_in2: {chemical: chlorine, amount: 100}
+chemical_out:
+  - {chemical: hydrogen_chloride, amount: 200}
+ticks: 60
+energy: 50

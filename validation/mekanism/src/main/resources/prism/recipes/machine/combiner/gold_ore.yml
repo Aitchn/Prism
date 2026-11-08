@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: combiner
+input: mekanism:gold_dust
+input2: {item: minecraft:cobblestone, count: 2}
+output: minecraft:raw_gold
+ticks: 300
+energy: 50

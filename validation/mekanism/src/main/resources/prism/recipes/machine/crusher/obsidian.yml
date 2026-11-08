@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: crusher
+input: minecraft:obsidian
+output: mekanism:obsidian_dust
+ticks: 400
+energy: 50

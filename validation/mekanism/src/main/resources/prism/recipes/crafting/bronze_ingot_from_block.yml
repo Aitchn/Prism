@@ -1,0 +1,3 @@
+type: prism:shapeless
+ingredients: [mekanism:bronze_block]
+result: {item: mekanism:bronze_ingot, count: 9}

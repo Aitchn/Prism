@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: enrichment_chamber
+input: mekanism:uranium_dirty_dust
+output: mekanism:uranium_dust
+ticks: 200
+energy: 50

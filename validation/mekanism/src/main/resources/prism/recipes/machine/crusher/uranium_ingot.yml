@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: crusher
+input: mekanism:uranium_ingot
+output: mekanism:uranium_dust
+ticks: 200
+energy: 50

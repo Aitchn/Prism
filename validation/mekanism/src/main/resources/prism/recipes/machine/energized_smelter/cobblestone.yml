@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: energized_smelter
+input: minecraft:cobblestone
+output: minecraft:stone
+ticks: 160
+energy: 40

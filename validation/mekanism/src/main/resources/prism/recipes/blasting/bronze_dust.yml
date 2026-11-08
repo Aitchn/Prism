@@ -1,0 +1,4 @@
+type: prism:blasting
+input: mekanism:bronze_dust
+result: mekanism:bronze_ingot
+experience: 0.7

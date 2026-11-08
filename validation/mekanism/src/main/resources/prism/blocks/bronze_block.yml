@@ -1,0 +1,3 @@
+# Key: mekanism:bronze_block. Storage block of nine ingots.
+base: minecraft:barrier
+drop: mekanism:bronze_block

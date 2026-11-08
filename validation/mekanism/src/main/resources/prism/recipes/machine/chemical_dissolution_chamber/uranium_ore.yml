@@ -1,0 +1,8 @@
+type: mekanism:machine
+machine: chemical_dissolution_chamber
+input: mekanism:uranium_ore
+chemical_in: {chemical: sulfuric_acid, amount: 10}
+chemical_out:
+  - {chemical: dirty_uranium_slurry, amount: 1000}
+ticks: 400
+energy: 60

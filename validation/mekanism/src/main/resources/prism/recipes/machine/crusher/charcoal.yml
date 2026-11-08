@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: crusher
+input: minecraft:charcoal
+output: mekanism:charcoal_dust
+ticks: 200
+energy: 50

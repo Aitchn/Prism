@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Osmium Block"
+  prism:places_block: mekanism:osmium_block

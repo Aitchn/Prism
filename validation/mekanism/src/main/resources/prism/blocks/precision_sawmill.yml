@@ -1,0 +1,11 @@
+# Key: mekanism:precision_sawmill. Two looks (block/precision_sawmill_idle.png and block/precision_sawmill_active.png); recipes: prism/recipes/machine/precision_sawmill/.
+base: minecraft:barrier
+drop: mekanism:precision_sawmill
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: precision_sawmill
+    energy_capacity: 20000
+    max_receive: 2000
+    tank_capacity: 0

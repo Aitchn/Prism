@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: crusher
+input: minecraft:coal
+output: mekanism:coal_dust
+ticks: 200
+energy: 50

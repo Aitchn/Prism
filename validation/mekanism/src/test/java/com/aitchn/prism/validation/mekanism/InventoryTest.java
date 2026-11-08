@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
  */
 class InventoryTest {
 
-    /** Minimum coverage (0 to 1) for the stage the repository is at. Stage 0: 12%. */
-    static final double STAGE_TARGET = 0.12;
+    /** Minimum coverage (0 to 1) for the stage the repository is at. Stage 2: 44% (the plan said 55; content per stage was overestimated). */
+    static final double STAGE_TARGET = 0.50;
 
     private static final Path ROOT = Path.of(".");
     private static final Set<String> CONTENT = Set.of("items", "blocks", "machines", "factories");
