@@ -125,6 +125,8 @@ final class PrismBlockService implements BlockService, Listener {
         Handle handle = new Handle(block, key, definition, actual, variant, index);
         dispatcher.dispatchBlock(key, block.getLocation(), BlockPlaceBehavior.class,
                 d -> BlockEventContext.of(handle, placer).placedFrom(from), (b, c) -> b.onPlace(c));
+        // Again now the block is indexed and its place behaviors set up its data, which a connection behavior may read.
+        refreshConnections(block);
         startTicking(handle);
         notifyNeighbors(block);
         lookChanged.accept(block);
@@ -511,6 +513,36 @@ final class PrismBlockService implements BlockService, Listener {
             dispatcher.dispatchBlock(custom.key(), custom.block().getLocation(), BlockLoadBehavior.class,
                     d -> BlockEventContext.of(custom, null), (b, c) -> b.onLoad(c));
             startTicking(custom);
+            // Neighbours in chunks that were unloaded when the mask was saved can be seen now.
+            refreshConnections(custom.block());
+        }
+        refreshBorders(chunk);
+    }
+
+    /** Connected blocks on the edges of the loaded chunks around {@code chunk} may now reach into it. */
+    private void refreshBorders(Chunk chunk) {
+        int[][] around = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+        for (int[] step : around) {
+            int x = chunk.getX() + step[0];
+            int z = chunk.getZ() + step[1];
+            BlockIndex.Loaded mirror = index.loaded(chunk.getWorld(), x, z);
+            if (mirror == null) {
+                continue;
+            }
+            mirror.blocks.forEach((packed, entry) -> {
+                if (entry.connections() < 0) {
+                    return;
+                }
+                Block block = mirror.block(packed);
+                int localX = block.getX() & 15;
+                int localZ = block.getZ() & 15;
+                // The edge that faces the newly loaded chunk.
+                boolean edge = step[0] == 1 ? localX == 0 : step[0] == -1 ? localX == 15
+                        : step[1] == 1 ? localZ == 0 : localZ == 15;
+                if (edge) {
+                    scheduler.runAt(block.getLocation(), () -> refreshConnections(block));
+                }
+            });
         }
     }
 

@@ -103,6 +103,11 @@ final class BlockIndex {
         return loaded.get(ChunkId.of(chunk));
     }
 
+    /** The mirror of a chunk by position, without touching the chunk itself (it may belong to another thread). */
+    @Nullable Loaded loaded(World world, int chunkX, int chunkZ) {
+        return loaded.get(new ChunkId(world.getUID(), BlockPositions.chunkKey(chunkX, chunkZ)));
+    }
+
     @Nullable Loaded unload(Chunk chunk) {
         return loaded.remove(ChunkId.of(chunk));
     }
