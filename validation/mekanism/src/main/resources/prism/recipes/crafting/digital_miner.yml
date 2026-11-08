@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "ACA"
+  - "ISI"
+  - "ACA"
+key:
+  A: mekanism:alloy_infused
+  C: mekanism:advanced_control_circuit
+  I: minecraft:iron_block
+  S: mekanism:steel_casing
+result: mekanism:digital_miner

@@ -545,6 +545,27 @@ def base_number(block, key, default):
 
 
 def gen4():
+    # digital miner: a machine block with the miner flag; ores below it go into its output slot
+    put(PRISM / "blocks/digital_miner.yml",
+        "# Key: mekanism:digital_miner. Scans a square of columns below it (compass: radius 4/8/12/16) and mines ores into its "
+        "output slot; what does not fit is dropped beside it.\nbase: minecraft:barrier\ndrop: mekanism:digital_miner\n"
+        "components:\n  prism:variants: [idle, active]\nbehaviors:\n  - type: mekanism:machine\n    machine: digital_miner\n"
+        "    miner: true\n    energy_capacity: 100000\n    max_receive: 10000\n    tank_capacity: 0\n")
+    block_item("digital_miner")
+    put(PRISM / "blocks/teleporter.yml",
+        "# Key: mekanism:teleporter. Right click: travel to the next teleporter with the same frequency (a name tag with a "
+        "name tunes it); the clicked teleporter pays energy by distance.\nbase: minecraft:barrier\ndrop: mekanism:teleporter\n"
+        "components:\n  prism:variants: [idle, active]\nbehaviors:\n  - type: mekanism:machine\n    machine: teleporter\n"
+        "    teleporter: true\n    energy_capacity: 200000\n    max_receive: 20000\n    tank_capacity: 0\n")
+    block_item("teleporter")
+    tex_machine("teleporter", (160, 90, 220))
+    shaped("teleporter", ["ACA", "ESE", "ACA"], {"A": "mekanism:alloy_reinforced", "C": "mekanism:elite_control_circuit",
+                                                "E": "minecraft:ender_pearl", "S": "mekanism:steel_casing"},
+           "mekanism:teleporter")
+    tex_machine("digital_miner", (110, 200, 120))
+    shaped("digital_miner", ["ACA", "ISI", "ACA"], {"A": "mekanism:alloy_infused", "C": "mekanism:advanced_control_circuit",
+                                                  "I": "minecraft:iron_block", "S": "mekanism:steel_casing"},
+           "mekanism:digital_miner")
     prev = None
     for kind, base in FACTORY_BASE.items():
         energy = base_number(base, "energy_capacity", 20000)

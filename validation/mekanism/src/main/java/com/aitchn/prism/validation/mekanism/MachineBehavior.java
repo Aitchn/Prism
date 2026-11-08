@@ -35,21 +35,24 @@ import org.jetbrains.annotations.Nullable;
  *     max_extract: 0             # joules per tick it gives to cables; above 0 makes it a battery (energy cube)
  *     recipes_of: ""             # factories: use the recipes of this machine id instead of its own
  *     lanes: 1                   # factories: copies of a recipe run at once (3, 5, 7, 9)
+ *     miner: false               # a digital miner: scans a volume below it and mines ores into its output
+ *     teleporter: false          # a teleporter: right click travels to the next one of the same frequency
  * </pre>
  */
 public record MachineBehavior(String machine, int energyCapacity, int maxReceive, int tankCapacity,
-        int maxExtract, String buffer, String recipesOf, int lanes)
+        int maxExtract, String buffer, String recipesOf, int lanes, boolean miner,
+        boolean teleporter)
         implements BlockPlaceBehavior, BlockLoadBehavior, BlockTickBehavior, BlockRemoveBehavior,
         BlockInteractBehavior, BlockCapabilityProvider, BlockDropBehavior {
 
     static MachineBehavior fromYaml(ConfigSection section) throws ContentException {
         section.rejectUnknownKeys(Set.of("machine", "energy_capacity", "max_receive", "tank_capacity", "max_extract", "buffer",
-                "recipes_of", "lanes"));
+                "recipes_of", "lanes", "miner", "teleporter"));
         MachineBehavior behavior = new MachineBehavior(section.requireString("machine"),
                 section.getInt("energy_capacity").orElse(20_000), section.getInt("max_receive").orElse(2_000),
                 section.getInt("tank_capacity").orElse(0), section.getInt("max_extract").orElse(0),
                 section.getString("buffer").orElse(""), section.getString("recipes_of").orElse(""),
-                section.getInt("lanes").orElse(1));
+                section.getInt("lanes").orElse(1), section.getBoolean("miner", false), section.getBoolean("teleporter", false));
         if (!Set.of("", "any", "water").contains(behavior.buffer)) {
             throw section.error("buffer must be any or water");
         }
@@ -112,7 +115,11 @@ public record MachineBehavior(String machine, int energyCapacity, int maxReceive
         Grid grid = Grid.get();
         Machine machine = grid.machine(context.custom(), this);
         if (grid.configure(context, machine) || grid.pushTablet(context, machine.energy()) || grid.useBucket(context, machine.tankFor(com.aitchn.prism.validation.mekanism.logic.Chemical.WATER))
-                || grid.installUpgrade(context, machine)) {
+                || grid.installUpgrade(context, machine) || (miner && grid.setRadius(context, machine))) {
+            return;
+        }
+        if (teleporter) {
+            grid.teleport(context, machine);
             return;
         }
         if (!grid.openMenu(context.player(), Grid.pos(context.block()), machine, this.machine)) {

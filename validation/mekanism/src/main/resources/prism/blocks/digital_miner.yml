@@ -1,0 +1,12 @@
+# Key: mekanism:digital_miner. Scans a square of columns below it (compass: radius 4/8/12/16) and mines ores into its output slot; what does not fit is dropped beside it.
+base: minecraft:barrier
+drop: mekanism:digital_miner
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: digital_miner
+    miner: true
+    energy_capacity: 100000
+    max_receive: 10000
+    tank_capacity: 0

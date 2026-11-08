@@ -113,6 +113,28 @@ class MekanismContentTest {
     }
 
     @Test
+    void theDigitalMinerIsAMachineBlockWithTheMinerFlag() {
+        var harness = load();
+        var block = harness.block("mekanism:digital_miner");
+        MachineBehavior spec = block.behaviors(MachineBehavior.class).getFirst();
+        assertTrue(spec.miner());
+        assertEquals(1, block.behaviors(BlockTickBehavior.class).size());
+        assertEquals(1, block.behaviors(BlockCapabilityProvider.class).size());
+        for (String look : List.of("idle", "active")) {
+            assertTrue(Files.exists(RESOURCES.resolve("assets/mekanism/textures/block/digital_miner_" + look + ".png")));
+        }
+    }
+
+    @Test
+    void theTeleporterIsAMachineBlockWithTheTeleporterFlag() {
+        var harness = load();
+        MachineBehavior spec = harness.block("mekanism:teleporter").behaviors(MachineBehavior.class).getFirst();
+        assertTrue(spec.teleporter());
+        assertFalse(spec.miner());
+        assertEquals(1, harness.block("mekanism:teleporter").behaviors(BlockInteractBehavior.class).size());
+    }
+
+    @Test
     void everyFactoryRunsTheRecipesOfItsMachineWithMoreLanesPerTier() {
         var harness = load();
         for (var kind : FACTORIES.entrySet()) {
