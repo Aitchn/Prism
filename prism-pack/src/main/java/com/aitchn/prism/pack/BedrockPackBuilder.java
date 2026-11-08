@@ -4,11 +4,16 @@ import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
+import com.aitchn.prism.core.bedrock.BedrockHardness;
+import com.aitchn.prism.core.bedrock.BedrockShapes;
+import com.aitchn.prism.core.bedrock.SyntheticBlock;
+import com.aitchn.prism.core.bedrock.SyntheticIds;
 import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.block.ConnectedShapes;
 import com.aitchn.prism.core.block.NoteBlockStates;
 import com.aitchn.prism.core.block.TripwireStates;
 import com.aitchn.prism.core.content.YamlFiles;
+import com.aitchn.prism.core.look.Collision;
 import com.aitchn.prism.pack.json.JsonWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -31,13 +36,26 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class BedrockPackBuilder {
 
-    /** Input for one build. {@code assets} maps mod id to its pack files, as for the Java pack. */
+    /**
+     * Input for one build. {@code assets} maps mod id to its pack files, as for the Java pack. {@code nativeStates} maps
+     * a look to the note block or tripwire state Geyser's JSON mappings know (the legacy route, a few hundred looks at
+     * most); {@code synthetic} maps a look to its synthetic Java state id (ADR-0024), one real Bedrock custom block per
+     * look and no limit.
+     */
     public record Input(
             @NotNull Map<String, Map<String, byte[]>> assets,
             @NotNull Collection<ItemDefinition> items,
             @NotNull String description,
             @NotNull Collection<BlockDefinition> blocks,
-            @NotNull Map<String, Integer> nativeStates) {
+            @NotNull Map<String, Integer> nativeStates,
+            @NotNull SyntheticIds.Plan synthetic) {
+
+        /** Legacy states only, no synthetic blocks. */
+        public Input(@NotNull Map<String, Map<String, byte[]>> assets, @NotNull Collection<ItemDefinition> items,
+                @NotNull String description, @NotNull Collection<BlockDefinition> blocks,
+                @NotNull Map<String, Integer> nativeStates) {
+            this(assets, items, description, blocks, nativeStates, SyntheticIds.Plan.empty(0));
+        }
 
         /** Items only (no native blocks). */
         public Input(@NotNull Map<String, Map<String, byte[]>> assets, @NotNull Collection<ItemDefinition> items,
@@ -56,6 +74,8 @@ public final class BedrockPackBuilder {
      * @param flipbooks        animated block textures
      * @param geometries       generated geometries of connected and passable blocks
      * @param gaugeIcons       step icons of gauge items ({@code prism:gauge})
+     * @param syntheticBlocks  one registration record per look that has a synthetic state and a texture, in id order
+     * @param syntheticExport  the same as JSON, for a Geyser extension on a proxy ({@code prism_synthetic_blocks.json})
      */
     public record Result(
             byte @NotNull [] mcpack,
@@ -68,13 +88,18 @@ public final class BedrockPackBuilder {
             int soundEvents,
             int flipbooks,
             int geometries,
-            int gaugeIcons) {}
+            int gaugeIcons,
+            @NotNull List<SyntheticBlock> syntheticBlocks,
+            @NotNull String syntheticExport) {}
 
     /**
      * Suffix of a {@link Input#nativeStates} key for the state a look owns on its other carrier: a block that gained or
      * lost {@code prism:passable} keeps drawing its earlier placements.
      */
     public static final String OTHER_CARRIER = "|other";
+
+    /** Internal marker of the synthetic pass over a look's states (never a key of {@link Input#nativeStates}). */
+    private static final String SYNTHETIC = "|synthetic";
 
     private static final UUID HEADER = UUID.nameUUIDFromBytes("prism:bedrock:header".getBytes(StandardCharsets.UTF_8));
     private static final UUID MODULE = UUID.nameUUIDFromBytes("prism:bedrock:module".getBytes(StandardCharsets.UTF_8));
@@ -121,9 +146,14 @@ public final class BedrockPackBuilder {
         Map<String, Object> stateOverrides = new TreeMap<>();
         Map<String, Object> tripwireOverrides = new TreeMap<>();
         Set<String> looksDone = new LinkedHashSet<>();
+        List<SyntheticBlock> synthetics = new ArrayList<>();
+        Set<String> geometriesDone = new LinkedHashSet<>();
         int geometries = 0;
         for (BlockDefinition block : input.blocks()) {
             var connections = block.components().get(PrismComponents.CONNECTIONS);
+            var physics = Appearances.physics(block);
+            var hardness = BedrockHardness.of(block.components().get(PrismComponents.MINING)
+                    .orElse(PrismComponents.Mining.DEFAULT));
             if (connections.isPresent()) {
                 // Generated shapes: one geometry per variant and mask, built from the same boxes as the Java model.
                 for (String variant : Appearances.variants(block)) {
@@ -133,67 +163,90 @@ public final class BedrockPackBuilder {
                         Appearances.Look look = new Appearances.Look(block.key(),
                                 Appearances.drawnVariant(variant, mask), "NORTH");
                         Integer state = input.nativeStates().get(look.id());
-                        if (state == null) {
+                        Integer synthetic = syntheticId(input, look.id());
+                        if (state == null && synthetic == null) {
                             continue;
                         }
                         if (!sources.containsKey(texturePath)) {
                             warnings.add("bedrock block " + look.id() + ": no texture " + texturePath
-                                    + "; Bedrock players see a plain note block");
+                                    + "; Bedrock players see a plain block");
                             continue;
                         }
                         String name = "prismb_" + look.id().replace(':', '_').replace('#', '_').replace('/', '_');
                         String geometry = "geometry.prism." + name;
+                        List<ConnectedShapes.Box> boxes = ConnectedShapes.boxes(connections.get(), mask);
                         files.put("models/blocks/prism/" + name + ".geo.json", JsonWriter.write(
-                                ConnectedShapes.bedrockGeometry(geometry,
-                                        ConnectedShapes.boxes(connections.get(), mask)))
+                                ConnectedShapes.bedrockGeometry(geometry, boxes))
                                 .getBytes(StandardCharsets.UTF_8));
-                        geometries++;
-                        Map<String, Object> override = new LinkedHashMap<>();
-                        override.put("display_name", look.block().toString());
-                        override.put("geometry", geometry);
-                        override.put("material_instances", Map.of("*",
-                                material(terrainTexture(sources, files, terrainData, flipbooks, texturePath))));
-                        stateOverrides.put(NoteBlockStates.state(state).variant(), override);
-                        looksDone.add(look.id());
+                        if (geometriesDone.add(name)) {
+                            geometries++;
+                        }
+                        String atlas = terrainTexture(sources, files, terrainData, flipbooks, texturePath);
+                        if (state != null) {
+                            Map<String, Object> override = new LinkedHashMap<>();
+                            override.put("display_name", look.block().toString());
+                            override.put("geometry", geometry);
+                            override.put("material_instances", Map.of("*", material(atlas)));
+                            stateOverrides.put(NoteBlockStates.state(state).variant(), override);
+                            looksDone.add(look.id());
+                        }
+                        if (synthetic != null) {
+                            synthetics.add(synthetic(look, synthetic, geometry, Map.of("*", atlas),
+                                    physics.collision(), BedrockShapes.fromPixels(boxes), 0, 0, hardness));
+                        }
                     }
                 }
                 continue;
             }
             for (Appearances.Look look : Appearances.looks(block)) {
-                for (String key : List.of(look.id(), look.id() + OTHER_CARRIER)) {
-                    Integer state = input.nativeStates().get(key);
+                Integer synthetic = syntheticId(input, look.id());
+                for (String key : List.of(look.id(), look.id() + OTHER_CARRIER, SYNTHETIC)) {
+                    boolean isSynthetic = key.equals(SYNTHETIC);
+                    Integer state = isSynthetic ? synthetic : input.nativeStates().get(key);
                     if (state == null) {
                         continue;
                     }
                     PrismKey model = Appearances.model(block, look.variant());
                     Map<String, String> faces = blockFaces(sources, model);
                     if (faces.isEmpty()) {
-                        warnings.add("bedrock block " + look.id() + ": no texture for model " + model
-                                + "; Bedrock players see a plain note block");
+                        if (!isSynthetic || input.nativeStates().get(look.id()) == null) {
+                            warnings.add("bedrock block " + look.id() + ": no texture for model " + model
+                                    + "; Bedrock players see a plain block");
+                        }
                         continue;
                     }
-                    boolean tripwire = TripwireStates.isTripwire(state);
+                    boolean tripwire = isSynthetic ? physics.collision() == Collision.NONE
+                            : TripwireStates.isTripwire(state);
                     Map<String, Object> materials = new LinkedHashMap<>();
-                    faces.forEach((face, texturePath) -> materials.put(face,
-                            material(terrainTexture(sources, files, terrainData, flipbooks, texturePath))));
+                    Map<String, String> atlasNames = new LinkedHashMap<>();
+                    faces.forEach((face, texturePath) -> {
+                        String atlas = terrainTexture(sources, files, terrainData, flipbooks, texturePath);
+                        atlasNames.put(face, atlas);
+                        materials.put(face, material(atlas));
+                    });
                     Map<String, Object> override = new LinkedHashMap<>();
                     override.put("display_name", look.block().toString());
                     override.put("material_instances", materials);
+                    String geometry = null;
+                    List<BedrockShapes.Box> outline = List.of();
                     if (tripwire) {
                         // Passable: no collision, and the shape of the Java model (its boxes, or a cross like a flower).
                         String name = "prismb_" + look.id().replace(':', '_').replace('#', '_').replace('@', '_')
                                 .replace('/', '_');
-                        String geometry = "geometry.prism." + name;
+                        geometry = "geometry.prism." + name;
                         List<ConnectedShapes.Box> boxes = modelBoxes(sources, model);
                         files.put("models/blocks/prism/" + name + ".geo.json", JsonWriter.write(boxes == null
                                 ? ConnectedShapes.bedrockCross(geometry)
                                 : ConnectedShapes.bedrockGeometry(geometry, boxes)).getBytes(StandardCharsets.UTF_8));
-                        geometries++;
+                        if (geometriesDone.add(name)) {
+                            geometries++;
+                        }
                         override.put("geometry", geometry);
                         Map<String, Object> noBox = new LinkedHashMap<>();
                         noBox.put("origin", List.of(0, 0, 0));
                         noBox.put("size", List.of(0, 0, 0));
                         override.put("collision_box", noBox);
+                        outline = boxes == null ? List.of() : BedrockShapes.fromPixels(boxes);
                     }
                     int[] rotation = Appearances.rotation(look.facing());
                     if (rotation[0] != 0 || rotation[1] != 0) {
@@ -201,6 +254,12 @@ public final class BedrockPackBuilder {
                         Map<String, Object> transformation = new LinkedHashMap<>();
                         transformation.put("rotation", List.of((360 - rotation[0]) % 360, (360 - rotation[1]) % 360, 0));
                         override.put("transformation", transformation);
+                    }
+                    if (isSynthetic) {
+                        synthetics.add(synthetic(look, state, geometry, atlasNames,
+                                physics.collision(), outline, (360 - rotation[0]) % 360, (360 - rotation[1]) % 360,
+                                hardness));
+                        continue;
                     }
                     if (tripwire) {
                         tripwireOverrides.put(TripwireStates.state(state).variant(), override);
@@ -266,9 +325,11 @@ public final class BedrockPackBuilder {
         mappings.put("format_version", 2);
         mappings.put("items", new LinkedHashMap<String, Object>(byBase));
         byte[] zip = JavaPackBuilder.zip(files);
+        synthetics.sort(java.util.Comparator.comparingInt(SyntheticBlock::javaId));
         return new Result(zip, JavaPackBuilder.sha1(zip), JsonWriter.write(mappings), List.copyOf(warnings),
                 Set.copyOf(done), JsonWriter.write(blockMappings), Set.copyOf(looksDone), soundDefinitions.size(),
-                flipbooks.size(), geometries, gaugeIcons);
+                flipbooks.size(), geometries, gaugeIcons, List.copyOf(synthetics),
+                SyntheticExport.json(input.synthetic(), synthetics));
     }
 
     /** Registers a Java block texture in the Bedrock terrain atlas (and as a flipbook if animated); returns its name. */
@@ -292,6 +353,23 @@ public final class BedrockPackBuilder {
             flipbooks.put(name, flipbook);
         }
         return name;
+    }
+
+
+    private static Integer syntheticId(Input input, String lookId) {
+        var id = input.synthetic().idOf(lookId);
+        return id.isPresent() ? id.getAsInt() : null;
+    }
+
+    /** One registration record: the texture names are entries of the terrain atlas this build wrote. */
+    private static SyntheticBlock synthetic(Appearances.Look look, int javaId, String geometry,
+            Map<String, String> atlasNames, Collision collision, List<BedrockShapes.Box> outline, int rotationX,
+            int rotationY, BedrockHardness.Hardness hardness) {
+        Map<String, SyntheticBlock.Material> materials = new LinkedHashMap<>();
+        atlasNames.forEach((face, texture) -> materials.put(face, new SyntheticBlock.Material(texture, "alpha_test")));
+        return new SyntheticBlock(look.id(), javaId, SyntheticBlock.nameOf(look.id(), javaId),
+                look.block().toString(), geometry, materials, BedrockShapes.collision(collision), outline, rotationX,
+                rotationY, hardness.destroyTime(), hardness.canBreakWithHand());
     }
 
     private static Map<String, Object> material(String texture) {

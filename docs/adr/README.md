@@ -29,3 +29,4 @@ the ADRs are the authoritative English form.
 | [0021](0021-block-light.md) | Light from custom blocks | Accepted |
 | [0022](0022-inert-block-carrier.md) | Inert block carrier and packet rewriting (stage 1) | Accepted |
 | [0023](0023-look-pool-and-display-layer.md) | Look pool and display layer (stage 2) | Accepted |
+| [0024](0024-bedrock-synthetic-blocks.md) | Synthetic block states for Bedrock (stage 3) | Accepted |

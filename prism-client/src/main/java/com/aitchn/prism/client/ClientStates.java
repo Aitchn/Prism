@@ -56,6 +56,10 @@ public final class ClientStates {
     }
 
     /** One more than the highest global state id of this server version. */
+    public static int stateCount() {
+        return idCount();
+    }
+
     static int idCount() {
         int max = 0;
         for (int[] ids : index().values()) {

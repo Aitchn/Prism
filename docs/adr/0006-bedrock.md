@@ -2,6 +2,8 @@
 
 Status: Accepted (2026-11-04). Partly unverified: nothing here has been run against a real Bedrock client.
 
+Update: ADR-0024 registers every look as a real Bedrock custom block through the Geyser API (no 799-look limit) when Geyser runs on the same server; the JSON mappings described here remain for `bedrock.synthetic-blocks: off` and as the fallback.
+
 ## Context
 
 Bedrock players join through Geyser (same server, or a Geyser on a proxy such as Velocity). Prism content must stay

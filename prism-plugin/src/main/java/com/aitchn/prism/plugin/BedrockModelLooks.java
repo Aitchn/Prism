@@ -3,6 +3,7 @@ package com.aitchn.prism.plugin;
 import com.aitchn.prism.api.block.CustomBlock;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
+import com.aitchn.prism.client.LookSender;
 import io.papermc.paper.event.packet.PlayerChunkLoadEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -32,7 +33,7 @@ final class BedrockModelLooks implements Listener {
     private final Predicate<UUID> bedrock;
     private final PlatformScheduler scheduler;
     /** The look each known displayed block should show; a queued send is dropped once its entry changed or went. */
-    private final Map<Location, BlockData> current = new ConcurrentHashMap<>();
+    private final Map<Location, Shown> current = new ConcurrentHashMap<>();
 
     BedrockModelLooks(PrismBlockService blocks, java.util.function.Supplier<ClientLooks> clientLooks, Predicate<UUID> bedrock,
             PlatformScheduler scheduler) {
@@ -40,6 +41,27 @@ final class BedrockModelLooks implements Listener {
         this.clientLooks = clientLooks;
         this.bedrock = bedrock;
         this.scheduler = scheduler;
+    }
+
+    /**
+     * What a Bedrock player is sent at a displayed block: the synthetic block state registered for its look
+     * ({@code synthetic}, ADR-0024), or else the legacy note block state ({@code legacy}).
+     */
+    private record Shown(BlockData legacy, int synthetic) {}
+
+    /** What a Bedrock player should see at {@code custom}, or null if it has nothing but the barrier. */
+    private Shown shownOf(CustomBlock custom) {
+        if (blocks.drawnAsLook(custom.block())) {
+            return null;
+        }
+        String id = new com.aitchn.prism.core.block.Appearances.Look(custom.key(), blocks.drawnVariant(custom),
+                custom.facing().name()).id();
+        int synthetic = clientLooks.get().bedrockId(id);
+        if (synthetic != com.aitchn.prism.core.block.BlockLook.NO_BEDROCK) {
+            return new Shown(null, synthetic);
+        }
+        BlockData legacy = lookOf(custom);
+        return legacy == null ? null : new Shown(legacy, com.aitchn.prism.core.block.BlockLook.NO_BEDROCK);
     }
 
     /** The note block state a Bedrock player should see at {@code custom}, or null if it has none. */
@@ -66,9 +88,9 @@ final class BedrockModelLooks implements Listener {
             if (!chunk.isLoaded()) {
                 return;
             }
-            Map<Location, BlockData> looks = new LinkedHashMap<>();
+            Map<Location, Shown> looks = new LinkedHashMap<>();
             for (CustomBlock custom : blocks.blocksIn(chunk)) {
-                BlockData look = lookOf(custom);
+                Shown look = shownOf(custom);
                 if (look != null) {
                     Location at = custom.block().getLocation();
                     current.put(at, look);
@@ -81,10 +103,17 @@ final class BedrockModelLooks implements Listener {
         });
     }
 
+    /** The looks of a loaded chunk were recomputed (content changed, or synthetic ids became active): resend them. */
+    void relooked(BlockIndex.Loaded mirror) {
+        for (CustomBlock custom : blocks.blocksIn(mirror.world.getChunkAt(mirror.chunkX, mirror.chunkZ))) {
+            changed(custom.block());
+        }
+    }
+
     /** A block was placed, removed or changed its variant or connections; call on the block's thread. */
     void changed(Block block) {
         Location at = block.getLocation();
-        BlockData look = blocks.get(block).map(this::lookOf).orElse(null);
+        Shown look = blocks.get(block).map(this::shownOf).orElse(null);
         if (look == null) {
             current.remove(at); // gone or no longer displayed: queued sends for it are dropped
             return;
@@ -104,9 +133,13 @@ final class BedrockModelLooks implements Listener {
     }
 
     /** Sends {@code look} unless the block changed since it was queued (a newer look, or removed). */
-    private void send(Player player, Location at, BlockData look) {
+    private void send(Player player, Location at, Shown look) {
         if (look.equals(current.get(at))) {
-            player.sendBlockChange(at, look);
+            if (look.synthetic() != com.aitchn.prism.core.block.BlockLook.NO_BEDROCK) {
+                LookSender.send(player, at.getBlockX(), at.getBlockY(), at.getBlockZ(), look.synthetic());
+            } else {
+                player.sendBlockChange(at, look.legacy());
+            }
         }
     }
 }

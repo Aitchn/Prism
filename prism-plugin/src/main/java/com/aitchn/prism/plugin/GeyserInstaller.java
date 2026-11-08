@@ -22,6 +22,8 @@ final class GeyserInstaller {
     static final String ITEMS_FILE = "prism_items.json";
     static final String BLOCKS_FILE = "prism_blocks.json";
     static final String PACK_FILE = "prism.mcpack";
+    /** The synthetic block export for a Prism Geyser extension, written to Prism's own folder (ADR-0024). */
+    static final String SYNTHETIC_FILE = "prism_synthetic_blocks.json";
 
     private final Logger log;
     private final Path fallbackFolder;
@@ -33,16 +35,26 @@ final class GeyserInstaller {
         this.fallbackFolder = fallbackFolder;
     }
 
-    synchronized void install(byte[] mcpack, String itemMappings, String blockMappings) {
+    /**
+     * @param apiRoute the blocks and the pack reach Geyser through its API (ADR-0024): its folder then gets only the
+     *                 item mappings, and the legacy block mappings and pack are removed from it, since Geyser would
+     *                 otherwise load the same textures twice
+     */
+    synchronized void install(byte[] mcpack, String itemMappings, String blockMappings, boolean apiRoute) {
         Plugin geyser = Bukkit.getPluginManager().getPlugin("Geyser-Spigot");
         Path root = geyser != null ? geyser.getDataFolder().toPath() : fallbackFolder;
         List<String> changed = new ArrayList<>();
         try {
             write(root.resolve("custom_mappings").resolve(ITEMS_FILE),
                     itemMappings.getBytes(StandardCharsets.UTF_8), changed);
-            write(root.resolve("custom_mappings").resolve(BLOCKS_FILE),
-                    blockMappings.getBytes(StandardCharsets.UTF_8), changed);
-            write(root.resolve("packs").resolve(PACK_FILE), mcpack, changed);
+            if (apiRoute && geyser != null) {
+                remove(root.resolve("custom_mappings").resolve(BLOCKS_FILE), changed);
+                remove(root.resolve("packs").resolve(PACK_FILE), changed);
+            } else {
+                write(root.resolve("custom_mappings").resolve(BLOCKS_FILE),
+                        blockMappings.getBytes(StandardCharsets.UTF_8), changed);
+                write(root.resolve("packs").resolve(PACK_FILE), mcpack, changed);
+            }
         } catch (IOException e) {
             log.warning("PRISM_GEYSER_INSTALL_FAIL " + e);
             return;
@@ -63,6 +75,23 @@ final class GeyserInstaller {
                     + "Set gameplay.enable-custom-content (older Geyser: enable-custom-content) to true in "
                     + root.resolve("config.yml") + " and restart.");
             warned = true;
+        }
+    }
+
+    /** Writes the synthetic block export next to the other exported files (always Prism's own folder). */
+    synchronized void exportSynthetic(String json) {
+        try {
+            List<String> changed = new ArrayList<>();
+            write(fallbackFolder.resolve(SYNTHETIC_FILE), json.getBytes(StandardCharsets.UTF_8), changed);
+            log.info("PRISM_BEDROCK_SYNTHETIC_EXPORTED file=" + fallbackFolder.resolve(SYNTHETIC_FILE));
+        } catch (IOException e) {
+            log.warning("PRISM_GEYSER_INSTALL_FAIL " + e);
+        }
+    }
+
+    private static void remove(Path file, List<String> changed) throws IOException {
+        if (Files.deleteIfExists(file)) {
+            changed.add("-" + file.getFileName());
         }
     }
 

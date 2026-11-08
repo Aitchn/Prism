@@ -5,20 +5,30 @@ import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.mod.ModContext;
 import com.aitchn.prism.api.mod.PrismMod;
 import com.aitchn.prism.core.block.Appearances;
+import com.aitchn.prism.client.BedrockSelfCheck;
+import com.aitchn.prism.client.ClientStates;
+import com.aitchn.prism.core.bedrock.SyntheticBlock;
+import com.aitchn.prism.core.bedrock.SyntheticIds;
 import com.aitchn.prism.core.block.BlockLook;
+import com.aitchn.prism.core.block.BlockPositions;
 import com.aitchn.prism.core.content.MemoryContentSource;
 import com.aitchn.prism.core.look.LookTable;
 import com.aitchn.prism.core.mod.ModCandidate;
 import com.aitchn.prism.core.mod.ModManager;
 import com.aitchn.prism.core.mod.ModReport;
+import com.aitchn.prism.pack.BedrockPackBuilder;
 import com.aitchn.prism.pack.JavaPackBuilder;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import org.bukkit.Bukkit;
@@ -83,6 +93,9 @@ final class SyntheticSelfTest implements Listener {
             String problem = checkTable(definitions);
             if (problem == null) {
                 problem = checkPack();
+            }
+            if (problem == null) {
+                problem = checkBedrock(definitions);
             }
             if (problem != null) {
                 fail(problem);
@@ -177,6 +190,77 @@ final class SyntheticSelfTest implements Listener {
         }
         Optional<String> warning = first.warnings().stream().filter(w -> w.contains(NAMESPACE + ":")).findFirst();
         return warning.map(w -> "pack warning " + w).orElse(null);
+    }
+
+    /**
+     * Bedrock (ADR-0024): every look has a synthetic id and registration data (so all of them, at any count), the ids
+     * are above every vanilla state and unique, and a chunk section carrying sample looks reads back through the packet
+     * library's own encoder with the synthetic ids for a Geyser viewer and without them for a Java viewer, in a small
+     * palette and in the global palette at the width Geyser would read.
+     */
+    private String checkBedrock(List<BlockDefinition> definitions) {
+        BedrockBlocks bedrock = packs.bedrockBlocks();
+        if (bedrock.mode() == BedrockBlocks.Mode.OFF) {
+            log.info("PRISM_BEDROCK_SELFTEST_SKIPPED bedrock.synthetic-blocks is off");
+            return null;
+        }
+        SyntheticIds.Plan plan = bedrock.planned();
+        BedrockPackBuilder.Result result = packs.bedrockNow();
+        Map<String, SyntheticBlock> byLook = new HashMap<>();
+        Set<String> names = new HashSet<>();
+        for (SyntheticBlock block : result.syntheticBlocks()) {
+            byLook.put(block.lookId(), block);
+            if (!names.add(block.name())) {
+                return "bedrock block name used twice: " + block.name();
+            }
+        }
+        int vanilla = ClientStates.stateCount();
+        Set<Integer> used = new HashSet<>();
+        int looksChecked = 0;
+        int highest = 0;
+        Map<Long, BlockLook> sample = new HashMap<>();
+        ClientLooks looks = packs.looks();
+        for (BlockDefinition definition : definitions) {
+            for (Appearances.Look look : Appearances.looks(definition)) {
+                looksChecked++;
+                var id = plan.idOf(look.id());
+                SyntheticBlock block = byLook.get(look.id());
+                if (id.isEmpty() || block == null || block.javaId() != id.getAsInt()) {
+                    return "no synthetic block for " + look.id();
+                }
+                if (id.getAsInt() < vanilla || !used.add(id.getAsInt()) || block.materials().isEmpty()) {
+                    return "bad synthetic id or materials for " + look.id() + ": " + id.getAsInt();
+                }
+                if (block.passable() != Appearances.passable(definition)) {
+                    return "collision of " + look.id() + " does not follow its physics class";
+                }
+                highest = Math.max(highest, id.getAsInt());
+                BlockLook shown = looks.lookFor(carrierOf(definition), look.id());
+                if (shown != null && sample.size() < SAMPLE) {
+                    int i = sample.size();
+                    sample.put(BlockPositions.pack(i & 15, 64 + (i >> 8), (i >> 4) & 15),
+                            new BlockLook(shown.carrier(), shown.look(), shown.display(), id.getAsInt()));
+                }
+            }
+        }
+        if (looksChecked != count) {
+            return "checked " + looksChecked + " looks of " + count + " blocks";
+        }
+        Optional<String> warning = result.warnings().stream()
+                .filter(w -> w.contains("bedrock block " + NAMESPACE + ":")).findFirst();
+        if (warning.isPresent()) {
+            return "bedrock warning " + warning.get();
+        }
+        int bits = SyntheticIds.bitsFor(highest + 1);
+        for (int filler : new int[] {0, 300}) {
+            String problem = BedrockSelfCheck.check(sample, 4, filler, bits);
+            if (problem != null) {
+                return "bedrock rewrite (filler " + filler + "): " + problem;
+            }
+        }
+        log.info("PRISM_BEDROCK_SELFTEST_OK looks=" + looksChecked + " synthetic=" + looksChecked
+                + " total=" + result.syntheticBlocks().size() + " base=" + plan.base() + " bits=" + bits + " sample=" + sample.size());
+        return null;
     }
 
     /** Both tiers and both carriers placed, read back and removed in the arena chunk. */

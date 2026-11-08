@@ -63,6 +63,12 @@ final class PackManager implements Listener {
     private volatile ResolvedPool pool;
     private volatile ClientLooks looks = ClientLooks.EMPTY;
     private volatile GeyserInstaller geyser;
+    private final BedrockBlocks bedrock;
+    private final Object looksLock = new Object();
+    private volatile Runnable relooked = () -> {};
+    private final java.util.concurrent.atomic.AtomicInteger generation = new java.util.concurrent.atomic.AtomicInteger();
+    private BedrockPackBuilder.Result bedrockCache;
+    private int bedrockCacheGeneration = -1;
     private final java.util.Map<UUID, Published> packs = new java.util.concurrent.ConcurrentHashMap<>();
 
     private record Published(String url, byte[] hash, String sha1) {}
@@ -75,6 +81,16 @@ final class PackManager implements Listener {
         this.platform = platform;
         this.appearance = appearance;
         this.config = config;
+        this.bedrock = new BedrockBlocks(plugin.getLogger(),
+                BedrockBlocks.Mode.parse(config.getString("bedrock.synthetic-blocks", "auto"), plugin.getLogger()),
+                Math.max(0, config.getInt("bedrock.synthetic-base", 0)),
+                plugin.getDataFolder().toPath().resolve("geyser"), this::bedrockResult, this::relook,
+                this::reinstallGeyser, () -> geyser);
+    }
+
+    /** The synthetic block states of Geyser viewers (ADR-0024). */
+    BedrockBlocks bedrockBlocks() {
+        return bedrock;
     }
 
     /**
@@ -100,14 +116,19 @@ final class PackManager implements Listener {
     /** Re-resolves appearance now, and schedules a zip build once the server has started. */
     void contentChanged() {
         List<BlockDefinition> blocks = blockList();
+        bedrock.plan(allLookIds(blocks));
         LookTable table = allocate(blocks);
         JavaPackBuilder.Resolved resolved = JavaPackBuilder.resolve(input(blocks, table));
         try {
-            looks = ClientLooks.of(table, DisplayTable.of(table, resolved.displayPlans()));
+            ClientLooks built = ClientLooks.of(table, DisplayTable.of(table, resolved.displayPlans()));
+            synchronized (looksLock) {
+                looks = built.withBedrock(bedrock.activeIds());
+            }
         } catch (RuntimeException e) {
             looks = ClientLooks.EMPTY;
             plugin.getLogger().severe("PRISM_LOOKS_FAIL " + e);
         }
+        generation.incrementAndGet();
         table.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_LOOK_WARNING " + warning));
         plugin.getLogger().info("PRISM_LOOKS total=" + table.placements().size()
                 + " state=" + table.count(LookTable.Tier.STATE) + " display=" + table.count(LookTable.Tier.DISPLAY)
@@ -118,9 +139,58 @@ final class PackManager implements Listener {
         }
     }
 
+    /** Gives the current looks the synthetic ids that were just registered (called when Geyser accepted them). */
+    private void relook() {
+        synchronized (looksLock) {
+            looks = looks.withBedrock(bedrock.activeIds());
+        }
+        relooked.run();
+    }
+
+    /** Called after Geyser viewers got synthetic ids, to publish the looks of the chunks that are already loaded. */
+    void onRelook(Runnable listener) {
+        this.relooked = listener;
+    }
+
+    /** Writes the Geyser files of the legacy route again, after the API route failed. */
+    private void reinstallGeyser() {
+        GeyserInstaller installer = geyser;
+        if (installer != null) {
+            BedrockPackBuilder.Result result = bedrockResult();
+            installer.install(result.mcpack(), result.mappings(), result.blockMappings(), false);
+        }
+    }
+
+    /** Builds the Bedrock pack of the current content once per content change. */
+    private synchronized BedrockPackBuilder.Result bedrockResult() {
+        int current = generation.get();
+        if (bedrockCache == null || bedrockCacheGeneration != current) {
+            bedrockCache = BedrockPackBuilder.build(bedrockInput());
+            bedrockCacheGeneration = current;
+        }
+        return bedrockCache;
+    }
+
+    /** The Bedrock pack build of the current content, on the calling thread (for the self tests). */
+    BedrockPackBuilder.Result bedrockNow() {
+        return bedrockResult();
+    }
+
+    /** Every look id of every block, whatever its backend: the synthetic ids are allocated for all of them. */
+    private static List<String> allLookIds(List<BlockDefinition> blocks) {
+        List<String> ids = new ArrayList<>();
+        for (BlockDefinition block : blocks) {
+            for (Appearances.Look look : Appearances.looks(block)) {
+                ids.add(look.id());
+            }
+        }
+        return ids;
+    }
+
     @EventHandler
     public void onServerLoad(ServerLoadEvent event) {
         serverStarted = true;
+        bedrock.serverLoaded();
         if (config.getBoolean("pack.enabled", true)) {
             queueBuild();
         }
@@ -155,17 +225,17 @@ final class PackManager implements Listener {
             JavaPackBuilder.Result result = JavaPackBuilder.build(input());
             result.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
             publish(PACK_ID, "PRISM_PACK_READY", result.sha1(), result.zip(), result.fileCount());
-            BedrockPackBuilder.Result bedrock = BedrockPackBuilder.build(bedrockInput());
-            bedrock.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
-            ensureServer().publishBedrock(bedrock.sha1(), bedrock.mcpack(), bedrock.mappings());
-            plugin.getLogger().info("PRISM_BEDROCK_PACK_READY sha1=" + bedrock.sha1() + " items="
-                    + bedrock.itemsWithIcon().size() + " blocks=" + bedrock.blockLooks().size()
-                    + " sounds=" + bedrock.soundEvents() + " flipbooks=" + bedrock.flipbooks()
-                    + " geometries=" + bedrock.geometries() + " gauges=" + bedrock.gaugeIcons()
-                    + " bytes=" + bedrock.mcpack().length);
+            BedrockPackBuilder.Result built = bedrockResult();
+            built.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
+            ensureServer().publishBedrock(built.sha1(), built.mcpack(), built.mappings());
+            plugin.getLogger().info("PRISM_BEDROCK_PACK_READY sha1=" + built.sha1() + " items="
+                    + built.itemsWithIcon().size() + " blocks=" + built.blockLooks().size()
+                    + " sounds=" + built.soundEvents() + " flipbooks=" + built.flipbooks()
+                    + " geometries=" + built.geometries() + " gauges=" + built.gaugeIcons()
+                    + " bytes=" + built.mcpack().length + " synthetic=" + built.syntheticBlocks().size());
             GeyserInstaller installer = geyser;
             if (installer != null) {
-                installer.install(bedrock.mcpack(), bedrock.mappings(), bedrock.blockMappings());
+                installer.install(built.mcpack(), built.mappings(), built.blockMappings(), bedrock.apiRoute());
             }
         } catch (IOException | RuntimeException e) {
             plugin.getLogger().severe("PRISM_PACK_FAIL " + e);
@@ -243,7 +313,7 @@ final class PackManager implements Listener {
     private BedrockPackBuilder.Input bedrockInput() {
         List<BlockDefinition> blocks = blockList();
         return new BedrockPackBuilder.Input(mods.assets(), itemList(), "Prism Bedrock content", blocks,
-                bedrockLooks(looks.table()));
+                bedrockLooks(looks.table()), bedrock.plannedForBuild());
     }
 
     private List<BlockDefinition> blockList() {
