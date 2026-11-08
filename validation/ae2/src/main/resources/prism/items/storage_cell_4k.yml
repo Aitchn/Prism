@@ -1,0 +1,6 @@
+base: minecraft:paper
+components:
+  prism:display_name: "<aqua>Storage Cell 4K"
+  prism:max_stack_size: 1
+behaviors:
+  - type: ae2:cell

@@ -1,0 +1,11 @@
+# terminal
+type: prism:shaped
+pattern:
+  - "IGI"
+  - "CLC"
+key:
+  I: minecraft:iron_ingot
+  G: minecraft:glass_pane
+  C: ae2:cable
+  L: ae2:logic_processor
+result: ae2:terminal

@@ -1,0 +1,11 @@
+# controller
+type: prism:shaped
+pattern:
+  - "ILI"
+  - "LEL"
+  - "ILI"
+key:
+  I: minecraft:iron_ingot
+  L: ae2:logic_processor
+  E: ae2:engineering_processor
+result: ae2:controller

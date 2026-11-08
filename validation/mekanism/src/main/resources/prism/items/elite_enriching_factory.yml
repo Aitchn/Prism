@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Elite Enriching Factory"
+  prism:places_block: mekanism:elite_enriching_factory

@@ -31,6 +31,11 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
+          name: AE2-jar
+          path: validation/ae2/build/libs/validation-ae2-*.jar
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
           name: Mekanism-jar
           path: validation/mekanism/build/libs/validation-mekanism-*.jar
           if-no-files-found: error
@@ -53,6 +58,10 @@ jobs:
         with:
           name: Example-mod-jar
           path: examples/example-mod/build/libs
+      - uses: actions/download-artifact@v4
+        with:
+          name: AE2-jar
+          path: validation/ae2/build/libs
       - uses: actions/download-artifact@v4
         with:
           name: Mekanism-jar

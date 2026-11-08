@@ -173,11 +173,11 @@ blocks:  # non-machine blocks and transmitter kinds (tiers count under mechanics
   personal_chest: missing
   quantum_entangloporter: missing
   teleporter_frame: missing
-  teleporter: missing
+  teleporter: done
   laser: missing
   laser_amplifier: missing
   laser_tractor_beam: missing
-  digital_miner: missing
+  digital_miner: done
   logistical_sorter: missing
   radioactive_waste_barrel: missing
   chemical_tank: done
@@ -225,15 +225,15 @@ machines:  # machine blocks with their own recipes or behavior
   resistive_heater: missing
 
 factories:  # one entry per factory kind (tiers are counted under mechanics.tiers)
-  smelting_factory: missing
-  enriching_factory: missing
-  crushing_factory: missing
-  compressing_factory: missing
-  combining_factory: missing
-  purifying_factory: missing
-  injecting_factory: missing
-  infusing_factory: missing
-  sawing_factory: missing
+  smelting_factory: done
+  enriching_factory: done
+  crushing_factory: done
+  compressing_factory: done
+  combining_factory: done
+  purifying_factory: done
+  injecting_factory: done
+  infusing_factory: done
+  sawing_factory: done
 
 
 mechanics:  # systems that must work together; each needs a chain test in src/test (stage that proves it in brackets)
@@ -248,7 +248,7 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   smelting_machines: done         # energized smelter, dust to ingot for all metals and alloys
   alloys: done                    # steel, bronze, infused/reinforced/atomic alloy, refined obsidian and glowstone
   upgrades: partial               # speed and energy upgrades only; muffling, filter, gas, anchor missing
-  tiers: partial                  # cubes, cables, pipes and transporters have four tiers; factories (4) still missing
+  tiers: done                     # cubes, cables, pipes, transporters and factories have four tiers
   side_configuration: partial     # chemical and item faces done (configurator; item configurator for items); energy faces still open
   auto_eject: done                # hopper toggles it; output goes out through transporters
   item_transport: partial         # transporters with colours, tiers and chained machines; filters and sorters missing (4)
@@ -260,9 +260,9 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   radiation: missing              # radiation sources and exposure (6)
   multiblock_dynamic_tank: missing   # needs the Prism structure service (5)
   multiblock_induction_matrix: missing  # needs the Prism structure service (5)
-  digital_miner: missing          # filters, radius, quarry loop (4)
-  teleporter_system: missing      # frequencies, linking, energy cost (4)
-  factory_system: missing         # 3 to 4 tiers of 8 machine kinds (4)
+  digital_miner: partial          # scans a radius, mines ores into the output; no custom filters, no silk touch, spills extra stacks
+  teleporter_system: partial      # name-tag frequencies, energy by distance, click to travel; no portal frame, no GUI
+  factory_system: done            # nine kinds in four tiers, 3 to 9 lanes; chained with transporters in FactoryTest
   chemical_tanks: partial         # chemical and fluid tank, one tier each
   qio_storage: missing            # QIO drive array network (6)
   worldgen_salt_and_fluorite: missing  # world generation again (1, blocked)

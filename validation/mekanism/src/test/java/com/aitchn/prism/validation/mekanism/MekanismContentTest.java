@@ -37,6 +37,12 @@ class MekanismContentTest {
             "metallurgic_infuser", "precision_sawmill", "energized_smelter", "chemical_oxidizer", "chemical_infuser",
             "chemical_washer", "chemical_crystallizer", "chemical_dissolution_chamber",
             "pressurized_reaction_chamber");
+    private static final java.util.Map<String, String> FACTORIES = java.util.Map.of(
+            "smelting", "energized_smelter", "enriching", "enrichment_chamber", "crushing", "crusher",
+            "compressing", "osmium_compressor", "combining", "combiner", "purifying", "purification_chamber",
+            "injecting", "chemical_injection_chamber", "infusing", "metallurgic_infuser", "sawing", "precision_sawmill");
+    private static final java.util.Map<String, Integer> LANES = java.util.Map.of("", 3, "advanced_", 5, "elite_", 7,
+            "ultimate_", 9);
     private static final List<String> TANKS = List.of("chemical_tank", "fluid_tank");
     private static final List<String> CUBES = List.of("energy_cube", "advanced_energy_cube", "elite_energy_cube",
             "ultimate_energy_cube");
@@ -103,6 +109,47 @@ class MekanismContentTest {
             previous = spec.energyCapacity();
             assertEquals(1, harness.block("mekanism:" + id).behaviors(BlockCapabilityProvider.class).size(), id);
             assertTrue(Files.exists(RESOURCES.resolve("assets/mekanism/textures/block/" + id + ".png")), id);
+        }
+    }
+
+    @Test
+    void theDigitalMinerIsAMachineBlockWithTheMinerFlag() {
+        var harness = load();
+        var block = harness.block("mekanism:digital_miner");
+        MachineBehavior spec = block.behaviors(MachineBehavior.class).getFirst();
+        assertTrue(spec.miner());
+        assertEquals(1, block.behaviors(BlockTickBehavior.class).size());
+        assertEquals(1, block.behaviors(BlockCapabilityProvider.class).size());
+        for (String look : List.of("idle", "active")) {
+            assertTrue(Files.exists(RESOURCES.resolve("assets/mekanism/textures/block/digital_miner_" + look + ".png")));
+        }
+    }
+
+    @Test
+    void theTeleporterIsAMachineBlockWithTheTeleporterFlag() {
+        var harness = load();
+        MachineBehavior spec = harness.block("mekanism:teleporter").behaviors(MachineBehavior.class).getFirst();
+        assertTrue(spec.teleporter());
+        assertFalse(spec.miner());
+        assertEquals(1, harness.block("mekanism:teleporter").behaviors(BlockInteractBehavior.class).size());
+    }
+
+    @Test
+    void everyFactoryRunsTheRecipesOfItsMachineWithMoreLanesPerTier() {
+        var harness = load();
+        for (var kind : FACTORIES.entrySet()) {
+            assertTrue(MACHINES.contains(kind.getValue()), kind.getValue());
+            for (var tier : LANES.entrySet()) {
+                String id = tier.getKey() + kind.getKey() + "_factory";
+                MachineBehavior spec = harness.block("mekanism:" + id).behaviors(MachineBehavior.class).getFirst();
+                assertEquals(kind.getValue(), spec.recipesOf(), id);
+                assertEquals((int) tier.getValue(), spec.lanes(), id);
+                assertEquals(id, spec.machine());
+                assertEquals(1, harness.block("mekanism:" + id).behaviors(BlockTickBehavior.class).size(), id);
+                for (String look : List.of("idle", "active")) {
+                    assertTrue(Files.exists(RESOURCES.resolve("assets/mekanism/textures/block/" + id + "_" + look + ".png")), id);
+                }
+            }
         }
     }
 

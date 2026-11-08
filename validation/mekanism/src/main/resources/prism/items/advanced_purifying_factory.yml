@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Advanced Purifying Factory"
+  prism:places_block: mekanism:advanced_purifying_factory

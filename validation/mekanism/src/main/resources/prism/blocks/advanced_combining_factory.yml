@@ -1,0 +1,13 @@
+# Key: mekanism:advanced_combining_factory. Advanced combining factory: runs the recipes of mekanism:combiner, 5 at once.
+base: minecraft:barrier
+drop: mekanism:advanced_combining_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: advanced_combining_factory
+    recipes_of: combiner
+    lanes: 5
+    energy_capacity: 100000
+    max_receive: 10000
+    tank_capacity: 0

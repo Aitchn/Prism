@@ -73,12 +73,22 @@ Prism**: joules, chemicals, machine recipes and the energy tablet are all in thi
 10. **Item transport.** Logistical transporters join machines into an item network. Hopper on a machine: auto-eject
    on or off; Item Configurator (Configurator + hopper, shapeless): item access per face; redstone dust: redstone mode. Cables, tubes and
    transporters come in four tiers (8 of the tier below around the matching alloy).
-11. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
+11. **Factories.** Nine kinds (smelting, enriching, crushing, compressing, combining, purifying, injecting,
+   infusing, sawing) in four tiers with 3, 5, 7 and 9 lanes. A factory is one block with the recipes of its machine;
+   it runs up to `lanes` copies of a recipe at once (same time, energy and inputs times the copies), so it behaves
+   like several machines side by side. Tiers are crafted from the tier below with circuits and alloy.
+12. **Digital miner.** Needs power. It looks at 32 positions a tick in a square of columns below it, layer by layer
+   (radius 4, 8, 12 or 16: right click with a compass), and breaks ores (any `*_ore` block and ancient debris, never a
+   Prism block). Drops go into its output slot (use auto-eject and transporters); what does not fit drops beside it.
+   1,000 J per mined block. Positions are looked at on the thread that owns them (Folia safe).
+13. **Teleporter.** Right click travels to the next teleporter with the same frequency; a name tag with a name tunes
+   it (empty name = public). The clicked teleporter pays 2,000 J plus 20 J per block (50,000 J for another world).
+14. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
    Right click a cable or tube: read the network. The charge is in the item's lore.
 
-Differences from the real mod that are on purpose for now: infusion types are items in a second slot (no infusion
+Differences from the real mod that are on purpose for now: factories have one input and output slot instead of one per lane, infusion types are items in a second slot (no infusion
 tank), the osmium compressor takes osmium dust instead of osmium gas, the sawmill has no sawdust, tiers exist only for
-energy cubes, cables, tubes and transporters, ore and salt and sulfur are crafted, chemical and item faces can be configured but not energy faces, transporters have no filters or sorters and no colouring tool. [inventory.yml](inventory.yml) tracks all of it.
+energy cubes, cables, tubes and transporters, ore and salt and sulfur are crafted, chemical and item faces can be configured but not energy faces, transporters have no filters or sorters and no colouring tool, the miner has no custom filters, the teleporter has no portal frame. [inventory.yml](inventory.yml) tracks all of it.
 
 ## Layout
 

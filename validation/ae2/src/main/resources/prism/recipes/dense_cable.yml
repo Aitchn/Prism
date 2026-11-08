@@ -1,0 +1,8 @@
+# dense_cable
+type: prism:shaped
+pattern:
+  - "CC"
+  - "CC"
+key:
+  C: ae2:cable
+result: ae2:dense_cable

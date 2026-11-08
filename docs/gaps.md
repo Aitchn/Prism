@@ -10,6 +10,7 @@ promise. Update it when a milestone closes a gap or finds a new one.
 | Items | definitions, components, use behavior | M1 done |
 | Items | more events (hit, equip, tick in inventory), item tooltips, durability, cooldowns | open |
 | Blocks | definitions, place/break/interact behaviors, display-entity appearance | M2 done |
+| Blocks | place/remove lifecycle behaviors | done (AE2 validation) |
 | Blocks | block states/rotation from placement, hardness and tool rules, sounds, light, redstone | open |
 | Blocks | very large counts (one display entity per block) | open; NativeStateBackend in M5 |
 | Blocks | place/remove/load/neighbour lifecycle, facing, survival breaking | done (ADR-0007) |
@@ -37,6 +38,18 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 - `DataStore` is a string key-value store. Machines and networks (AE2, Mekanism) need transactional multi-key writes,
   per-chunk or per-block attachment with automatic cleanup on unload/removal, and async access; none exist yet.
+
+## Found in the AE2 validation
+
+Details are in [validation/ae2.md](validation/ae2.md). The first version found the gaps that the block platform, slot
+menus, item data and recipes (ADR-0007 to ADR-0010) then closed; AE2 has been migrated to them. What remains:
+
+- A slotless item-handler capability (or a virtual `Inventory`) so a network's storage can feed hoppers and other mods.
+- Connection-dependent block shapes and thin hitboxes (cables).
+- Text input in menus (terminal search, crafting amounts).
+- Batched variant switching for many blocks.
+- Recipes that take items with per-stack data.
+- Per-player translated lore; world generation for certus ore.
 
 ## Found in the Mekanism rebuild (`validation/mekanism`)
 
@@ -184,3 +197,21 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
     matching alloy. A long cable run of basic cables starves a big machine; swap in ultimate cable and it fills.
 24. Colours: only the logistical transporter network with equal colour joins; there is no colouring tool yet, so on a real server
     every transporter is uncoloured.
+
+### Stage 4 additions (hand tests)
+
+25. Factories: craft a Enriching Factory (iron, basic circuits, steel casing around an enrichment chamber), feed it
+    a stack of osmium ore: it works on three ores at once (lore/GUI show the same single input slot) and makes six
+    dust in the time one chamber needs for two.
+26. Tier up: surround the basic factory with alloy and circuits to get the advanced one (5 lanes), and so on to the
+    ultimate (9). Pick it up and place it again: energy, upgrades and tank contents stay.
+27. A factory feeding a second factory through a logistical transporter (item configurator for faces): a stack
+    walks through both without hands.
+
+### Stage 4b additions (hand tests)
+
+28. Digital miner: place it above an ore vein, feed it power (cable or energy tablet), watch the GUI output slot fill
+    with raw ore. Use a compass on it to change the radius. With a full output slot the next drops fall beside it.
+29. Teleporter: place two, tune both with a name tag called "home" (anvil rename), power both. Right click one: you
+    arrive on the other; the clicked one loses 2,000 J plus 20 J per block. With no power the action bar says how much
+    it needs.

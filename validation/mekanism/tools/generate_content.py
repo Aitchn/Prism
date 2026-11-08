@@ -525,10 +525,78 @@ def gen3():
             prev = name
 
 
+# ---------------------------------------------------------------------------------------------- stage 4
+
+FACTORY_BASE = {  # factory kind -> the machine whose recipes it runs
+    "smelting": "energized_smelter", "enriching": "enrichment_chamber", "crushing": "crusher",
+    "compressing": "osmium_compressor", "combining": "combiner", "purifying": "purification_chamber",
+    "injecting": "chemical_injection_chamber", "infusing": "metallurgic_infuser", "sawing": "precision_sawmill",
+}
+LANES = {"basic": 3, "advanced": 5, "elite": 7, "ultimate": 9}
+CIRCUIT = {"basic": "mekanism:basic_control_circuit", "advanced": "mekanism:advanced_control_circuit",
+           "elite": "mekanism:elite_control_circuit", "ultimate": "mekanism:ultimate_control_circuit"}
+
+
+def base_number(block, key, default):
+    import re
+    text = (PRISM / f"blocks/{block}.yml").read_text()
+    m = re.search(rf"^\s+{key}: (\d+)", text, re.M)
+    return int(m.group(1)) if m else default
+
+
+def gen4():
+    # digital miner: a machine block with the miner flag; ores below it go into its output slot
+    put(PRISM / "blocks/digital_miner.yml",
+        "# Key: mekanism:digital_miner. Scans a square of columns below it (compass: radius 4/8/12/16) and mines ores into its "
+        "output slot; what does not fit is dropped beside it.\nbase: minecraft:barrier\ndrop: mekanism:digital_miner\n"
+        "components:\n  prism:variants: [idle, active]\nbehaviors:\n  - type: mekanism:machine\n    machine: digital_miner\n"
+        "    miner: true\n    energy_capacity: 100000\n    max_receive: 10000\n    tank_capacity: 0\n")
+    block_item("digital_miner")
+    put(PRISM / "blocks/teleporter.yml",
+        "# Key: mekanism:teleporter. Right click: travel to the next teleporter with the same frequency (a name tag with a "
+        "name tunes it); the clicked teleporter pays energy by distance.\nbase: minecraft:barrier\ndrop: mekanism:teleporter\n"
+        "components:\n  prism:variants: [idle, active]\nbehaviors:\n  - type: mekanism:machine\n    machine: teleporter\n"
+        "    teleporter: true\n    energy_capacity: 200000\n    max_receive: 20000\n    tank_capacity: 0\n")
+    block_item("teleporter")
+    tex_machine("teleporter", (160, 90, 220))
+    shaped("teleporter", ["ACA", "ESE", "ACA"], {"A": "mekanism:alloy_reinforced", "C": "mekanism:elite_control_circuit",
+                                                "E": "minecraft:ender_pearl", "S": "mekanism:steel_casing"},
+           "mekanism:teleporter")
+    tex_machine("digital_miner", (110, 200, 120))
+    shaped("digital_miner", ["ACA", "ISI", "ACA"], {"A": "mekanism:alloy_infused", "C": "mekanism:advanced_control_circuit",
+                                                  "I": "minecraft:iron_block", "S": "mekanism:steel_casing"},
+           "mekanism:digital_miner")
+    prev = None
+    for kind, base in FACTORY_BASE.items():
+        energy = base_number(base, "energy_capacity", 20000)
+        recv = base_number(base, "max_receive", 2000)
+        tank = base_number(base, "tank_capacity", 0)
+        prev = None
+        for tier, lanes in LANES.items():
+            name = f"{kind}_factory" if tier == "basic" else f"{tier}_{kind}_factory"
+            put(PRISM / f"blocks/{name}.yml",
+                f"# Key: mekanism:{name}. {tier.title()} {kind} factory: runs the recipes of mekanism:{base}, {lanes} at once.\n"
+                f"base: minecraft:barrier\ndrop: mekanism:{name}\ncomponents:\n  prism:variants: [idle, active]\nbehaviors:\n"
+                f"  - type: mekanism:machine\n    machine: {name}\n    recipes_of: {base}\n    lanes: {lanes}\n"
+                f"    energy_capacity: {energy * lanes}\n    max_receive: {recv * lanes}\n    tank_capacity: {tank * lanes}\n")
+            block_item(name, f"{tier.title()} {title(kind)} Factory" if tier != "basic" else f"{title(kind)} Factory")
+            col = {"basic": (150, 150, 160), "advanced": (220, 90, 90), "elite": (80, 190, 220), "ultimate": (200, 100, 230)}[tier]
+            tex_machine(name, col)
+            if prev is None:
+                shaped(name, ["ICI", "SMS", "ICI"], {"I": "minecraft:iron_ingot", "C": CIRCUIT[tier],
+                                                     "S": "mekanism:steel_casing", "M": f"mekanism:{base}"},
+                       f"mekanism:{name}")
+            else:
+                shaped(name, ["ACA", "CFC", "ACA"], {"A": TIER_ALLOY[tier], "C": CIRCUIT[tier], "F": f"mekanism:{prev}"},
+                       f"mekanism:{name}")
+            prev = name
+
+
 if __name__ == "__main__":
     if Image is None:
         print("Pillow is missing: textures were not generated")
     gen()
     gen2()
     gen3()
+    gen4()
     print(f"wrote {len(written)} files")

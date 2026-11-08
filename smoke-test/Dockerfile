@@ -7,4 +7,4 @@ COPY plugins/ /server/plugins/
 RUN echo "eula=true" > eula.txt \
     && printf 'online-mode=false\nlevel-type=flat\ngenerator-settings={"layers":[{"block":"minecraft:bedrock","height":1},{"block":"minecraft:stone","height":56},{"block":"minecraft:dirt","height":2},{"block":"minecraft:grass_block","height":1}],"biome":"minecraft:plains"}\ngenerate-structures=false\nview-distance=4\nsimulation-distance=4\nspawn-protection=0\nmax-players=1\n' > server.properties
 EXPOSE 25565
-ENTRYPOINT ["java", "-Xms512M", "-Xmx1G", "-Dprism.selftest=examplemod:ruby_block", "-Dprism.selftest.platform=examplemod:ruby_counter", "-Dprism.selftest.model=examplemod:turret", "-Dprism.selftest.ore=examplemod:ruby_ore", "-Dmekanism.selftest=true", "-jar", "server.jar", "--nogui"]
+ENTRYPOINT ["java", "-Xms512M", "-Xmx1G", "-Dprism.selftest=examplemod:ruby_block", "-Dprism.selftest.platform=examplemod:ruby_counter", "-Dprism.selftest.model=examplemod:turret", "-Dprism.selftest.ore=examplemod:ruby_ore", "-Dae2.selftest=true", "-Dmekanism.selftest=true", "-jar", "server.jar", "--nogui"]

@@ -21,6 +21,9 @@ cp "$PRISM_JAR" "$WORK/plugins/Prism.jar"
 # The example mod proves the whole path: discovery, YAML validation, registration and item creation on a real server.
 EXAMPLE_JAR="${EXAMPLE_MOD_JAR:-$(ls "$ROOT"/examples/example-mod/build/libs/*.jar | grep -v -- '-sources' | head -n1)}"
 cp "$EXAMPLE_JAR" "$WORK/plugins/ExampleMod.jar"
+# The AE2 validation mod (Applied Energistics 2 rebuilt on Prism) is optional: checked only when its jar is present.
+AE2_JAR="${AE2_JAR:-$(ls "$ROOT"/validation/ae2/build/libs/*.jar 2>/dev/null | grep -v -- '-sources' | head -n1 || true)}"
+if [[ -n "$AE2_JAR" ]]; then cp "$AE2_JAR" "$WORK/plugins/AE2.jar"; fi
 # The Mekanism rebuild (validation/mekanism) is a real mod on the platform: blocks with data, ticking, capabilities,
 # menus, recipes. It runs its own self test (MEKANISM_SELFTEST_OK) because no client joins.
 MEKANISM_JAR="${MEKANISM_JAR:-$(ls "$ROOT"/validation/mekanism/build/libs/*.jar | grep -v -- '-sources' | head -n1)}"
@@ -102,6 +105,24 @@ done
 if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMPLE_LORE_FAIL|EXAMPLE_RECIPES_FAIL|PRISM_RECIPE_SKIPPED|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL|PRISM_NATIVE_SELFTEST_FAIL|PRISM_ORE_SELFTEST_FAIL|PRISM_ORE_UNKNOWN_BLOCK|PRISM_NATIVE_OUT_OF_STATES|PRISM_GEYSER_INSTALL_FAIL|MEKANISM_SELFTEST_FAIL|MEKANISM_RECIPES_FAIL'; then
   echo "FAIL: a mod failed to activate" >&2
   exit 1
+fi
+if [[ -n "$AE2_JAR" ]]; then
+  for marker in 'PRISM_MOD_ACTIVE AE2 items=30 blocks=13' 'AE2_CONTENT_OK' 'AE2_SELFTEST_OK' 'AE2_GRID_SELFTEST_OK'; do
+    found=""
+    for ((i = 0; i < 90; i++)); do
+      if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
+      sleep 1
+    done
+    if [[ -z "$found" ]]; then
+      echo "FAIL: expected AE2 log line not seen: $marker" >&2
+      docker logs "$NAME" 2>&1 | grep -E 'PRISM_|AE2' >&2 || true
+      exit 1
+    fi
+  done
+  if docker logs "$NAME" 2>&1 | grep -qE 'AE2_CONTENT_FAIL|AE2_SELFTEST_FAIL|AE2_GRID_SELFTEST_FAIL'; then
+    echo "FAIL: the AE2 validation mod reported a failure" >&2
+    exit 1
+  fi
 fi
 # Informational: BetterModel model loading is not asserted yet.
 docker logs "$NAME" 2>&1 | grep -E 'PRISM_MODEL|PRISM_EXTERNAL_PACK|PRISM_PACK_WARNING' || true

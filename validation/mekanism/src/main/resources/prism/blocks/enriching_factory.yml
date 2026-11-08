@@ -1,0 +1,13 @@
+# Key: mekanism:enriching_factory. Basic enriching factory: runs the recipes of mekanism:enrichment_chamber, 3 at once.
+base: minecraft:barrier
+drop: mekanism:enriching_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: enriching_factory
+    recipes_of: enrichment_chamber
+    lanes: 3
+    energy_capacity: 60000
+    max_receive: 6000
+    tank_capacity: 0
