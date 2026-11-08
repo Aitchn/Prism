@@ -1,159 +1,119 @@
 package com.aitchn.prism.validation.mekanism.logic;
 
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * Dynamic tanks: hollow boxes of casing blocks (tank blocks, valves, structural glass) that hold one chemical in total,
- * 16,000 mB per interior block. Valves are the doors pipes use. The structure is found again whenever a member appears
- * or goes; its content stays with the minimum corner (the anchor) so it survives a rebuild. Bukkit-free.
+ * Dynamic tanks: hollow boxes that hold one chemical in total, 16,000 mB per interior block. Prism finds the box
+ * ({@code prism:cuboid} on the valves); this class only keeps the tanks. Every valve of a box reports the same box
+ * corners, so they share one tank. The content stays with the minimum corner while the box is broken, so rebuilding
+ * it keeps what was inside. Bukkit-free.
  */
 public final class Structures {
 
     public static final long PER_BLOCK = 16_000;
-    public static final int MIN = 3;
-    public static final int MAX = 18;
 
-    public record Formed(Pos anchor, Pos min, Pos max, int interior, Set<Pos> members, ChemicalTank tank) {
+    /** The outer corners of a box. */
+    public record Box(Pos min, Pos max) {
+        public int interior() {
+            return Math.max(0, max.x() - min.x() - 1) * Math.max(0, max.y() - min.y() - 1)
+                    * Math.max(0, max.z() - min.z() - 1);
+        }
+
         public String size() {
             return (max.x() - min.x() + 1) + "x" + (max.y() - min.y() + 1) + "x" + (max.z() - min.z() + 1);
         }
     }
 
-    private final Set<Pos> members = new HashSet<>();
-    private final Set<Pos> valves = new HashSet<>();
+    public record Formed(Box box, ChemicalTank tank) {
+    }
+
+    private final Map<Pos, Box> attached = new HashMap<>();
+    private final Map<Box, Formed> formed = new HashMap<>();
+    private final Map<Pos, String> restored = new HashMap<>();
     private final Map<Pos, String> kept = new HashMap<>();
-    private final Map<Pos, Formed> byPos = new HashMap<>();
-    private List<Formed> formed = List.of();
-    private final Map<Pos, Set<Pos>> foreign = new HashMap<>();
-    private Map<Pos, Cuboid.Result> boxes = Map.of();
 
-    public Set<Pos> members() {
-        return members;
+    /** The tank of the box the valve at {@code valve} belongs to, or null while Prism reports none. */
+    public Formed at(Pos valve) {
+        Box box = attached.get(valve);
+        return box == null ? null : formed.get(box);
     }
 
-    public Set<Pos> valves() {
-        return valves;
-    }
-
-    public List<Formed> formed() {
-        return formed;
-    }
-
-    /** The structure {@code pos} belongs to, or null while it is not part of a complete one. */
-    public Formed at(Pos pos) {
-        return byPos.get(pos);
-    }
-
-    /** The tank a pipe at a valve {@code pos} reaches, or null. */
+    /** The tank a pipe at the valve {@code pos} reaches, or null. */
     public ChemicalTank valveTank(Pos pos) {
-        Formed f = valves.contains(pos) ? byPos.get(pos) : null;
+        Formed f = at(pos);
         return f == null ? null : f.tank();
     }
 
-    /** Content found in an anchor's block data when it loaded: applied the next time a structure forms there. */
-    public void restore(Pos anchor, String text) {
-        kept.put(anchor, text);
+    /** Content found in a valve's block data when it loaded: applied when the box that valve belongs to forms. */
+    public void restore(Pos valve, String text) {
+        restored.put(valve, text);
     }
 
-    /** The content to save for the block at {@code anchor}: what the structure holds, or what was kept for it. */
-    public String contentOf(Pos anchor) {
-        Formed f = byPos.get(anchor);
-        if (f != null && f.anchor().equals(anchor)) {
-            return f.tank().type() == null ? null : f.tank().type().id() + "," + f.tank().amount();
+    /** The valve stands in {@code box} (as Prism reports it). Moves it if it was in another one. */
+    public void attach(Pos valve, Box box) {
+        Box before = attached.get(valve);
+        if (box.equals(before)) {
+            return;
         }
-        return kept.get(anchor);
-    }
-
-    public void forget(Pos anchor) {
-        kept.remove(anchor);
-    }
-
-    /** Finds the structures again. Content of structures that stopped being whole is kept by their anchor. */
-    public void rebuild() {
-        rebuild(p -> false);
+        if (before != null) {
+            detach(valve, false);
+        }
+        attached.put(valve, box);
+        Formed existing = formed.get(box);
+        if (existing != null) {
+            return;
+        }
+        ChemicalTank tank = new ChemicalTank((long) box.interior() * PER_BLOCK).asBuffer();
+        String text = kept.remove(box.min());
+        if (text == null) {
+            text = restored.get(valve);
+        }
+        apply(tank, text);
+        formed.put(box, new Formed(box, tank));
     }
 
     /**
-     * Whole boxes of casing, formed or not, by minimum corner. The adapter looks inside them in the world, because
-     * stone or a vanilla block in the middle is not hollow, and reports it with {@link #setInteriorBlocked}.
+     * The valve is no longer part of a box: it was broken, or its chunk unloads. With {@code unloading} the valve's own
+     * block data holds the content; otherwise it is kept for the minimum corner while the box is rebuilt.
      */
-    public Map<Pos, Cuboid.Result> boxes() {
-        return boxes;
+    public void detach(Pos valve, boolean unloading) {
+        Box box = attached.remove(valve);
+        if (box == null || attached.containsValue(box)) {
+            return;
+        }
+        Formed f = formed.remove(box);
+        if (!unloading && f != null && f.tank().type() != null) {
+            kept.put(box.min(), text(f.tank()));
+        }
+        if (unloading) {
+            restored.remove(valve);
+        }
     }
 
-    /** Records which interior positions of the box at {@code anchor} hold a non-air block. True when that changed. */
-    public boolean setInteriorBlocked(Pos anchor, Set<Pos> blocked) {
-        Set<Pos> before = foreign.get(anchor);
-        if (blocked.isEmpty()) {
-            return foreign.remove(anchor) != null;
+    /** The content to save in the valve's data: what its box holds, or what was kept for it. */
+    public String contentOf(Pos valve) {
+        Formed f = at(valve);
+        if (f != null) {
+            return f.tank().type() == null ? null : text(f.tank());
         }
-        if (blocked.equals(before)) {
-            return false;
-        }
-        foreign.put(anchor, Set.copyOf(blocked));
-        return true;
+        return restored.get(valve);
     }
 
-    /** As {@link #rebuild()}; {@code occupied} says which other positions hold a known block, which spoils a hollow. */
-    public void rebuild(java.util.function.Predicate<Pos> occupied) {
-        Map<Pos, String> contents = new HashMap<>(kept);
-        for (Formed f : formed) {
-            if (f.tank().type() != null) {
-                contents.put(f.anchor(), f.tank().type().id() + "," + f.tank().amount());
-            }
-        }
-        List<Formed> next = new java.util.ArrayList<>();
-        Map<Pos, Cuboid.Result> seen = new HashMap<>();
-        byPos.clear();
-        for (Set<Pos> component : Networks.components(members)) {
-            Pos seed = component.iterator().next();
-            Cuboid.Result result = Cuboid.validate(seed, members::contains,
-                    p -> !members.contains(p) && !occupied.test(p), MIN, MAX);
-            if (!result.valid() || component.size() != shellSize(result)) {
-                continue;
-            }
-            seen.put(result.min(), result);
-            boolean blocked = false;
-            Set<Pos> stuck = foreign.getOrDefault(result.min(), Set.of());
-            for (Pos p : stuck) {
-                blocked |= p.x() > result.min().x() && p.x() < result.max().x() && p.y() > result.min().y()
-                        && p.y() < result.max().y() && p.z() > result.min().z() && p.z() < result.max().z();
-            }
-            if (blocked) {
-                continue;
-            }
-            ChemicalTank tank = new ChemicalTank((long) result.interiorVolume() * PER_BLOCK).asBuffer();
-            String saved = contents.remove(result.min());
-            if (saved != null) {
-                int comma = saved.lastIndexOf(',');
-                try {
-                    tank.set(new Chemical(saved.substring(0, comma)), Long.parseLong(saved.substring(comma + 1)));
-                } catch (RuntimeException e) {
-                    // damaged: start empty
-                }
-            }
-            Formed f = new Formed(result.min(), result.min(), result.max(), result.interiorVolume(), component, tank);
-            next.add(f);
-            for (Pos p : component) {
-                byPos.put(p, f);
-            }
-        }
-        boxes = Map.copyOf(seen);
-        foreign.keySet().retainAll(seen.keySet());
-        kept.clear();
-        kept.putAll(contents);
-        formed = List.copyOf(next);
+    private static String text(ChemicalTank tank) {
+        return tank.type().id() + "," + tank.amount();
     }
 
-    /** Blocks on the shell of a box: the structure must be exactly that, no extra casing stuck on. */
-    private static int shellSize(Cuboid.Result r) {
-        int sx = r.max().x() - r.min().x() + 1;
-        int sy = r.max().y() - r.min().y() + 1;
-        int sz = r.max().z() - r.min().z() + 1;
-        return sx * sy * sz - (sx - 2) * (sy - 2) * (sz - 2);
+    private static void apply(ChemicalTank tank, String text) {
+        if (text == null) {
+            return;
+        }
+        int comma = text.lastIndexOf(',');
+        try {
+            long amount = Math.min(tank.capacity(), Long.parseLong(text.substring(comma + 1)));
+            tank.set(new Chemical(text.substring(0, comma)), amount);
+        } catch (RuntimeException e) {
+            // damaged: start empty
+        }
     }
 }

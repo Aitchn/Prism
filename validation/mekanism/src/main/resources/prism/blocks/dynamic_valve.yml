@@ -1,6 +1,10 @@
-# Key: mekanism:dynamic_valve. A casing block of the dynamic tank that also lets pipes fill and drain it.
+# Key: mekanism:dynamic_valve. A wall block of the dynamic tank and the door pipes use. It is the controller Prism finds the box from (prism:cuboid): put it in a wall, not on an edge or corner.
 base: minecraft:barrier
 drop: mekanism:dynamic_valve
+components:
+  prism:cuboid:
+    walls: [mekanism:dynamic_tank, mekanism:dynamic_valve, mekanism:structural_glass]
+    min: 3
+    max: 18
 behaviors:
-  - type: mekanism:casing
-    valve: true
+  - type: mekanism:valve

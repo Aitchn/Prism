@@ -1,0 +1,9 @@
+type: prism:shaped
+pattern:
+  - "GSG"
+  - "SGS"
+  - "GSG"
+key:
+  G: minecraft:glass
+  S: mekanism:steel_casing
+result: {item: mekanism:structural_glass, count: 4}

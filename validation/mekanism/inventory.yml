@@ -162,7 +162,7 @@ blocks:  # non-machine blocks and transmitter kinds (tiers count under mechanics
   bin: missing
   dynamic_tank: done
   dynamic_valve: done
-  structural_glass: missing
+  structural_glass: done
   induction_casing: missing
   induction_port: missing
   induction_cell: missing

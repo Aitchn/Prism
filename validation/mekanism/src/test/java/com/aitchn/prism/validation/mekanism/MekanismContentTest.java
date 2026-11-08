@@ -135,10 +135,11 @@ class MekanismContentTest {
     }
 
     @Test
-    void dynamicTankCasingsAreCasingBehaviorsAndOnlyTheValveIsAValve() {
+    void theDynamicValveIsTheCuboidControllerAndTheOtherWallsArePlain() {
         var harness = load();
-        assertFalse(harness.block("mekanism:dynamic_tank").behaviors(CasingBehavior.class).getFirst().valve());
-        assertTrue(harness.block("mekanism:dynamic_valve").behaviors(CasingBehavior.class).getFirst().valve());
+        assertEquals(1, harness.block("mekanism:dynamic_valve").behaviors(ValveBehavior.class).size());
+        assertTrue(harness.block("mekanism:dynamic_tank").behaviors(ValveBehavior.class).isEmpty());
+        assertTrue(harness.block("mekanism:structural_glass").behaviors(ValveBehavior.class).isEmpty());
     }
 
     @Test

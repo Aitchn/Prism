@@ -8,133 +8,80 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Dynamic tanks: the box is found, sized, kept when parts come and go, and pipes reach it through valves. */
+/** Dynamic tanks: Prism reports boxes through valves; the tanks are shared, kept and reached by pipes. */
 class StructuresTest {
 
     private static final Pos ORIGIN = TestWorld.at(10, 64, 10);
+    private static final Pos VALVE = ORIGIN.offset(1, 1, 0);
 
-    /** Fills the shell of an sx by sy by sz box at ORIGIN with casing. */
-    private static void box(Plant plant, int sx, int sy, int sz) {
-        for (int x = 0; x < sx; x++) {
-            for (int y = 0; y < sy; y++) {
-                for (int z = 0; z < sz; z++) {
-                    boolean shell = x == 0 || y == 0 || z == 0 || x == sx - 1 || y == sy - 1 || z == sz - 1;
-                    if (shell) {
-                        plant.structures().members().add(ORIGIN.offset(x, y, z));
-                    }
-                }
-            }
-        }
-        plant.markDirty();
-        plant.rebuildIfNeeded();
+    private static Structures.Box box(int sx, int sy, int sz) {
+        return new Structures.Box(ORIGIN, ORIGIN.offset(sx - 1, sy - 1, sz - 1));
     }
 
     @Test
-    void a_whole_box_forms_with_capacity_by_interior_volume() {
+    void a_reported_box_gets_a_tank_sized_by_its_interior() {
         Plant plant = new Plant();
-        box(plant, 3, 3, 3);
-        Structures.Formed f = plant.structures().at(ORIGIN);
-        assertNotNull(f);
-        assertEquals(1, f.interior());
-        assertEquals(16_000, f.tank().capacity());
-        assertEquals("3x3x3", f.size());
-        plant = new Plant();
-        box(plant, 5, 4, 6);
-        assertEquals(3 * 2 * 4 * 16_000L, plant.structures().at(ORIGIN).tank().capacity());
+        assertNull(plant.structures().at(VALVE));
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        assertEquals(16_000, plant.structures().at(VALVE).tank().capacity());
+        plant.structures().attach(VALVE, box(5, 4, 3));
+        assertEquals(3 * 2 * 1 * 16_000, plant.structures().at(VALVE).tank().capacity(), "a bigger box is a new tank");
+        assertEquals("5x4x3", plant.structures().at(VALVE).box().size());
     }
 
     @Test
-    void a_hole_extra_casing_or_a_blocked_interior_means_not_formed() {
+    void valves_of_one_box_share_one_tank() {
         Plant plant = new Plant();
-        box(plant, 3, 3, 3);
-        plant.structures().members().remove(ORIGIN.offset(1, 0, 1));
-        plant.markDirty();
-        plant.rebuildIfNeeded();
-        assertNull(plant.structures().at(ORIGIN));
-
-        plant = new Plant();
-        box(plant, 3, 3, 3);
-        plant.structures().members().add(ORIGIN.offset(3, 1, 1));
-        plant.markDirty();
-        plant.rebuildIfNeeded();
-        assertNull(plant.structures().at(ORIGIN), "a block stuck on the outside spoils the box");
-
-        plant = new Plant();
-        box(plant, 3, 3, 3);
-        plant.structures().members().add(ORIGIN.offset(1, 1, 1));
-        plant.markDirty();
-        plant.rebuildIfNeeded();
-        assertNull(plant.structures().at(ORIGIN), "casing inside blocks the interior");
-        box(new Plant(), 2, 2, 2);
-        Plant tiny = new Plant();
-        box(tiny, 2, 2, 2);
-        assertNull(tiny.structures().at(ORIGIN), "too small");
+        Pos other = ORIGIN.offset(1, 1, 2);
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        plant.structures().attach(other, box(3, 3, 3));
+        plant.structures().at(VALVE).tank().set(Chemical.HYDROGEN, 3_000);
+        assertEquals(3_000, plant.structures().at(other).tank().amount());
+        plant.structures().detach(VALVE, false);
+        assertEquals(3_000, plant.structures().at(other).tank().amount(), "the other valve still holds the box");
     }
 
     @Test
-    void a_machine_or_cable_inside_the_box_spoils_it() {
+    void content_survives_the_box_being_broken_and_built_again() {
         Plant plant = new Plant();
-        box(plant, 3, 3, 3);
-        plant.cables().add(ORIGIN.offset(1, 1, 1));
-        plant.markDirty();
-        plant.rebuildIfNeeded();
-        assertNull(plant.structures().at(ORIGIN), "a known block in the middle is not empty space");
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        plant.structures().at(VALVE).tank().set(Chemical.HYDROGEN, 5_000);
+        plant.structures().detach(VALVE, false);
+        assertNull(plant.structures().at(VALVE));
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        assertEquals(5_000, plant.structures().at(VALVE).tank().amount());
+        assertEquals(Chemical.HYDROGEN, plant.structures().at(VALVE).tank().type());
     }
 
     @Test
-    void a_vanilla_block_reported_inside_the_box_spoils_it_until_it_is_gone() {
+    void content_is_cut_to_the_capacity_of_a_smaller_box() {
         Plant plant = new Plant();
-        box(plant, 3, 3, 3);
-        assertNotNull(plant.structures().at(ORIGIN));
-        assertTrue(plant.structures().boxes().containsKey(ORIGIN));
-        assertTrue(plant.structures().setInteriorBlocked(ORIGIN, java.util.Set.of(ORIGIN.offset(1, 1, 1))));
-        plant.markDirty();
-        plant.rebuildIfNeeded();
-        assertNull(plant.structures().at(ORIGIN), "stone in the middle");
-        assertTrue(plant.structures().boxes().containsKey(ORIGIN), "still looked at, so it can recover");
-        assertTrue(plant.structures().setInteriorBlocked(ORIGIN, java.util.Set.of()));
-        plant.markDirty();
-        plant.rebuildIfNeeded();
-        assertNotNull(plant.structures().at(ORIGIN), "emptied again");
+        plant.structures().attach(VALVE, box(5, 5, 5));
+        plant.structures().at(VALVE).tank().set(Chemical.HYDROGEN, 100_000);
+        plant.structures().detach(VALVE, false);
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        assertEquals(16_000, plant.structures().at(VALVE).tank().amount());
     }
 
     @Test
-    void content_survives_the_box_being_opened_and_closed_again() {
+    void content_comes_back_from_the_valves_saved_text_after_a_restart() {
         Plant plant = new Plant();
-        box(plant, 3, 3, 3);
-        plant.structures().at(ORIGIN).tank().set(Chemical.HYDROGEN, 5_000);
-        Pos side = ORIGIN.offset(1, 0, 1);
-        plant.structures().members().remove(side);
-        plant.markDirty();
-        plant.rebuildIfNeeded();
-        assertNull(plant.structures().at(ORIGIN));
-        plant.structures().members().add(side);
-        plant.markDirty();
-        plant.rebuildIfNeeded();
-        assertEquals(5_000, plant.structures().at(ORIGIN).tank().amount());
-        assertEquals(Chemical.HYDROGEN, plant.structures().at(ORIGIN).tank().type());
-    }
-
-    @Test
-    void content_comes_back_from_the_anchors_saved_text_after_a_restart() {
-        Plant plant = new Plant();
-        box(plant, 3, 3, 3);
-        plant.structures().at(ORIGIN).tank().set(Chemical.OXYGEN, 7_000);
-        String saved = plant.structures().contentOf(ORIGIN);
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        plant.structures().at(VALVE).tank().set(Chemical.OXYGEN, 7_000);
+        String saved = plant.structures().contentOf(VALVE);
         Plant fresh = new Plant();
-        fresh.structures().restore(ORIGIN, saved);
-        box(fresh, 3, 3, 3);
-        assertEquals(7_000, fresh.structures().at(ORIGIN).tank().amount());
-        assertEquals(Chemical.OXYGEN, fresh.structures().at(ORIGIN).tank().type());
+        fresh.structures().restore(VALVE, saved);
+        fresh.structures().attach(VALVE, box(3, 3, 3));
+        assertEquals(7_000, fresh.structures().at(VALVE).tank().amount());
+        assertEquals(Chemical.OXYGEN, fresh.structures().at(VALVE).tank().type());
     }
 
     @Test
     void pipes_fill_the_tank_through_a_valve_and_drain_it_into_another_machine() {
         MachineType store = new MachineType("chemical_tank", List::of, 1, 1, 64_000, 0, c -> true);
         TestWorld w = new TestWorld();
-        box(w.plant, 3, 3, 3);
         Pos valve = ORIGIN.offset(1, 1, 0);
-        w.plant.structures().valves().add(valve);
+        w.plant.structures().attach(valve, box(3, 3, 3));
         Pos source = ORIGIN.offset(1, 1, -2);
         w.placeMachine(source, store);
         w.placePipe(ORIGIN.offset(1, 1, -1));
@@ -142,17 +89,17 @@ class StructuresTest {
         for (int i = 0; i < 40; i++) {
             w.plant.tickNetworks();
         }
-        Structures.Formed f = w.plant.structures().at(ORIGIN);
+        Structures.Formed f = w.plant.structures().at(valve);
         assertEquals(4_000, f.tank().amount() + w.machine(source).inTank().amount(), "nothing lost");
         assertTrue(f.tank().amount() > 0, "the tank took some through the valve");
         assertEquals(Chemical.HYDROGEN, f.tank().type());
     }
 
     @Test
-    void a_casing_block_that_is_not_a_valve_lets_nothing_through() {
+    void a_wall_block_that_is_not_a_valve_lets_nothing_through() {
         MachineType store = new MachineType("chemical_tank", List::of, 1, 1, 64_000, 0, c -> true);
         TestWorld w = new TestWorld();
-        box(w.plant, 3, 3, 3);
+        w.plant.structures().attach(ORIGIN.offset(1, 1, 2), box(3, 3, 3)); // the valve is on the far side
         Pos source = ORIGIN.offset(1, 1, -2);
         w.placeMachine(source, store);
         w.placePipe(ORIGIN.offset(1, 1, -1));
@@ -160,7 +107,7 @@ class StructuresTest {
         for (int i = 0; i < 10; i++) {
             w.plant.tickNetworks();
         }
-        assertEquals(0, w.plant.structures().at(ORIGIN).tank().amount());
+        assertEquals(0, w.plant.structures().at(ORIGIN.offset(1, 1, 2)).tank().amount());
         assertEquals(1_000, w.machine(source).inTank().amount());
     }
 }

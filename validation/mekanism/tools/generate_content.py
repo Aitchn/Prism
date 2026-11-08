@@ -595,21 +595,30 @@ def gen4():
 # ---------------------------------------------------------------------------------------------- stage 5
 
 def gen5():
-    # multiblock dynamic tank: casings build a hollow cuboid; valves are the casings that connect pipes
-    specs = {
-        "dynamic_tank": ("Dynamic Tank", "false", (120, 130, 150),
-                         "A casing block of the dynamic tank: a closed hollow cuboid of these stores chemicals."),
-        "dynamic_valve": ("Dynamic Valve", "true", (90, 170, 200),
-                          "A casing block of the dynamic tank that also lets pipes fill and drain it."),
-    }
-    for name, (label, valve, col, doc) in specs.items():
-        put(PRISM / f"blocks/{name}.yml",
-            f"# Key: mekanism:{name}. {doc}\nbase: minecraft:barrier\ndrop: mekanism:{name}\nbehaviors:\n"
-            f"  - type: mekanism:casing\n    valve: {valve}\n")
-        block_item(name, label)
-        tex_cube(name, col)
+    # dynamic tank: a hollow box of tank blocks, valves and structural glass; Prism finds the box from a valve
+    walls = "[mekanism:dynamic_tank, mekanism:dynamic_valve, mekanism:structural_glass]"
+    put(PRISM / "blocks/dynamic_tank.yml",
+        "# Key: mekanism:dynamic_tank. A wall block of the dynamic tank: a closed hollow box of tank blocks, valves and "
+        "structural glass (3 to 18 blocks a side, empty inside) stores chemicals; pipes connect to the valves.\n"
+        "base: minecraft:barrier\ndrop: mekanism:dynamic_tank\n")
+    block_item("dynamic_tank", "Dynamic Tank")
+    tex_cube("dynamic_tank", (120, 130, 150))
+    put(PRISM / "blocks/structural_glass.yml",
+        "# Key: mekanism:structural_glass. A wall block of the dynamic tank that you can see through.\n"
+        "base: minecraft:barrier\ndrop: mekanism:structural_glass\n")
+    block_item("structural_glass", "Structural Glass")
+    tex_cube("structural_glass", (170, 210, 230))
+    put(PRISM / "blocks/dynamic_valve.yml",
+        "# Key: mekanism:dynamic_valve. A wall block of the dynamic tank and the door pipes use. It is the controller "
+        "Prism finds the box from (prism:cuboid): put it in a wall, not on an edge or corner.\n"
+        "base: minecraft:barrier\ndrop: mekanism:dynamic_valve\ncomponents:\n  prism:cuboid:\n"
+        f"    walls: {walls}\n    min: 3\n    max: 18\nbehaviors:\n  - type: mekanism:valve\n")
+    block_item("dynamic_valve", "Dynamic Valve")
+    tex_cube("dynamic_valve", (90, 170, 200))
     shaped("dynamic_tank", ["ISI", "SCS", "ISI"], {"I": "minecraft:iron_ingot", "S": "mekanism:steel_casing",
                                                     "C": "minecraft:cauldron"}, "mekanism:dynamic_tank", 4)
+    shaped("structural_glass", ["GSG", "SGS", "GSG"], {"G": "minecraft:glass", "S": "mekanism:steel_casing"},
+           "mekanism:structural_glass", 4)
     shapeless("dynamic_valve", ["mekanism:dynamic_tank", "minecraft:hopper"], "mekanism:dynamic_valve")
 
 
