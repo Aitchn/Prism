@@ -69,7 +69,7 @@ final class PrismBlockService implements BlockService, Listener {
     private final PlatformScheduler scheduler;
     private final Logger log;
     private final OreGenerator ores;
-    /** Told after a block is placed or changes variant, so per-player looks can follow; set once at startup. */
+    /** Told after a block is placed, removed or changes variant, so per-player looks can follow; set once at startup. */
     private volatile java.util.function.Consumer<Block> lookChanged = block -> {};
 
     /**
@@ -206,6 +206,7 @@ final class PrismBlockService implements BlockService, Listener {
         index.remove(block);
         drop.ifPresent(sink);
         notifyNeighbors(block);
+        lookChanged.accept(block);
         return true;
     }
 

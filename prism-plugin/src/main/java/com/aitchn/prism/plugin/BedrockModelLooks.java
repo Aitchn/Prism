@@ -6,8 +6,8 @@ import io.papermc.paper.event.packet.PlayerChunkLoadEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -30,6 +30,8 @@ final class BedrockModelLooks implements Listener {
     private final NoteBlockAppearance noteBlocks;
     private final Predicate<UUID> bedrock;
     private final PlatformScheduler scheduler;
+    /** The look each known model block should show; a queued send is dropped once its entry changed or went. */
+    private final Map<Location, BlockData> current = new ConcurrentHashMap<>();
 
     BedrockModelLooks(PrismBlockService blocks, NoteBlockAppearance noteBlocks, Predicate<UUID> bedrock,
             PlatformScheduler scheduler) {
@@ -65,32 +67,43 @@ final class BedrockModelLooks implements Listener {
             for (CustomBlock custom : blocks.blocksIn(chunk)) {
                 BlockData look = lookOf(custom);
                 if (look != null) {
-                    looks.put(custom.block().getLocation(), look);
+                    Location at = custom.block().getLocation();
+                    current.put(at, look);
+                    looks.put(at, look);
                 }
             }
             if (!looks.isEmpty()) {
-                scheduler.runOn(player, () -> looks.forEach(player::sendBlockChange), null);
+                scheduler.runOn(player, () -> looks.forEach((at, look) -> send(player, at, look)), null);
             }
         });
     }
 
-    /** A model block was placed or changed its variant; call on the block's thread. */
+    /** A block was placed, removed or changed its variant; call on the block's thread. */
     void changed(Block block) {
+        Location at = block.getLocation();
         BlockData look = blocks.get(block).map(this::lookOf).orElse(null);
         if (look == null) {
+            current.remove(at); // gone or no longer a model block: queued sends for it are dropped
             return;
         }
-        Location at = block.getLocation();
-        double range = (Bukkit.getViewDistance() + 1) * 16.0;
+        current.put(at, look);
+        long chunkKey = Chunk.getChunkKey(at.getBlockX() >> 4, at.getBlockZ() >> 4);
         for (Player player : block.getWorld().getPlayers()) {
             if (bedrock.test(player.getUniqueId())) {
                 scheduler.runOn(player, () -> {
-                    Location where = player.getLocation();
-                    if (where.getWorld() == at.getWorld() && where.distanceSquared(at) <= range * range) {
-                        player.sendBlockChange(at, look);
+                    // Every player who has the chunk, whatever the distance (chunk visibility is horizontal).
+                    if (player.getWorld() == at.getWorld() && player.isChunkSent(chunkKey)) {
+                        send(player, at, look);
                     }
                 }, null);
             }
+        }
+    }
+
+    /** Sends {@code look} unless the block changed since it was queued (a newer look, or removed). */
+    private void send(Player player, Location at, BlockData look) {
+        if (look.equals(current.get(at))) {
+            player.sendBlockChange(at, look);
         }
     }
 }
