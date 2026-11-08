@@ -28,6 +28,8 @@ final class CounterMenu implements ContainerMenu {
     static final NamespacedKey LABEL = NamespacedKey.fromString("examplemod:label");
 
     private static final int COUNT_SLOT = 11;
+    private static final int CYCLE_SLOT = 12;
+    private static final PrismKey CYCLE_GAUGE = PrismKey.parse("examplemod:cycle_gauge");
     private static final int SWITCH_SLOT = 13;
     private static final int STORE_SLOT = 15;
     private static final int LABEL_SLOT = 22;
@@ -173,6 +175,10 @@ final class CounterMenu implements ContainerMenu {
     private void drawCount(MenuView view) {
         view.setIcon(COUNT_SLOT, PrismKey.parse("minecraft:clock"), "<gold>Count: " + count.get(),
                 List.of("<gray>Counts once a second"));
+        // A stepped gauge icon (prism:gauge): the same arrow on Java and Bedrock.
+        int cycle = count.get() % 10;
+        view.setGauge(CYCLE_SLOT, CYCLE_GAUGE, cycle / 10.0, "<gold>Cycle " + cycle + "/10",
+                List.of("<gray>Fills up every ten counts"));
     }
 
     private void drawSwitch(MenuView view) {

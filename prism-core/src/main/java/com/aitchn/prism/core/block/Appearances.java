@@ -75,6 +75,19 @@ public final class Appearances {
         return new PrismKey(block.key().namespace(), "block/" + block.key().value() + "_" + variant);
     }
 
+    /**
+     * The {@code item_model} a gauge item ({@code prism:gauge}) shows at {@code step}: {@code ns:value/gauge_<step>},
+     * defined in {@code assets/ns/items/value/gauge_<step>.json}. Geyser maps the same id to a Bedrock item.
+     */
+    public static @NotNull PrismKey gaugeLook(@NotNull PrismKey item, int step) {
+        return new PrismKey(item.namespace(), item.value() + "/gauge_" + step);
+    }
+
+    /** The model (and generated texture) of a gauge step: {@code ns:item/value/gauge_<step>}. */
+    public static @NotNull PrismKey gaugeModel(@NotNull PrismKey item, int step) {
+        return new PrismKey(item.namespace(), "item/" + item.value() + "/gauge_" + step);
+    }
+
     /** The item model a display entity shows for a variant: {@code ns:block/value} or {@code ns:block/value_variant}. */
     public static @NotNull PrismKey itemModel(@NotNull PrismKey block, @NotNull String variant) {
         return new PrismKey(block.namespace(), "block/" + block.value() + (variant.isEmpty() ? "" : "_" + variant));

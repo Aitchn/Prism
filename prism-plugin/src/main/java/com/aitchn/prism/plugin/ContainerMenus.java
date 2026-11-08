@@ -1,11 +1,13 @@
 package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.PrismKey;
+import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.menu.ClickKind;
 import com.aitchn.prism.api.menu.ContainerMenu;
 import com.aitchn.prism.api.menu.MenuView;
 import com.aitchn.prism.api.menu.SlotRole;
+import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.menu.SlotRules;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import com.aitchn.prism.platform.spi.ScheduledTask;
@@ -98,6 +100,25 @@ final class ContainerMenus implements Listener {
                 List<Component> lines = new ArrayList<>();
                 lore.forEach(line -> lines.add(text(line)));
                 meta.lore(lines);
+            });
+            inventory.setItem(slot, stack);
+        }
+
+        @Override
+        public void setGauge(int slot, @NotNull PrismKey gauge, double fraction, @NotNull String name,
+                @NotNull List<String> lore) {
+            setIcon(slot, gauge, name, lore);
+            var spec = items.definition(gauge).flatMap(definition ->
+                    definition.components().get(PrismComponents.GAUGE));
+            ItemStack stack = inventory.getItem(slot);
+            if (spec.isEmpty() || stack == null) {
+                return;
+            }
+            PrismKey look = Appearances.gaugeLook(gauge, spec.get().step(fraction));
+            stack.editMeta(meta -> {
+                if (meta.hasItemModel()) { // only when the pack has the gauge's looks
+                    Keys.bukkit(look).ifPresent(meta::setItemModel);
+                }
             });
             inventory.setItem(slot, stack);
         }

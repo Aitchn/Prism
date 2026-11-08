@@ -320,6 +320,58 @@ public final class PrismComponents {
                         section.getBoolean("rotate", true));
             });
 
+    /**
+     * An item drawn as a stepped gauge in menus ({@code MenuView.setGauge}): a fill bar or a progress arrow. Prism
+     * draws the {@code steps + 1} icons (empty to full) itself, for the Java and the Bedrock pack; a mod can replace
+     * any of them by shipping {@code textures/item/<name>/gauge_<n>.png}. The item itself looks full.
+     * <pre>{@code
+     * prism:gauge:
+     *   style: bar          # bar (fills bottom up) or arrow (fills left to right)
+     *   color: "#d03030"
+     *   steps: 8            # 1 to 32 (default 8)
+     * }</pre>
+     */
+    public static final ComponentType<Gauge> GAUGE = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "gauge"),
+            Gauge.class,
+            section -> {
+                section.rejectUnknownKeys(java.util.Set.of("style", "color", "steps"));
+                String style = section.getString("style").orElse("bar");
+                if (!Gauge.STYLES.contains(style)) {
+                    throw section.error("style must be one of " + Gauge.STYLES + ", got " + style);
+                }
+                String color = section.requireString("color");
+                if (!color.matches("#[0-9a-fA-F]{6}")) {
+                    throw section.error("color must look like #rrggbb, got " + color);
+                }
+                int steps = section.getInt("steps").orElse(8);
+                if (steps < 1 || steps > 32) {
+                    throw section.error("steps must be 1 to 32, got " + steps);
+                }
+                return new Gauge(style, Integer.parseInt(color.substring(1), 16), steps);
+            });
+
+    /** @see #GAUGE; {@code color} is 0xRRGGBB. */
+    public record Gauge(String style, int color, int steps) {
+
+        public static final java.util.List<String> STYLES = java.util.List.of("bar", "arrow");
+
+        /**
+         * The step that shows {@code fraction}: 0 only when empty and {@code steps} only when full, so a nearly
+         * empty or nearly full value still looks different from the ends.
+         */
+        public int step(double fraction) {
+            if (!(fraction > 0)) {
+                return 0;
+            }
+            if (fraction >= 1) {
+                return steps;
+            }
+            int step = (int) Math.round(fraction * steps);
+            return steps < 2 ? step : Math.max(1, Math.min(steps - 1, step));
+        }
+    }
+
     /** @see #VARIANTS */
     public record Variants(java.util.List<String> names) {}
 

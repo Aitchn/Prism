@@ -33,6 +33,9 @@ final class MachineMenu implements ContainerMenu {
     static final int INPUT = 11;
     static final int EXTRA = 12;
     static final int PROGRESS = 13;
+    private static final PrismKey ENERGY_GAUGE = PrismKey.parse("mekanism:energy_gauge");
+    private static final PrismKey PROGRESS_GAUGE = PrismKey.parse("mekanism:progress_gauge");
+    private static final PrismKey CHEMICAL_GAUGE = PrismKey.parse("mekanism:chemical_gauge");
     static final int OUTPUT = 15;
     static final int HINT = 22;
     static final int TANK_IN = 20;
@@ -182,13 +185,13 @@ final class MachineMenu implements ContainerMenu {
     private void drawStatus(MenuView view) {
         long stored = machine.energy().stored();
         long capacity = machine.energy().capacity();
-        view.setIcon(ENERGY, PrismKey.parse("minecraft:redstone"), "<red>Energy",
+        view.setGauge(ENERGY, ENERGY_GAUGE, capacity == 0 ? 0 : stored / (double) capacity, "<red>Energy",
                 List.of("<white>" + Text.number(stored) + " <gray>/ <white>" + Text.number(capacity) + " J",
                         Text.bar(capacity == 0 ? 0 : stored / (double) capacity, 20, "red"),
                         "<dark_gray>Fed by cables from a generator"));
         double progress = machine.progressFraction();
         boolean working = machine.running();
-        view.setIcon(PROGRESS, PrismKey.parse(working ? "minecraft:spectral_arrow" : "minecraft:arrow"),
+        view.setGauge(PROGRESS, PROGRESS_GAUGE, working ? progress : 0,
                 working ? "<yellow>Working " + Math.round(progress * 100) + "%" : "<gray>Idle",
                 List.of(Text.bar(progress, 20, "yellow"),
                         working && machine.idleTicks() > 0 ? "<red>Waiting for energy" : "<dark_gray>"));
@@ -225,26 +228,11 @@ final class MachineMenu implements ContainerMenu {
     private void drawTank(MenuView view, int slot, String label, ChemicalTank tank) {
         Chemical type = tank.type();
         String name = type == null ? "Empty" : Text.title(type.id());
-        view.setIcon(slot, PrismKey.parse(icon(type)), "<aqua>" + label,
+        view.setGauge(slot, CHEMICAL_GAUGE, tank.capacity() == 0 ? 0 : tank.amount() / (double) tank.capacity(),
+                "<aqua>" + label,
                 List.of("<white>" + name, "<white>" + Text.number(tank.amount()) + " <gray>/ <white>"
                         + Text.number(tank.capacity()) + " mB",
                         Text.bar(tank.capacity() == 0 ? 0 : tank.amount() / (double) tank.capacity(), 20, "aqua")));
-    }
-
-    private static String icon(Chemical type) {
-        if (type == null) {
-            return "minecraft:glass_bottle";
-        }
-        return switch (type.id()) {
-            case "water" -> "minecraft:water_bucket";
-            case "hydrogen" -> "minecraft:light_blue_dye";
-            case "oxygen" -> "minecraft:white_dye";
-            case "chlorine" -> "minecraft:lime_dye";
-            case "hydrogen_chloride" -> "minecraft:green_dye";
-            case "sulfur_dioxide", "sulfur_trioxide" -> "minecraft:yellow_dye";
-            case "sulfuric_acid" -> "minecraft:honey_bottle";
-            default -> type.id().endsWith("_slurry") ? "minecraft:clay_ball" : "minecraft:potion";
-        };
     }
 
     // ---------------------------------------------------------------- item slots (grid lock held)

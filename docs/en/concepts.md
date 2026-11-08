@@ -70,6 +70,11 @@ chest container, which Geyser shows to Bedrock players. Keep the items in your o
 is handled; `onSlotChanged` reports it one tick later, and `MenuView.isChangePending(slot)` is true in between, so a
 machine ticking meanwhile leaves that slot alone.
 
+**Gauges in menus.** Give an item `prism:gauge` (`style: bar` or `arrow`, `color: "#rrggbb"`, `steps` 1 to 32) and
+call `view.setGauge(slot, key, fraction, name, lore)`, for example from `onRefresh`. Prism draws the step icons, empty
+to full, into both packs, so Java and Bedrock players see the same stepped bar or arrow. Ship
+`textures/item/<name>/gauge_<n>.png` to replace a step with your own art. The counter's cycle arrow is the example.
+
 **Picking blocks up with their data.** A `BlockDropBehavior` writes the block's data into the dropped item
 (`Prism.items().editData(drop, ...)`) before remove behaviors run. A `BlockPlaceBehavior` reads it back from
 `context.placedFrom()`. The counter keeps its count this way.

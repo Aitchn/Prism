@@ -55,6 +55,7 @@ public final class BedrockPackBuilder {
      * @param soundEvents      sound events in {@code sound_definitions.json}
      * @param flipbooks        animated block textures
      * @param geometries       generated geometries of connected and passable blocks
+     * @param gaugeIcons       step icons of gauge items ({@code prism:gauge})
      */
     public record Result(
             byte @NotNull [] mcpack,
@@ -66,7 +67,8 @@ public final class BedrockPackBuilder {
             @NotNull Set<String> blockLooks,
             int soundEvents,
             int flipbooks,
-            int geometries) {}
+            int geometries,
+            int gaugeIcons) {}
 
     /**
      * Suffix of a {@link Input#nativeStates} key for the state a look owns on its other carrier: a block that gained or
@@ -89,34 +91,29 @@ public final class BedrockPackBuilder {
         Map<String, List<Object>> byBase = new TreeMap<>();
         Set<PrismKey> done = new LinkedHashSet<>();
 
+        int gaugeIcons = 0;
         for (ItemDefinition item : input.items()) {
-            PrismKey model = item.components().get(PrismComponents.MODEL).map(PrismComponents.Model::model)
-                    .orElseGet(() -> new PrismKey(item.key().namespace(), "item/" + item.key().value()));
-            String texturePath = textureFor(sources, model);
-            byte[] png = sources.get(texturePath);
-            if (png == null) {
-                warnings.add("bedrock " + item.key() + ": no texture " + texturePath
-                        + "; it keeps the vanilla Bedrock look of " + item.base());
+            int steps = GaugeIcons.addTextures(sources, item);
+            if (steps > 0) {
+                // A gauge: one Bedrock item per step, keyed on the same item_model as the Java step definitions.
+                boolean all = true;
+                for (int step = 0; step <= steps; step++) {
+                    PrismKey look = Appearances.gaugeLook(item.key(), step);
+                    all &= icon(sources, files, textureData, byBase, warnings, item, look,
+                            Appearances.gaugeModel(item.key(), step));
+                }
+                if (all && icon(sources, files, textureData, byBase, warnings, item, item.key(),
+                        Appearances.gaugeModel(item.key(), steps))) {
+                    done.add(item.key());
+                    gaugeIcons += steps + 1;
+                }
                 continue;
             }
-            String icon = item.key().namespace() + "_" + item.key().value().replace('/', '_');
-            String packTexture = "textures/prism/" + item.key().namespace() + "/"
-                    + item.key().value().replace('/', '_');
-            files.put(packTexture + ".png", png);
-            textureData.put(icon, Map.of("textures", packTexture));
-
-            Map<String, Object> options = new LinkedHashMap<>();
-            options.put("icon", icon);
-            options.put("allow_offhand", true);
-            Map<String, Object> definition = new LinkedHashMap<>();
-            definition.put("type", "definition");
-            definition.put("model", item.key().toString());
-            definition.put("bedrock_identifier", item.key().toString());
-            item.components().get(PrismComponents.DISPLAY_NAME)
-                    .ifPresent(name -> definition.put("display_name", plain(name.miniMessage())));
-            definition.put("bedrock_options", options);
-            byBase.computeIfAbsent(item.base().toString(), k -> new ArrayList<>()).add(definition);
-            done.add(item.key());
+            PrismKey model = item.components().get(PrismComponents.MODEL).map(PrismComponents.Model::model)
+                    .orElseGet(() -> new PrismKey(item.key().namespace(), "item/" + item.key().value()));
+            if (icon(sources, files, textureData, byBase, warnings, item, item.key(), model)) {
+                done.add(item.key());
+            }
         }
 
         Map<String, Object> terrainData = new TreeMap<>();
@@ -271,7 +268,7 @@ public final class BedrockPackBuilder {
         byte[] zip = JavaPackBuilder.zip(files);
         return new Result(zip, JavaPackBuilder.sha1(zip), JsonWriter.write(mappings), List.copyOf(warnings),
                 Set.copyOf(done), JsonWriter.write(blockMappings), Set.copyOf(looksDone), soundDefinitions.size(),
-                flipbooks.size(), geometries);
+                flipbooks.size(), geometries, gaugeIcons);
     }
 
     /** Registers a Java block texture in the Bedrock terrain atlas (and as a flipbook if animated); returns its name. */
@@ -424,6 +421,40 @@ public final class BedrockPackBuilder {
             });
         }
         return definitions;
+    }
+
+    /**
+     * Adds a Bedrock custom item for {@code item} drawn as {@code model}'s texture, mapped from the Java
+     * {@code item_model} {@code look}; false (with a warning) if there is no texture.
+     */
+    private static boolean icon(Map<String, byte[]> sources, Map<String, byte[]> files,
+            Map<String, Object> textureData, Map<String, List<Object>> byBase, List<String> warnings,
+            ItemDefinition item, PrismKey look, PrismKey model) {
+        String texturePath = textureFor(sources, model);
+        byte[] png = sources.get(texturePath);
+        if (png == null) {
+            warnings.add("bedrock " + look + ": no texture " + texturePath
+                    + "; it keeps the vanilla Bedrock look of " + item.base());
+            return false;
+        }
+        String name = look.value().replace('/', '_');
+        String icon = look.namespace() + "_" + name;
+        String packTexture = "textures/prism/" + look.namespace() + "/" + name;
+        files.put(packTexture + ".png", png);
+        textureData.put(icon, Map.of("textures", packTexture));
+
+        Map<String, Object> options = new LinkedHashMap<>();
+        options.put("icon", icon);
+        options.put("allow_offhand", true);
+        Map<String, Object> definition = new LinkedHashMap<>();
+        definition.put("type", "definition");
+        definition.put("model", look.toString());
+        definition.put("bedrock_identifier", look.namespace() + ":" + name);
+        item.components().get(PrismComponents.DISPLAY_NAME)
+                .ifPresent(display -> definition.put("display_name", plain(display.miniMessage())));
+        definition.put("bedrock_options", options);
+        byBase.computeIfAbsent(item.base().toString(), k -> new ArrayList<>()).add(definition);
+        return true;
     }
 
     /** The texture an item icon is cut from: layer0 of its model JSON when present, else the model's own name. */

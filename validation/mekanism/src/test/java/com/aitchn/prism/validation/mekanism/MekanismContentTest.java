@@ -200,6 +200,9 @@ class MekanismContentTest {
     void everyItemAndBlockHasItsTexture() {
         var harness = load();
         for (PrismKey key : harness.manager().items().keys()) {
+            if (isGauge(harness, key)) {
+                continue; // Prism draws gauge icons
+            }
             assertTrue(Files.exists(RESOURCES.resolve("assets/mekanism/textures/item/" + key.value() + ".png")),
                     "item texture for " + key);
         }
@@ -340,6 +343,9 @@ class MekanismContentTest {
             }
         }
         for (PrismKey item : harness.manager().items().keys()) {
+            if (isGauge(harness, item)) {
+                continue; // menu icons, never handed out
+            }
             assertTrue(have.contains(item), item + " cannot be obtained in survival");
         }
         assertFalse(have.isEmpty());
@@ -354,5 +360,9 @@ class MekanismContentTest {
 
     private static boolean obtainable(Ingredient ingredient, Set<PrismKey> have) {
         return ingredient.isTag() || ingredient.item().namespace().equals("minecraft") || have.contains(ingredient.item());
+    }
+
+    private static boolean isGauge(com.aitchn.prism.testkit.ModTestHarness harness, PrismKey key) {
+        return harness.item(key.toString()).components().has(PrismComponents.GAUGE);
     }
 }

@@ -54,6 +54,11 @@ Java 版玩家看到的是屏障方塊上的顯示實體，所以相鄰方塊的
 完整範例見 `examplemod:ruby_counter`。`allowChange` 在處理點擊的當下同步拒絕格子變更；`onSlotChanged` 在下一刻才回報，
 這段期間 `MenuView.isChangePending(slot)` 為 true，同時在運作的機器應避開該格。
 
+**選單中的量表。** 為物品加上 `prism:gauge`（`style: bar` 或 `arrow`、`color: "#rrggbb"`、`steps` 1 到 32），再呼叫
+`view.setGauge(slot, key, fraction, name, lore)`（例如在 `onRefresh` 中）。Prism 會把從空到滿的各階圖示畫進兩種資源包，
+Java 與基岩版玩家看到相同的分段量條或箭頭。若要換成自己的圖，提供 `textures/item/<名稱>/gauge_<n>.png` 即可取代該階。
+範例是計數器介面中的循環箭頭。
+
 **連同資料撿起方塊。** `BlockDropBehavior` 在移除行為之前，把方塊資料寫進掉落物（`Prism.items().editData(drop, ...)`）；
 `BlockPlaceBehavior` 再從 `context.placedFrom()` 讀回。計數器就是這樣保留計數。
 
