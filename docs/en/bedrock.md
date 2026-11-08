@@ -13,6 +13,7 @@ Bedrock players join through Geyser. Prism detects them (Floodgate, then Geyser)
 | Passable blocks (`prism:passable`) | tripwire state + resource pack | tripwire state + Geyser mapping without collision |
 | Any block with `blocks.backend: display` | display entity | **not visible** (Geyser cannot draw display entities) |
 | Block variants (`prism:variants`, `setVariant`) | yes | yes |
+| Block light (`prism:light`) | vanilla light block next to it | the same light block, through Geyser |
 | Custom sounds (`sounds.json`, `prism:ambient_sound`) | yes | yes (Bedrock pack `sound_definitions`, played through Geyser) |
 | Animated block textures (`.png.mcmeta`) | yes | yes (flipbook) |
 | Menu gauges (`prism:gauge`) | stepped icon | stepped icon (Bedrock custom item per step) |

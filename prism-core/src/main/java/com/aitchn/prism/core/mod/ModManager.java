@@ -72,7 +72,8 @@ public final class ModManager {
                 Map.entry(PrismComponents.PASSABLE.key(), PrismComponents.PASSABLE),
                 Map.entry(PrismComponents.STRUCTURE.key(), PrismComponents.STRUCTURE),
                 Map.entry(PrismComponents.GAUGE.key(), PrismComponents.GAUGE),
-                Map.entry(PrismComponents.CUBOID.key(), PrismComponents.CUBOID)));
+                Map.entry(PrismComponents.CUBOID.key(), PrismComponents.CUBOID),
+                Map.entry(PrismComponents.LIGHT.key(), PrismComponents.LIGHT)));
         Map<PrismKey, RecipeType<?>> builtinRecipes = new LinkedHashMap<>();
         PrismRecipes.ALL.forEach(type -> builtinRecipes.put(type.key(), type));
         recipeTypes.publish(BUILTIN_OWNER, builtinRecipes);

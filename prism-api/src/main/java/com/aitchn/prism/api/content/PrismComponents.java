@@ -321,6 +321,27 @@ public final class PrismComponents {
             });
 
     /**
+     * Makes a block give light, in every variant or only in the listed ones (a machine that glows while it works).
+     * Prism puts an invisible vanilla light block in a free cell next to it (above first), which both editions see.
+     * <pre>{@code
+     * prism:light:
+     *   level: 12           # 1 to 15
+     *   variants: [active]  # optional; default every variant
+     * }</pre>
+     */
+    public static final ComponentType<Light> LIGHT = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "light"),
+            Light.class,
+            section -> {
+                section.rejectUnknownKeys(java.util.Set.of("level", "variants"));
+                int level = section.requireInt("level");
+                if (level < 1 || level > 15) {
+                    throw section.error("level must be 1 to 15, got " + level);
+                }
+                return new Light(level, java.util.List.copyOf(section.getStringList("variants")));
+            });
+
+    /**
      * Makes this block the controller of a hollow box of variable size: a shell of wall blocks around an inside of air
      * (or of the listed inside blocks), with this block on one face of the shell (not an edge or corner). Formed and
      * broken like {@link #STRUCTURE}; {@code FormedStructure.facing} points from the controller into the inside.
@@ -391,6 +412,9 @@ public final class PrismComponents {
                 }
                 return new Gauge(style, Integer.parseInt(color.substring(1), 16), steps);
             });
+
+    /** @see #LIGHT; an empty {@code variants} means every variant. */
+    public record Light(int level, java.util.List<String> variants) {}
 
     /** @see #CUBOID; block keys as strings. */
     public record Cuboid(java.util.List<String> walls, java.util.List<String> inside, int min, int max) {}

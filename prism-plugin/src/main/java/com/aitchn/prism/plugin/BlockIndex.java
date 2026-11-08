@@ -83,6 +83,7 @@ final class BlockIndex {
     private final NamespacedKey variantKey;
     private final NamespacedKey connectionsKey;
     private final NamespacedKey structureKey;
+    private final NamespacedKey lightKey;
     private final Map<ChunkId, Loaded> loaded = new ConcurrentHashMap<>();
 
     BlockIndex(Plugin prism) {
@@ -94,6 +95,7 @@ final class BlockIndex {
         this.variantKey = new NamespacedKey(prism, "variant");
         this.connectionsKey = new NamespacedKey(prism, "connections");
         this.structureKey = new NamespacedKey(prism, "structure");
+        this.lightKey = new NamespacedKey(prism, "light");
     }
 
     /** Reads the chunk's entries into memory (idempotent) and returns the mirror. */
@@ -219,6 +221,29 @@ final class BlockIndex {
             stored.remove(structureKey);
         } else {
             stored.set(structureKey, PersistentDataType.STRING, facing);
+        }
+        pdc.set(entryKey(block), PersistentDataType.TAG_CONTAINER, stored);
+    }
+
+    /** The side of a lit block ({@code prism:light}) where its light block was put, or empty. */
+    Optional<String> light(Block block) {
+        PersistentDataContainer stored = block.getChunk().getPersistentDataContainer()
+                .get(entryKey(block), PersistentDataType.TAG_CONTAINER);
+        return stored == null ? Optional.empty()
+                : Optional.ofNullable(stored.get(lightKey, PersistentDataType.STRING));
+    }
+
+    /** Records the side of {@code block}'s light block, or that it has none (null). */
+    void setLight(Block block, @Nullable String side) {
+        PersistentDataContainer pdc = block.getChunk().getPersistentDataContainer();
+        PersistentDataContainer stored = pdc.get(entryKey(block), PersistentDataType.TAG_CONTAINER);
+        if (stored == null) {
+            return;
+        }
+        if (side == null) {
+            stored.remove(lightKey);
+        } else {
+            stored.set(lightKey, PersistentDataType.STRING, side);
         }
         pdc.set(entryKey(block), PersistentDataType.TAG_CONTAINER, stored);
     }

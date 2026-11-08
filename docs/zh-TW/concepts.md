@@ -38,6 +38,10 @@ Java 版玩家看到的是屏障方塊上的顯示實體，所以相鄰方塊的
 並呼叫控制器的 `StructureBehavior.onFormed` 或 `onBroken`。隨時可用 `BlockService.structure(controller)` 與
 `controllerOf(member)` 查詢。結構成形後要做什麼由 Mod 決定。範例 `examplemod:ruby_core` 放在 3x3 紅寶石地板中央上方時會亮起。
 
+**光源。** `prism:light`（`level` 1 到 15，可選 `variants`）讓方塊發光，可以一直亮，或只在列出的變體亮。音符盒與屏障本身無法發光，
+所以 Prism 會在旁邊的空格（先上方，再四周，最後下方）放一個看不見的原版光源方塊，方塊變暗或被移除時再拿掉。Geyser 會把這個光源方塊
+轉給基岩版玩家，所以兩個版本的亮度相同。若有人在那一格蓋了東西，光源會移到另一個空的方向。範例 `examplemod:ruby_counter` 運作時會發光。
+
 **任意大小的長方體。** `prism:cuboid` 讓方塊成為中空長方體的控制器：`walls`（外殼可用的方塊 key）、`inside`（除空氣外允許放在內部的方塊，
 預設沒有）、`min` 與 `max`（外部邊長，3 到 32）。控制器要放在某一面牆上，不能在邊或角。Prism 從控制器朝向空氣的那一側找出長方體，
 呼叫同樣的 `StructureBehavior`，並以 `FormedStructure` 回報：`facing` 指向內部，`min` 與 `max` 是兩個角落，Mod 可據此算出容積。

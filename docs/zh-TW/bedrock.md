@@ -13,6 +13,7 @@ Mod 依「能力」而非「版本」調整。
 | 可穿過的方塊（`prism:passable`） | 絆線狀態＋資源包 | 絆線狀態＋無碰撞的 Geyser 對應 |
 | `blocks.backend: display` 下的所有方塊 | 顯示實體 | **看不見**（Geyser 無法繪製顯示實體） |
 | 方塊外觀變體（`prism:variants`、`setVariant`） | 有 | 有 |
+| 方塊光源（`prism:light`） | 旁邊放原版光源方塊 | 同一個光源方塊（經 Geyser） |
 | 自訂音效（`sounds.json`、`prism:ambient_sound`） | 有 | 有（基岩版資源包的 `sound_definitions`，經 Geyser 播放） |
 | 動畫方塊材質（`.png.mcmeta`） | 有 | 有（flipbook） |
 | 選單量表（`prism:gauge`） | 分段圖示 | 分段圖示（每一階一個基岩版自訂物品） |

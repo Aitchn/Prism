@@ -13,6 +13,10 @@ components:
     interval: 20
     volume: 0.6
     variants: [active]
+  # Glows while active: Prism puts an invisible light block next to it (above if free).
+  prism:light:
+    level: 12
+    variants: [active]
   prism:mining:
     hardness: 1.5
     tool: pickaxe

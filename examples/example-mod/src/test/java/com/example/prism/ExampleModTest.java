@@ -122,6 +122,15 @@ class ExampleModTest {
     }
 
     @Test
+    void counterGlowsOnlyWhileActive() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var light = harness.block("examplemod:ruby_counter").components().get(PrismComponents.LIGHT).orElseThrow();
+        assertEquals(12, light.level());
+        assertEquals(java.util.List.of("active"), light.variants());
+    }
+
+    @Test
     void tankControlsABoxOfThreeToSeven() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());
