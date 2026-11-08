@@ -156,15 +156,20 @@ final class Grid {
         CustomBlock custom = context.custom();
         Pos pos = pos(custom.block());
         boolean[] state = new boolean[2]; // worked, idle
+        long[] clock = new long[1];
         underLock(() -> {
             Machine machine = machine(custom, spec);
             machine.setPowered(custom.block().isBlockIndirectlyPowered());
             state[0] = machine.tick();
+            clock[0] = machine.ticks();
             state[1] = machine.idleTicks() >= Machine.IDLE_AFTER;
             if (Math.floorMod(machine.ticks() + pos.hashCode(), SAVE_EVERY) == 0) {
                 saveMachine(custom, pos, machine);
             }
         });
+        if (state[0]) {
+            Effects.working(custom.block(), clock[0]);
+        }
         if (spec.miner()) {
             mineStep(custom, spec);
             state[0] |= minerBusy(pos);
@@ -586,6 +591,7 @@ final class Grid {
                 } else {
                     drops = new ArrayList<>(target.getDrops());
                     target.setType(Material.AIR);
+                    Effects.mined(at);
                 }
             }
         } finally {
@@ -682,6 +688,9 @@ final class Grid {
             player.sendActionBar(Component.text((String) result[0]));
             org.bukkit.World world = target == null ? null : org.bukkit.Bukkit.getWorld(target.world());
             if (world != null) {
+                Effects.teleport(player.getLocation());
+                Location arrival = new Location(world, target.x() + 0.5, target.y() + 1.0, target.z() + 0.5);
+                Prism.scheduler().runAt(arrival, () -> Effects.teleport(arrival));
                 player.teleportAsync(new Location(world, target.x() + 0.5, target.y() + 1.0, target.z() + 0.5,
                         player.getLocation().getYaw(), player.getLocation().getPitch()));
             }
