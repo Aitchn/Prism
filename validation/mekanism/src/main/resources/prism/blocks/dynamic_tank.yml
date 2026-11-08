@@ -1,0 +1,6 @@
+# Key: mekanism:dynamic_tank. A casing block of the dynamic tank: a closed hollow cuboid of these stores chemicals.
+base: minecraft:barrier
+drop: mekanism:dynamic_tank
+behaviors:
+  - type: mekanism:casing
+    valve: false

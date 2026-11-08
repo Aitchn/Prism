@@ -47,7 +47,7 @@ public final class Machine {
         java.util.Arrays.fill(itemFaces, Access.ALL);
         if (type.buffer() != null) {
             // A storage tank: one tank that takes what the filter allows and gives it all back out.
-            this.inTank = new ChemicalTank(type.tankCapacity(), type.buffer());
+            this.inTank = new ChemicalTank(type.tankCapacity(), type.buffer()).asBuffer();
             this.inTank2 = new ChemicalTank(0);
             this.outTank = inTank;
             this.outTank2 = new ChemicalTank(0);

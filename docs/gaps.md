@@ -215,6 +215,9 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
 29. Teleporter: place two, tune both with a name tag called "home" (anvil rename), power both. Right click one: you
     arrive on the other; the clicked one loses 2,000 J plus 20 J per block. With no power the action bar says how much
     it needs.
+30. Dynamic tank: build a 3x3x3 hollow box of Dynamic Tank blocks, swap one for a Dynamic Valve. Pipe a gas into the
+    valve: the tablet shows the filled amount (16,000 mB per interior block). Remove one casing: the tablet says it is
+    not a complete box; put it back: the content is still there. Restart the server: the content survives.
 
 ## Effects and visuals of the Mekanism rebuild (what is done, what Prism cannot present yet)
 
