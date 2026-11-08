@@ -22,4 +22,15 @@ public interface MenuService {
      * player's thread.
      */
     void open(@NotNull Player player, @NotNull ContainerMenu menu);
+
+    /**
+     * Asks {@code player} to type a line of text (a search term, an amount, a name). Shown as an anvil whose name field
+     * starts with {@code initial}; Geyser shows Bedrock players the anvil's rename box. Taking the result confirms:
+     * {@code onSubmit} receives the text on the player's thread and the prompt closes. Closing it any other way calls
+     * {@code onCancel} if given. No item moves: the anvil's items are only a display. Callable from any thread.
+     *
+     * @param title MiniMessage
+     */
+    void prompt(@NotNull Player player, @NotNull String title, @NotNull String initial,
+            @NotNull Consumer<String> onSubmit, @org.jetbrains.annotations.Nullable Runnable onCancel);
 }

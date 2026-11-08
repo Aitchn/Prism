@@ -19,3 +19,4 @@ the ADRs are the authoritative English form.
 | [0011](0011-block-data-drops-and-sync-hooks.md) | Block data in drops, click pass-through, synchronous slot checks, global timer | Accepted |
 | [0012](0012-ore-generation.md) | Ore generation | Accepted |
 | [0013](0013-bedrock-look-for-model-blocks.md) | Bedrock look for blocks drawn by a model | Accepted |
+| [0014](0014-item-handler-and-text-prompts.md) | Item handler capability and text prompts | Accepted |

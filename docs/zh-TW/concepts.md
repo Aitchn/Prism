@@ -37,6 +37,14 @@
 
 **讓點擊通過。** 互動行為呼叫 `context.pass()` 表示沒有使用這次點擊，手上的物品會像對原版方塊一樣使用或放置。手上拿著方塊點擊計數器時會放行。
 
+**輸入文字。** `Prism.menus().prompt(player, title, initial, text -> ..., onCancel)` 會用鐵砧介面請玩家輸入一行文字，
+基岩版玩家透過 Geyser 看到鐵砧的改名欄位。過程中不會移動任何物品。計數器的標籤按鈕就是範例。
+
+**搬運物品。** `PrismCapabilities.ITEM_HANDLER` 提供 `ItemHandler`：`insert(stack, simulate)`、
+`extract(filter, amount, simulate)` 與 `contents()`。它不以格子為單位，所以管線與儲存匯流排可以對任何方塊運作。
+Prism 為原版容器提供這個能力（熔爐依漏斗的面向規則），也為提供 `PrismCapabilities.INVENTORY` 的自訂方塊提供。
+方塊也可以自己直接提供，例如儲存網路。
+
 **物品資料與說明文字。** `Prism.items().editData(stack, data -> ...)` 寫入該物品堆疊自己的持久資料並重新產生說明文字。
 `prism:lore` 是固定說明，`ItemLoreBehavior` 可依堆疊內容加上動態行。兩個版本都看得到。`examplemod:ruby` 用這個方式記錄使用次數。
 

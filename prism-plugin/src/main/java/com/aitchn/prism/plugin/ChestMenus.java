@@ -28,11 +28,24 @@ final class ChestMenus implements MenuService, Listener {
     private final ItemService items;
     private final PlatformScheduler scheduler;
     private final ContainerMenus containers;
+    private final TextPrompts prompts;
 
     ChestMenus(ItemService items, PlatformScheduler scheduler, java.util.logging.Logger log) {
         this.items = items;
         this.scheduler = scheduler;
         this.containers = new ContainerMenus(items, scheduler, log);
+        this.prompts = new TextPrompts(scheduler, log);
+    }
+
+    /** The listener behind {@link #prompt}; register it with the server. */
+    TextPrompts prompts() {
+        return prompts;
+    }
+
+    @Override
+    public void prompt(@NotNull Player player, @NotNull String title, @NotNull String initial,
+            @NotNull Consumer<String> onSubmit, @org.jetbrains.annotations.Nullable Runnable onCancel) {
+        prompts.open(player, title, initial, onSubmit, onCancel);
     }
 
     /** The listener behind {@link #open(Player, ContainerMenu)}; register it with the server. */

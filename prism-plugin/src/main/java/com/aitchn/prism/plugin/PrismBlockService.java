@@ -266,23 +266,37 @@ final class PrismBlockService implements BlockService, Listener {
     public <T> @NotNull Optional<T> capability(
             @NotNull Block block, @Nullable BlockFace side, @NotNull BlockCapability<T> capability) {
         Optional<CustomBlock> custom = get(block);
+        boolean itemHandler = capability.key().equals(PrismCapabilities.ITEM_HANDLER.key());
         if (custom.isPresent()) {
-            for (BlockCapabilityProvider provider : custom.get().definition().behaviors(BlockCapabilityProvider.class)) {
-                try {
-                    T found = provider.capability(custom.get(), side, capability);
-                    if (found != null && capability.type().isInstance(found)) {
-                        return Optional.of(found);
-                    }
-                } catch (RuntimeException e) {
-                    log.log(Level.SEVERE, "Capability provider of " + custom.get().key() + " failed", e);
-                }
+            Optional<T> found = provided(custom.get(), side, capability);
+            if (found.isEmpty() && itemHandler) {
+                // A block that offers an inventory can be piped into like a chest.
+                found = provided(custom.get(), side, PrismCapabilities.INVENTORY)
+                        .map(inventory -> capability.type().cast(InventoryItemHandler.allSlots(inventory)));
             }
-            return Optional.empty();
+            return found;
         }
-        if (capability.key().equals(PrismCapabilities.INVENTORY.key())) {
+        if (capability.key().equals(PrismCapabilities.INVENTORY.key()) || itemHandler) {
             BlockState state = block.getState(false);
             if (state instanceof Container container) {
-                return Optional.of(capability.type().cast(container.getInventory()));
+                Object answer = itemHandler
+                        ? InventoryItemHandler.forContainer(container.getInventory(), side)
+                        : container.getInventory();
+                return Optional.of(capability.type().cast(answer));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private <T> Optional<T> provided(CustomBlock custom, @Nullable BlockFace side, BlockCapability<T> capability) {
+        for (BlockCapabilityProvider provider : custom.definition().behaviors(BlockCapabilityProvider.class)) {
+            try {
+                T found = provider.capability(custom, side, capability);
+                if (found != null && capability.type().isInstance(found)) {
+                    return Optional.of(found);
+                }
+            } catch (RuntimeException e) {
+                log.log(Level.SEVERE, "Capability provider of " + custom.key() + " failed", e);
             }
         }
         return Optional.empty();
