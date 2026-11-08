@@ -51,9 +51,23 @@ final class StructureTracker {
         this.scheduler = scheduler;
     }
 
+    /**
+     * Content changed (a mod enabled, disabled or reloaded): drop the compiled patterns, then re-check every loaded
+     * custom block on its own thread, so structures whose pattern changed or went are released and controllers that
+     * gained one can form.
+     */
     void contentChanged() {
         patterns.clear();
         reach = -1;
+        for (BlockIndex.Loaded mirror : index.allLoaded()) {
+            Location center = new Location(mirror.world, (mirror.chunkX << 4) + 8, 64, (mirror.chunkZ << 4) + 8);
+            scheduler.runAt(center, () -> {
+                if (!mirror.world.isChunkLoaded(mirror.chunkX, mirror.chunkZ)) {
+                    return;
+                }
+                mirror.blocks.keySet().forEach(packed -> recheck(mirror.block(packed)));
+            });
+        }
     }
 
     Optional<FormedStructure> structure(Block controller) {
@@ -83,10 +97,29 @@ final class StructureTracker {
             blocks.get(changed).ifPresent(this::check);
         }
         // Controllers near enough for their pattern to reach the change, not yet formed.
+        recheckNear(changed.getWorld(), changed.getX(), changed.getY(), changed.getZ(), changed.getX(),
+                changed.getY(), changed.getZ(), changed);
+    }
+
+    /**
+     * {@code chunk} loaded (after {@link #load} ran for its own blocks): controllers in other chunks whose pattern
+     * reaches into it could only be checked partly before, so check them again.
+     */
+    void chunkLoaded(Chunk chunk) {
+        if (maxReach() < 0) {
+            return;
+        }
+        World world = chunk.getWorld();
+        int x = chunk.getX() << 4;
+        int z = chunk.getZ() << 4;
+        recheckNear(world, x, world.getMinHeight(), z, x + 15, world.getMaxHeight() - 1, z + 15, null);
+    }
+
+    /** Checks the unformed controllers (other than {@code skip}) whose pattern reaches the given box. */
+    private void recheckNear(World world, int minX, int minY, int minZ, int maxX, int maxY, int maxZ, Block skip) {
         int r = maxReach();
-        World world = changed.getWorld();
-        for (int cx = (changed.getX() - r) >> 4; cx <= (changed.getX() + r) >> 4; cx++) {
-            for (int cz = (changed.getZ() - r) >> 4; cz <= (changed.getZ() + r) >> 4; cz++) {
+        for (int cx = (minX - r) >> 4; cx <= (maxX + r) >> 4; cx++) {
+            for (int cz = (minZ - r) >> 4; cz <= (maxZ + r) >> 4; cz++) {
                 BlockIndex.Loaded mirror = index.loaded(world, cx, cz);
                 if (mirror == null) {
                     continue;
@@ -97,10 +130,10 @@ final class StructureTracker {
                         return;
                     }
                     Block controller = mirror.block(packed);
-                    if (controller.equals(changed) || formed.containsKey(controller.getLocation())
-                            || Math.abs(controller.getX() - changed.getX()) > pattern.reach()
-                            || Math.abs(controller.getY() - changed.getY()) > pattern.reach()
-                            || Math.abs(controller.getZ() - changed.getZ()) > pattern.reach()) {
+                    if (controller.equals(skip) || formed.containsKey(controller.getLocation())
+                            || outside(controller.getX(), minX, maxX, pattern.reach())
+                            || outside(controller.getY(), minY, maxY, pattern.reach())
+                            || outside(controller.getZ(), minZ, maxZ, pattern.reach())) {
                         return;
                     }
                     Location location = controller.getLocation();
@@ -114,19 +147,13 @@ final class StructureTracker {
         }
     }
 
+    private static boolean outside(int value, int min, int max, int reach) {
+        return value < min - reach || value > max + reach;
+    }
+
     /** The chunk of {@code custom} loaded: restore a formed structure, or report one that broke meanwhile. */
     void load(CustomBlock custom) {
-        if (pattern(custom.key()) == null) {
-            return;
-        }
-        Optional<String> was = index.structure(custom.block());
-        int turn = match(custom);
-        if (turn >= 0) {
-            register(custom, turn, was.isEmpty());
-        } else if (was.isPresent()) {
-            index.setStructure(custom.block(), null);
-            broken(custom);
-        }
+        check(custom);
     }
 
     /** The controller's chunk unloads: forget its structure without calling behaviors. */
@@ -159,25 +186,60 @@ final class StructureTracker {
         check(custom.get());
     }
 
+    /**
+     * Matches the pattern around {@code custom} and reports the difference to what was formed, in memory or saved in
+     * the chunk. A structure that no longer matches because part of it is in an unloaded chunk (or another region)
+     * stays formed; {@link #chunkLoaded} checks it again once that part is there.
+     */
     private void check(CustomBlock custom) {
-        if (pattern(custom.key()) == null) {
+        Block block = custom.block();
+        Location at = block.getLocation();
+        Formed before = formed.get(at);
+        Optional<String> saved = index.structure(block);
+        boolean was = before != null || saved.isPresent();
+        StructurePattern pattern = pattern(custom.key());
+        if (pattern == null) {
+            if (was) { // the definition lost its structure
+                forget(at);
+                index.setStructure(block, null);
+                broken(custom);
+            }
             return;
         }
-        Location at = custom.block().getLocation();
-        Formed before = formed.get(at);
         int turn = match(custom);
         if (turn >= 0) {
-            boolean fresh = before == null || !before.facing().name().equals(StructurePattern.FACINGS.get(turn));
-            if (fresh && before != null) {
+            String facing = StructurePattern.FACINGS.get(turn);
+            boolean same = before != null ? before.facing().name().equals(facing)
+                    : saved.filter(facing::equals).isPresent();
+            if (was && !same) {
                 forget(at);
                 broken(custom);
             }
-            register(custom, turn, fresh);
-        } else if (before != null) {
+            register(custom, turn, !same);
+        } else if (was && !reachesUnavailable(custom, pattern)) {
             forget(at);
-            index.setStructure(custom.block(), null);
+            index.setStructure(block, null);
             broken(custom);
         }
+    }
+
+    /** Whether some cell of {@code pattern}, in any rotation, is in an unloaded chunk or not on this thread. */
+    private boolean reachesUnavailable(CustomBlock custom, StructurePattern pattern) {
+        Block origin = custom.block();
+        for (int turn = 0; turn < pattern.rotations(); turn++) {
+            for (StructurePattern.Cell cell : pattern.cells(turn)) {
+                Block block = origin.getRelative(cell.dx(), cell.dy(), cell.dz());
+                if (!available(block)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean available(Block block) {
+        return block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)
+                && scheduler.isOwnedByCurrentThread(block.getLocation());
     }
 
     private int match(CustomBlock custom) {
@@ -185,8 +247,7 @@ final class StructureTracker {
         Block origin = custom.block();
         return pattern.match(cell -> {
             Block block = origin.getRelative(cell.dx(), cell.dy(), cell.dz());
-            if (!block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)
-                    || !scheduler.isOwnedByCurrentThread(block.getLocation())) {
+            if (!available(block)) {
                 return false;
             }
             Optional<PrismKey> key = index.get(block).map(BlockIndex.Entry::key);

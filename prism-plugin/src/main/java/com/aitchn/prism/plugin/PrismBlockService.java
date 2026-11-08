@@ -553,6 +553,7 @@ final class PrismBlockService implements BlockService, Listener {
             structures.load(custom);
         }
         refreshBorders(chunk);
+        structures.chunkLoaded(chunk);
     }
 
     /** Connected blocks on the edges of the loaded chunks around {@code chunk} may now reach into it. */
