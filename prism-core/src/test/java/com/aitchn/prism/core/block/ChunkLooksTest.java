@@ -157,4 +157,22 @@ class ChunkLooksTest {
             assertEquals(look, looks.at((int) ((packed >> 4) & 15), y, (int) (packed & 15)));
         });
     }
+
+    @Test
+    void displayIdsAreCarriedAndEnumerated() {
+        Map<Long, BlockLook> map = new HashMap<>();
+        map.put(BlockPositions.pack(1, 70, 2), new BlockLook(CARRIER, 300, 4));
+        map.put(BlockPositions.pack(3, 71, 4), new BlockLook(CARRIER, 301));
+        map.put(BlockPositions.pack(15, -5, 0), new BlockLook(CARRIER, 300, 9));
+        ChunkLooks looks = ChunkLooks.of(map);
+        assertTrue(looks.hasDisplays());
+        assertTrue(looks.has(1, 70, 2));
+        assertFalse(looks.has(1, 70, 3));
+        assertEquals(4, looks.at(1, 70, 2).display());
+        assertFalse(looks.at(3, 71, 4).displayed());
+        List<String> seen = new ArrayList<>();
+        looks.forEachDisplay((x, y, z, id) -> seen.add(x + "," + y + "," + z + "=" + id));
+        assertEquals(List.of("15,-5,0=9", "1,70,2=4"), seen);
+        assertFalse(looks(1, 70, 2, 300).hasDisplays());
+    }
 }

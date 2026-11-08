@@ -6,6 +6,7 @@ Prism 是給 **Paper、Folia、Purpur** 的伺服器端內容函式庫。你用�
 - [快速開始](getting-started.md)：約 30 分鐘做出第一個物品
 - [核心概念](concepts.md)
 - [基岩版](bedrock.md)
+- [大量方塊外觀](block-looks.md)：借用狀態、顯示層、`prism:render`
 - [已知缺口](https://github.com/Aitchn/Prism/blob/main/docs/gaps.md)、[ADR](https://github.com/Aitchn/Prism/blob/main/docs/adr/README.md)（英文）
 
 > 預覽狀態：Prism 為 `0.1.0-SNAPSHOT`，API 尚未凍結，基岩版尚未在真實客戶端驗證。物品、方塊、BetterModel 模型與資源包

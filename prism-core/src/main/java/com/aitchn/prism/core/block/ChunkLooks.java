@@ -73,6 +73,11 @@ public final class ChunkLooks {
         return i < 0 ? null : new BlockLook(carrier[i], look[i], display[i]);
     }
 
+    /** Whether there is a custom block at chunk-local {@code x}, {@code z} and block {@code y}. */
+    public boolean has(int x, int y, int z) {
+        return Arrays.binarySearch(packed, BlockPositions.pack(x, y, z)) >= 0;
+    }
+
     /** Told about a position drawn by the display layer: chunk-local x and z, block y and the display look id. */
     @FunctionalInterface
     public interface DisplaySink {

@@ -11,6 +11,9 @@ import com.github.retrooper.packetevents.protocol.packettype.PacketType;
 import com.github.retrooper.packetevents.protocol.player.ClientVersion;
 import com.github.retrooper.packetevents.protocol.world.chunk.BaseChunk;
 import com.github.retrooper.packetevents.protocol.world.chunk.Column;
+import com.github.retrooper.packetevents.protocol.world.chunk.impl.v_1_18.Chunk_v1_18;
+import com.github.retrooper.packetevents.protocol.world.chunk.palette.GlobalPalette;
+import com.github.retrooper.packetevents.protocol.world.chunk.palette.Palette;
 import com.github.retrooper.packetevents.util.Vector3i;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBlockChange;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerChunkData;
@@ -56,13 +59,14 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
 
     private void chunk(PacketSendEvent event) {
         World world = worldOf(event);
-        if (world == null || !source.anyIn(world.getUID())) {
+        ClientCanon canon = source.canon();
+        if (world == null || !(source.anyIn(world.getUID()) || !canon.isEmpty())) {
             return;
         }
         WrapperPlayServerChunkData wrapper = new WrapperPlayServerChunkData(event);
         Column column = wrapper.getColumn();
         ChunkLooks looks = source.chunk(world.getUID(), column.getX(), column.getZ());
-        if (looks.isEmpty()) {
+        if (looks.isEmpty() && canon.isEmpty()) {
             return;
         }
         ClientVersion version = serverVersion();
@@ -71,10 +75,13 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
         int changed = 0;
         for (int i = 0; i < sections.length; i++) {
             int sectionY = minSection + i;
+            BaseChunk section = sections[i];
+            if (!canon.isEmpty() && needsCanon(section, canon)) {
+                changed += canonicalize(section, version, canon);
+            }
             if (!looks.hasSection(sectionY)) {
                 continue;
             }
-            BaseChunk section = sections[i];
             int baseX = column.getX() << 4;
             int baseZ = column.getZ() << 4;
             changed += looks.rewriteSection(sectionY, new SectionStates() {
@@ -96,18 +103,15 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
 
     private void single(PacketSendEvent event) {
         World world = worldOf(event);
-        if (world == null || !source.anyIn(world.getUID())) {
+        ClientCanon canon = source.canon();
+        if (world == null || !(source.anyIn(world.getUID()) || !canon.isEmpty())) {
             return;
         }
         WrapperPlayServerBlockChange wrapper = new WrapperPlayServerBlockChange(event);
         Vector3i at = wrapper.getBlockPosition();
         ChunkLooks looks = source.chunk(world.getUID(), at.getX() >> 4, at.getZ() >> 4);
-        if (looks.isEmpty()) {
-            return;
-        }
         int state = wrapper.getBlockId();
-        int rewritten = looks.rewrite(at.getX() & 15, at.getY(), at.getZ() & 15, state,
-                ClientStates::isLegacyCarrier, (x, y, z) -> foreign.foreign(world.getUID(), at.getX(), y, at.getZ()));
+        int rewritten = shown(looks, canon, world.getUID(), at.getX(), at.getY(), at.getZ(), state);
         if (rewritten != state) {
             wrapper.setBlockID(rewritten);
             event.markForReEncode(true);
@@ -116,7 +120,8 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
 
     private void multi(PacketSendEvent event) {
         World world = worldOf(event);
-        if (world == null || !source.anyIn(world.getUID())) {
+        ClientCanon canon = source.canon();
+        if (world == null || !(source.anyIn(world.getUID()) || !canon.isEmpty())) {
             return;
         }
         WrapperPlayServerMultiBlockChange wrapper = new WrapperPlayServerMultiBlockChange(event);
@@ -124,12 +129,8 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
         UUID id = world.getUID();
         for (WrapperPlayServerMultiBlockChange.EncodedBlock block : wrapper.getBlocks()) {
             ChunkLooks looks = source.chunk(id, block.getX() >> 4, block.getZ() >> 4);
-            if (looks.isEmpty()) {
-                continue;
-            }
             int state = block.getBlockId();
-            int rewritten = looks.rewrite(block.getX() & 15, block.getY(), block.getZ() & 15, state,
-                    ClientStates::isLegacyCarrier, (x, y, z) -> foreign.foreign(id, block.getX(), y, block.getZ()));
+            int rewritten = shown(looks, canon, id, block.getX(), block.getY(), block.getZ(), state);
             if (rewritten != state) {
                 block.setBlockId(rewritten);
                 changed = true;
@@ -138,6 +139,54 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
         if (changed) {
             event.markForReEncode(true);
         }
+    }
+
+    /**
+     * The state to send for {@code state} at a world position: the look if it is a custom block, else the canonical
+     * sibling of a borrowed family's real state.
+     */
+    private int shown(ChunkLooks looks, ClientCanon canon, UUID world, int x, int y, int z, int state) {
+        int localX = x & 15;
+        int localZ = z & 15;
+        if (looks.has(localX, y, localZ)) {
+            return looks.rewrite(localX, y, localZ, state, ClientStates::isLegacyCarrier,
+                    (lx, ly, lz) -> foreign.foreign(world, x, ly, z));
+        }
+        return canon.of(state);
+    }
+
+    /** Whether a section holds a state that {@code canon} replaces (read from its palette, no block is visited). */
+    private static boolean needsCanon(BaseChunk section, ClientCanon canon) {
+        if (section instanceof Chunk_v1_18 modern) {
+            Palette palette = modern.getChunkData().palette;
+            if (!(palette instanceof GlobalPalette)) {
+                for (int i = 0; i < palette.size(); i++) {
+                    if (canon.affects(palette.idToState(i))) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Replaces every state of a section that {@code canon} replaces; returns how many blocks changed. */
+    private static int canonicalize(BaseChunk section, ClientVersion version, ClientCanon canon) {
+        int changed = 0;
+        for (int y = 0; y < 16; y++) {
+            for (int z = 0; z < 16; z++) {
+                for (int x = 0; x < 16; x++) {
+                    int state = section.getBlockId(x, y, z);
+                    int shown = canon.of(state);
+                    if (shown != state) {
+                        section.set(version, x, y, z, shown);
+                        changed++;
+                    }
+                }
+            }
+        }
+        return changed;
     }
 
     /** The viewer's world, or null if it cannot be told (not a player yet, for example during login). */

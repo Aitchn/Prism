@@ -26,9 +26,19 @@ enum Carrier {
     PASSABLE(Material.STRUCTURE_VOID);
 
     private final Material material;
+    private volatile int clientId = -1;
 
     Carrier(Material material) {
         this.material = material;
+    }
+
+    /** The block state id of this carrier in packets (the id the packet rewriter looks for). */
+    int clientId() {
+        int id = clientId;
+        if (id < 0) {
+            clientId = id = com.aitchn.prism.client.ClientStates.id(material.createBlockData());
+        }
+        return id;
     }
 
     Material material() {

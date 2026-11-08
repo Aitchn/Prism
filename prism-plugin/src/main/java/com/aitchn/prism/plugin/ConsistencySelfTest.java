@@ -196,11 +196,14 @@ final class ConsistencySelfTest implements Listener {
             check("place variant block", "place failed");
             return;
         }
-        int before = blocks.lookOf(v) == null ? -1 : blocks.lookOf(v).look();
+        BlockLook shown = blocks.lookOf(v);
+        int before = shown == null ? -1 : shown.look();
+        int beforeDisplay = shown == null ? -1 : shown.display();
         boolean changed = blocks.setVariant(v, "active");
         check("variant change", !changed ? "setVariant refused" : problem(v, variant, Carrier.SOLID));
         BlockLook after = blocks.lookOf(v);
-        check("variant look differs", after == null || after.look() == before ? "look did not change" : null);
+        check("variant look differs", after == null || after.look() == before && after.display() == beforeDisplay
+                ? "look did not change" : null);
         blocks.remove(v, false);
     }
 

@@ -17,7 +17,6 @@ import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.registry.Registry;
-import com.aitchn.prism.client.ClientStates;
 import com.aitchn.prism.client.LookSender;
 import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.block.BlockLook;
@@ -43,7 +42,6 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -76,8 +74,9 @@ final class PrismBlockService implements BlockService, Listener {
     private final ItemService items;
     private final BlockIndex index;
     private final DisplayEntityBackend display;
-    private final NoteBlockAppearance noteBlocks;
-    private final TripwireAppearance tripwires;
+    private final CarrierAppearance noteBlocks;
+    private final CarrierAppearance tripwires;
+    private final java.util.function.Supplier<ClientLooks> clientLooks;
     private final String backend;
     private final BehaviorDispatcher dispatcher;
     private final PlatformScheduler scheduler;
@@ -85,18 +84,22 @@ final class PrismBlockService implements BlockService, Listener {
     private final OreGenerator ores;
     private final StructureTracker structures;
     private final BlockLights lights;
-    /** Told after a block is placed, removed or changes variant, so per-player looks can follow; set once at startup. */
-    private volatile java.util.function.Consumer<Block> lookChanged = block -> {};
+    /** Told after a block is placed, removed or changes variant, so per-player looks can follow; set at startup. */
+    private final java.util.List<java.util.function.Consumer<BlockIndex.Loaded>> chunkRelooked =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final java.util.List<java.util.function.Consumer<Block>> lookChanged =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
 
     /**
      * @param backend {@code auto} (note block states for every block that has no BetterModel model, so Bedrock sees
      *                them), {@code display} (always display entities) or {@code native} (note block states only)
      */
     PrismBlockService(Registry<BlockDefinition> definitions, ItemService items, BlockIndex index,
-            DisplayEntityBackend display, NoteBlockAppearance noteBlocks, TripwireAppearance tripwires, String backend,
+            DisplayEntityBackend display, java.util.function.Supplier<ClientLooks> clientLooks, String backend,
             BehaviorDispatcher dispatcher, PlatformScheduler scheduler, Logger log) {
-        this.noteBlocks = noteBlocks;
-        this.tripwires = tripwires;
+        this.clientLooks = clientLooks;
+        this.noteBlocks = new CarrierAppearance(Carrier.SOLID, clientLooks, log);
+        this.tripwires = new CarrierAppearance(Carrier.PASSABLE, clientLooks, log);
         this.backend = backend;
         this.definitions = definitions;
         this.items = items;
@@ -150,7 +153,7 @@ final class PrismBlockService implements BlockService, Listener {
         startTicking(handle);
         lights.update(handle);
         notifyNeighbors(block);
-        lookChanged.accept(block);
+        lookChanged.forEach(listener -> listener.accept(block));
         return true;
     }
 
@@ -249,7 +252,7 @@ final class PrismBlockService implements BlockService, Listener {
         index.remove(block);
         drop.ifPresent(sink);
         notifyNeighbors(block);
-        lookChanged.accept(block);
+        lookChanged.forEach(listener -> listener.accept(block));
         return true;
     }
 
@@ -267,7 +270,7 @@ final class PrismBlockService implements BlockService, Listener {
             publishLook(block);
             broadcastLook(block);
             get(block).ifPresent(lights::update);
-            lookChanged.accept(block);
+            lookChanged.forEach(listener -> listener.accept(block));
         }
         return true;
     }
@@ -297,7 +300,7 @@ final class PrismBlockService implements BlockService, Listener {
                     Appearances.drawnVariant(custom.get().variant(), mask));
             publishLook(block);
             broadcastLook(block);
-            lookChanged.accept(block);
+            lookChanged.forEach(listener -> listener.accept(block));
         }
     }
 
@@ -367,8 +370,13 @@ final class PrismBlockService implements BlockService, Listener {
             PrismCapabilities.INVENTORY.key().toString(), PrismCapabilities.INVENTORY,
             PrismCapabilities.ITEM_HANDLER.key().toString(), PrismCapabilities.ITEM_HANDLER);
 
+    /** Told, on the chunk's thread, after the looks of a whole chunk were recomputed (the content changed). */
+    void onChunkRelooked(java.util.function.Consumer<BlockIndex.Loaded> listener) {
+        this.chunkRelooked.add(listener);
+    }
+
     void onLookChanged(java.util.function.Consumer<Block> listener) {
-        this.lookChanged = listener;
+        this.lookChanged.add(listener);
     }
 
     /**
@@ -411,6 +419,12 @@ final class PrismBlockService implements BlockService, Listener {
             carrier = Carrier.legacy(block.getType()); // a block of an earlier version, not migrated yet
         }
         return carrier == Carrier.SOLID ? noteBlocks : carrier == Carrier.PASSABLE ? tripwires : display;
+    }
+
+    /** The look id of the custom block at {@code block} (what {@link ClientLooks} is keyed by), or null. */
+    @Nullable String lookIdOf(Block block) {
+        return entry(block).map(entry -> new Appearances.Look(entry.key(),
+                Appearances.drawnVariant(entry.variant(), entry.connections()), entry.facing().name()).id()).orElse(null);
     }
 
     /** Whether the client breaks this block itself (its carrier is breakable), so Prism must not run the dig. */
@@ -574,25 +588,18 @@ final class PrismBlockService implements BlockService, Listener {
         long packed = BlockIndex.packed(block);
         BlockIndex.Entry entry = mirror.blocks.get(packed);
         Carrier carrier = entry == null ? null : entry.carrier();
-        BlockData look = carrier == null ? null : lookData(carrier, entry);
+        BlockLook look = carrier == null ? null : lookFor(carrier, entry);
         if (look == null) {
             mirror.clearLook(packed);
             return;
         }
-        mirror.setLook(packed, new BlockLook(ClientStates.id(carrier.material().createBlockData()),
-                ClientStates.id(look)));
+        mirror.setLook(packed, look);
     }
 
-    /** The state viewers see for {@code entry}; allocated for a known block, only looked up for one of an absent mod. */
-    private BlockData lookData(Carrier carrier, BlockIndex.Entry entry) {
+    /** What viewers see for {@code entry}, or null if its look got no client representation in this boot. */
+    private BlockLook lookFor(Carrier carrier, BlockIndex.Entry entry) {
         String drawn = Appearances.drawnVariant(entry.variant(), entry.connections());
-        Optional<BlockDefinition> definition = definitions.get(entry.key());
-        if (definition.isPresent()) {
-            return carrier == Carrier.SOLID ? noteBlocks.lookData(definition.get(), entry.facing(), drawn)
-                    : tripwires.lookData(definition.get(), entry.facing(), drawn);
-        }
-        return carrier == Carrier.SOLID ? noteBlocks.existingState(entry.key(), entry.facing(), drawn)
-                : tripwires.existingState(entry.key(), entry.facing(), drawn);
+        return clientLooks.get().lookFor(carrier, new Appearances.Look(entry.key(), drawn, entry.facing().name()).id());
     }
 
     /**
@@ -665,8 +672,8 @@ final class PrismBlockService implements BlockService, Listener {
         if (entry.isEmpty() || entry.get().carrier() == null) {
             return -1;
         }
-        BlockData look = lookData(entry.get().carrier(), entry.get());
-        return look == null ? -1 : ClientStates.id(look);
+        BlockLook look = lookFor(entry.get().carrier(), entry.get());
+        return look == null ? -1 : look.look();
     }
 
     /** Makes the entry look like one an earlier version wrote (no carrier recorded). */
@@ -779,6 +786,7 @@ final class PrismBlockService implements BlockService, Listener {
                     // Definitions came or went: the looks of this chunk's blocks may have changed with them.
                     mirror.blocks.forEach((packed, entry) -> publishLook(mirror.block(packed)));
                     mirror.looks.forEach((packed, look) -> broadcastLook(mirror.block(packed)));
+                    chunkRelooked.forEach(listener -> listener.accept(mirror));
                 }
             });
         }

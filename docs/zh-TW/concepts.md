@@ -22,6 +22,9 @@
 因為 Java 版客戶端會自己預測形狀更新。若其他插件或 WorldEdit 把載體換掉，這個方塊就視為已消失。
 讀取世界的插件看到的是載體，請用 `Prism.blocks().identify(block)` 或 `get(block)` 判斷方塊是什麼。詳見 ADR-0022。
 
+Mod 能有的外觀數量不再受音符盒 799 個狀態限制：每次開機 Prism 會先給每個外觀一個借用的原版狀態，用完之後改用蓋在隱形外殼上、只存在於封包中的顯示實體繪製。
+`prism:render` 與 `prism:surface` 可以調整這件事，說明見 `block-looks.md`。詳見 ADR-0023。
+
 **音效與動畫材質。** 音效依 Java 資源包的方式放進 jar（`assets/<ns>/sounds.json` 加上 `.ogg` 檔），
 用 Bukkit 的 `playSound(location, "<ns>:<event>", ...)` 播放。Prism 也會把它們放進基岩版資源包，基岩版玩家透過 Geyser 聽得到。
 `prism:ambient_sound` 讓方塊每隔 `interval` 刻自己播放音效，可以限定只在列出的變體播放，方塊消失就停止。
