@@ -50,15 +50,17 @@ class CuboidShapeTest {
             return this;
         }
 
+        Boolean is(int dx, int dy, int dz, String expect) {
+            List<Integer> at = List.of(cx + dx, cy + dy, cz + dz);
+            if (unloaded.contains(at)) {
+                return null;
+            }
+            String block = blocks.get(at);
+            return expect.equals("air") ? block == null : expect.equals(block);
+        }
+
         StructureShape.Result find() {
-            return SHAPE.find((dx, dy, dz, expect) -> {
-                List<Integer> at = List.of(cx + dx, cy + dy, cz + dz);
-                if (unloaded.contains(at)) {
-                    return null;
-                }
-                String block = blocks.get(at);
-                return expect.equals("air") ? block == null : expect.equals(block);
-            });
+            return SHAPE.find(this::is);
         }
     }
 
@@ -121,6 +123,27 @@ class CuboidShapeTest {
     }
 
     @Test
+    void verifyLooksOnlyAtTheEarlierBox() {
+        var world = new World().box(0, 0, 0, 2, 2, 2).controller(0, 1, 1); // west face
+        String signature = world.find().match().signature();
+        for (int y = -3; y <= 5; y++) {
+            for (int z = -3; z <= 5; z++) {
+                world.unloaded.add(List.of(-3, y, z)); // a column of unloaded chunk west of the box
+            }
+        }
+        world.blocks.remove(List.of(2, 2, 2)); // break the far corner
+        var found = world.find();
+        assertNull(found.match());
+        assertTrue(found.uncertain()); // the west side walks into the unloaded chunk
+        assertFalse(SHAPE.verify(world::is, signature).uncertain()); // but the box itself is visibly broken
+
+        world.blocks.put(List.of(2, 2, 2), WALL);
+        world.unloaded.add(List.of(2, 2, 2));
+        assertTrue(SHAPE.verify(world::is, signature).uncertain());
+        assertNull(SHAPE.verify(world::is, "nonsense").match());
+    }
+
+    @Test
     void patternsAreShapesToo() {
         var pattern = StructurePattern.compile(new PrismComponents.Structure(List.of("RRR", " @ "),
                 Map.of('R', WALL), false));
@@ -131,6 +154,9 @@ class CuboidShapeTest {
         var missing = pattern.find((dx, dy, dz, expect) -> dx == 1 ? null : expect.equals(WALL));
         assertNull(missing.match());
         assertTrue(missing.uncertain());
+        assertTrue(pattern.verify((dx, dy, dz, expect) -> dx == 1 ? null : expect.equals(WALL), "NORTH").uncertain());
+        assertFalse(pattern.verify((dx, dy, dz, expect) -> dx == 1 ? null : dx == 0 ? false : expect.equals(WALL),
+                "NORTH").uncertain());
         assertEquals(5, SHAPE.reach());
     }
 }

@@ -88,6 +88,28 @@ public final class CuboidShape implements StructureShape {
         return uncertain ? Result.UNKNOWN : Result.NONE;
     }
 
+    @Override
+    public @NotNull Result verify(@NotNull Probe probe, @NotNull String signature) {
+        String[] parts = signature.split(" ");
+        int side = SIDES.indexOf(parts[0]);
+        if (side < 0 || parts.length != 3) {
+            return Result.NONE;
+        }
+        try {
+            String[] low = parts[1].split(",");
+            String[] high = parts[2].split(",");
+            int[] lo = new int[3];
+            int[] hi = new int[3];
+            for (int axis = 0; axis < 3; axis++) {
+                lo[axis] = Integer.parseInt(low[axis]) + 1;
+                hi[axis] = Integer.parseInt(high[axis]) - 1;
+            }
+            return check(probe, side, lo, hi);
+        } catch (RuntimeException malformed) {
+            return Result.NONE;
+        }
+    }
+
     /** Checks the shell around the inside box {@code lo..hi} (offsets from the controller). */
     private Result check(Probe probe, int side, int[] lo, int[] hi) {
         for (int axis = 0; axis < 3; axis++) {

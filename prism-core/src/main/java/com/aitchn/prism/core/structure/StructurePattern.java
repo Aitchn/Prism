@@ -126,6 +126,23 @@ public final class StructurePattern implements StructureShape {
         return uncertain ? Result.UNKNOWN : Result.NONE;
     }
 
+    @Override
+    public @NotNull Result verify(@NotNull Probe probe, @NotNull String signature) {
+        int turn = FACINGS.indexOf(signature);
+        if (turn < 0 || turn >= rotations.size()) {
+            return Result.NONE;
+        }
+        boolean uncertain = false;
+        for (Cell cell : rotations.get(turn)) {
+            Boolean is = probe.is(cell.dx(), cell.dy(), cell.dz(), cell.expect());
+            if (Boolean.FALSE.equals(is)) {
+                return Result.NONE;
+            }
+            uncertain |= is == null;
+        }
+        return uncertain ? Result.UNKNOWN : find(probe);
+    }
+
     /** The first rotation whose every cell passes {@code matches}, or -1. */
     public int match(@NotNull Predicate<Cell> matches) {
         for (int turn = 0; turn < rotations.size(); turn++) {

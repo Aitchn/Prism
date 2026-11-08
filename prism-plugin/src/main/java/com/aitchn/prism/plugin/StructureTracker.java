@@ -207,7 +207,8 @@ final class StructureTracker {
             }
             return;
         }
-        StructureShape.Result result = shape.find((dx, dy, dz, expect) -> is(block.getRelative(dx, dy, dz), expect));
+        StructureShape.Probe probe = (dx, dy, dz, expect) -> is(block.getRelative(dx, dy, dz), expect);
+        StructureShape.Result result = shape.find(probe);
         StructureShape.Match match = result.match();
         if (match != null) {
             boolean same = before != null ? before.signature().equals(match.signature())
@@ -217,7 +218,9 @@ final class StructureTracker {
                 broken(custom);
             }
             register(custom, match, !same);
-        } else if (was && !result.uncertain()) {
+        } else if (was && !(result.uncertain()
+                && shape.verify(probe, before != null ? before.signature() : saved.orElseThrow()).uncertain())) {
+            // Gone, unless the part of the earlier structure that cannot be seen now might still hold it up.
             forget(at);
             index.setStructure(block, null);
             broken(custom);

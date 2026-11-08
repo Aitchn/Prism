@@ -23,7 +23,9 @@ within limits, so one pattern per size does not work. The search has to find the
   `StructureTracker` handles both:
   - placing and removing blocks, chunk loads and content changes;
   - the "part of it is unloaded" rule.
-  A result is uncertain when any cell it needed could not be looked at.
+  A search is uncertain when any cell it needed could not be looked at. A formed structure is then kept only if a
+  check of that same structure (`StructureShape.verify`, from its saved signature) is uncertain too, so an unloaded
+  chunk next to a visibly broken box does not keep it standing.
 - **What is saved.** The chunk index keeps a signature per controller: the facing for a pattern, and the facing plus
   both corners for a box. A box rebuilt at another size therefore gets `onBroken` and then `onFormed`.
 - **API.** `FormedStructure` gained `min` and `max`, the corners of the bounding box. For a box, the inside is what

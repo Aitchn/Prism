@@ -48,6 +48,13 @@ public interface StructureShape {
 
     @NotNull Result find(@NotNull Probe probe);
 
+    /**
+     * Checks only the structure that {@code signature} (from an earlier {@link Match}) describes. Used when
+     * {@link #find} found nothing and was uncertain: only if this check is uncertain too can the earlier structure
+     * still be standing in the part that cannot be seen; otherwise it is broken.
+     */
+    @NotNull Result verify(@NotNull Probe probe, @NotNull String signature);
+
     /** The shape of {@code block}, or null if it controls no structure. */
     static @Nullable StructureShape of(@NotNull BlockDefinition block) {
         var pattern = block.components().get(PrismComponents.STRUCTURE);
