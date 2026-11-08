@@ -38,6 +38,7 @@ final class ModelSync implements Listener {
     private volatile boolean started;
     private volatile com.aitchn.prism.api.block.BlockService selfTestBlocks;
     private volatile PrismKey selfTestKey;
+    private volatile java.util.function.Predicate<org.bukkit.block.Block> selfTestBedrockLook = block -> true;
     private volatile boolean handlerRegistered;
 
     ModelSync(Plugin prism, ModManager mods, PlatformScheduler scheduler, PackManager packs, ModelAnchors anchors) {
@@ -50,9 +51,11 @@ final class ModelSync implements Listener {
     }
 
     /** Optional smoke-test hook: after the first sync, place this model block, expect a BetterModel instance, remove it. */
-    void selfTest(com.aitchn.prism.api.block.BlockService blocks, PrismKey key) {
+    void selfTest(com.aitchn.prism.api.block.BlockService blocks, PrismKey key,
+            java.util.function.Predicate<org.bukkit.block.Block> bedrockLook) {
         this.selfTestBlocks = blocks;
         this.selfTestKey = key;
+        this.selfTestBedrockLook = bedrockLook;
     }
 
     @EventHandler
@@ -109,10 +112,14 @@ final class ModelSync implements Listener {
                 int before = anchors.activeCount();
                 boolean placed = blocks.place(key, at);
                 boolean attached = anchors.activeCount() > before;
+                // The look Bedrock players get instead of the model (they cannot see display entities).
+                boolean bedrockLook = selfTestBedrockLook.test(at.getBlock());
                 boolean removed = blocks.remove(at.getBlock(), false);
                 boolean closed = anchors.activeCount() == before;
-                log.info((placed && attached && removed && closed ? "PRISM_MODEL_SELFTEST_OK " : "PRISM_MODEL_SELFTEST_FAIL ")
-                        + key + " placed=" + placed + " attached=" + attached + " removed=" + removed + " closed=" + closed);
+                log.info((placed && attached && bedrockLook && removed && closed
+                        ? "PRISM_MODEL_SELFTEST_OK " : "PRISM_MODEL_SELFTEST_FAIL ")
+                        + key + " placed=" + placed + " attached=" + attached + " bedrockLook=" + bedrockLook
+                        + " removed=" + removed + " closed=" + closed);
             } catch (RuntimeException | LinkageError e) {
                 log.severe("PRISM_MODEL_SELFTEST_FAIL " + key + " " + e);
             }

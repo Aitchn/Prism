@@ -92,6 +92,17 @@ the theme test and "a player must be able to operate and see it".
 | 41 | Several parts on one block face (AE2 cable bus parts), per-part hit test | **Plugin**, with a Prism note | The part model (what a bus is, how parts stack) is AE2's design. Prism already gives the hit position (`BlockContext.hitPosition`) and per-block data; a part can be drawn only as a block look, so the state budget in 38 applies | Parts as looks of the cable block; clicking the face where a part sits reaches it | AE2 stage 3 |
 | 42 | Entity-free display of items moving through transporters | Prism (later, undecided) | Any visible item transport; display entities are invisible on Bedrock, so no edition-neutral solution exists yet | none yet | Mekanism stage 3, decide then |
 | 43 | Chunk move API (spatial IO) | Out of scope | Excluded from the 80% target by the AE2 plan | n/a | |
+| 44 | Custom sounds from the mod's jar (Java `sounds.json`, Bedrock `sound_definitions.json`) and a looping sound bound to a block (Mekanism E6) | Prism | Every mod with its own sounds | Same sound on both editions; a machine's hum stops when it stops or goes | Mekanism effects |
+| 45 | Particles | **Plugin** (Bukkit API) | Vanilla particles already reach both editions (Geyser maps most); servers cannot add particle types | Prism documents which particles look different on Bedrock | n/a |
+| 46 | Animated block and item textures: Java `.mcmeta`, Bedrock flipbook (E2) | Prism | Any animated panel, fluid or glow | Animated on both editions | Mekanism effects |
+| 47 | Light level per block variant (E1) | Prism | Any lit machine or lamp | Bedrock: through the Geyser mapping. Java: a note block cannot emit light, so a lit look needs a light-emitting carrier (state budget) | Mekanism effects |
+| 48 | A Bedrock look for blocks drawn by a model | Prism | Display entities are invisible on Bedrock, so every animated block of every mod was invisible there | Java: the animated model. Bedrock: a static block with the block's texture. ADR-0013 | all rebuilds |
+| 49 | Gauges and progress in menus as stepped item icons; full custom menu backgrounds | Prism | Every machine GUI | Icons on both editions; custom backgrounds are Java only (Bedrock keeps the chest UI) | Mekanism, AE2 |
+| 50 | Worn and held item models (jetpack, tools) (E5) | Prism | Any armor or tool mod | Java: equippable assets. Bedrock: needs attachables; partial | Mekanism effects |
+| 51 | HUD feedback (action bar, boss bar, titles) | **Plugin** (Bukkit API) | Works on both editions already | n/a | n/a |
+| 52 | Contents shown in tanks and pipes | Prism (with 38) | Any tank or visible transport | Fill levels as variants on both editions (state budget); smooth rendering is Java only | Mekanism |
+| 53 | Block-bound particle emitters and beams between two points (E7) | Prism | Lasers, portals, rituals | Particles on both editions; guardian or end-crystal style beams are Java only | Mekanism effects |
+| 54 | Entities as moving block parts (E8) | Prism (via BetterModel, row 48 for Bedrock) | Any machine with moving parts | Java: animated; Bedrock: static look from row 48 | Mekanism effects |
 
 **The carrier state budget (rows 38, 39, 41).** Bedrock can only see custom blocks drawn by real block states (Geyser
 cannot draw display entities). Every distinct look needs its own state. The note block gives 799 states for full

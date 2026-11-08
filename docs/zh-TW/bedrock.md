@@ -8,7 +8,8 @@ Mod 依「能力」而非「版本」調整。
 | 物品外觀 | 完整模型 | 取自物品貼圖的平面圖示 |
 | 動態物品狀態 | 有 | 無 |
 | 方塊（預設） | 音符盒狀態＋資源包 | 音符盒狀態＋Geyser 自訂方塊對應 |
-| 使用 BetterModel 模型的方塊，或 `blocks.backend: display` | 顯示實體 | **看不見**（Geyser 無法繪製顯示實體） |
+| 使用 BetterModel 模型的方塊 | 動畫模型（顯示實體） | 以 `textures/block/<name>.png` 貼圖的靜態方塊（沒有貼圖時是普通音符盒），個別送給每位基岩版玩家 |
+| `blocks.backend: display` 下的所有方塊 | 顯示實體 | **看不見**（Geyser 無法繪製顯示實體） |
 | 方塊外觀變體（`prism:variants`、`setVariant`） | 有 | 有 |
 | 選單 | 箱子介面 | 箱子介面（Geyser 轉譯）；原生表單未實作 |
 

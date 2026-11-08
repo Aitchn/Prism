@@ -1,4 +1,5 @@
-# Drawn by an animated Blockbench model: prism/models/turret.bbmodel (served through BetterModel).
+# Drawn by an animated Blockbench model: prism/models/turret.bbmodel (served through BetterModel) for Java players.
+# Bedrock players cannot see the model; they see a block textured with assets/examplemod/textures/block/turret.png.
 base: minecraft:barrier
 components:
   prism:model_ref: examplemod:turret

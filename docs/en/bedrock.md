@@ -8,7 +8,8 @@ Bedrock players join through Geyser. Prism detects them (Floodgate, then Geyser)
 | Item appearance | full model | flat icon from the item's texture |
 | Dynamic item state | yes | no |
 | Blocks (default) | note block state + resource pack | note block state + Geyser custom block mapping |
-| Blocks with a BetterModel model, or `blocks.backend: display` | display entity | **not visible** (Geyser cannot draw display entities) |
+| Blocks with a BetterModel model | animated model (display entity) | static block textured with `textures/block/<name>.png` (a plain note block if there is none), sent to each Bedrock player |
+| Any block with `blocks.backend: display` | display entity | **not visible** (Geyser cannot draw display entities) |
 | Block variants (`prism:variants`, `setVariant`) | yes | yes |
 | Menus | chest container | chest container (Geyser translates); native forms not implemented |
 
