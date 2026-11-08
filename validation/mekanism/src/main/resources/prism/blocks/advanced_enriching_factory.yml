@@ -1,0 +1,13 @@
+# Key: mekanism:advanced_enriching_factory. Advanced enriching factory: runs the recipes of mekanism:enrichment_chamber, 5 at once.
+base: minecraft:barrier
+drop: mekanism:advanced_enriching_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: advanced_enriching_factory
+    recipes_of: enrichment_chamber
+    lanes: 5
+    energy_capacity: 100000
+    max_receive: 10000
+    tank_capacity: 0

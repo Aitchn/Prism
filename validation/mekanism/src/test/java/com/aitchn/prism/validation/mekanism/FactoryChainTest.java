@@ -39,14 +39,15 @@ class FactoryChainTest {
         @Override
         public MachineType machine(String id) {
             MachineBehavior spec = harness().block("mekanism:" + id).behaviors(MachineBehavior.class).getFirst();
+            String recipeSource = spec.recipesOf().isEmpty() ? id : spec.recipesOf();
             List<Recipe> recipes = new ArrayList<>();
             for (var entry : harness().recipes().all(Content.machineRecipes())) {
-                if (entry.value().machine().equals(id)) {
+                if (entry.value().machine().equals(recipeSource)) {
                     recipes.add(entry.value().toLogic());
                 }
             }
             return new MachineType(id, () -> recipes, spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity(),
-                    spec.maxExtract(), spec.bufferFilter());
+                    spec.maxExtract(), spec.bufferFilter(), spec.lanes());
         }
 
         @Override
@@ -98,5 +99,24 @@ class FactoryChainTest {
     @Test
     void aBatteryRunsTheLineThenStopsWhenEmptyAndNothingIsLost() {
         Chains.batteryRunsDry(TYPES);
+    }
+
+    @Test
+    void realFactoryContentRunsThreeAtOnceInTheTimeOfOne() {
+        for (String id : List.of("enrichment_chamber", "enriching_factory")) {
+            MachineType type = TYPES.machine(id);
+            com.aitchn.prism.validation.mekanism.logic.Machine m = new com.aitchn.prism.validation.mekanism.logic.Machine(type);
+            int items = type.lanes();
+            m.insertInput(new com.aitchn.prism.validation.mekanism.logic.Stack("mekanism:osmium_ore", items));
+            int ticks = 0;
+            while ((m.input() != null || m.progress() > 0) && ticks < 5_000) {
+                m.energy().set(m.energy().capacity());
+                m.tick();
+                ticks++;
+            }
+            org.junit.jupiter.api.Assertions.assertEquals(2 * items, m.output().count(), id);
+            org.junit.jupiter.api.Assertions.assertEquals("mekanism:osmium_dust", m.output().id(), id);
+            org.junit.jupiter.api.Assertions.assertTrue(ticks <= 250, id + " took " + ticks);
+        }
     }
 }

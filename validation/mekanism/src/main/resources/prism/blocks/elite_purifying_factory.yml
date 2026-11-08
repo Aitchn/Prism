@@ -1,0 +1,13 @@
+# Key: mekanism:elite_purifying_factory. Elite purifying factory: runs the recipes of mekanism:purification_chamber, 7 at once.
+base: minecraft:barrier
+drop: mekanism:elite_purifying_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: elite_purifying_factory
+    recipes_of: purification_chamber
+    lanes: 7
+    energy_capacity: 140000
+    max_receive: 14000
+    tank_capacity: 14000

@@ -1,0 +1,10 @@
+type: prism:shaped
+pattern:
+  - "ACA"
+  - "CFC"
+  - "ACA"
+key:
+  A: mekanism:alloy_infused
+  C: mekanism:advanced_control_circuit
+  F: mekanism:enriching_factory
+result: mekanism:advanced_enriching_factory

@@ -197,3 +197,13 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
     matching alloy. A long cable run of basic cables starves a big machine; swap in ultimate cable and it fills.
 24. Colours: only the logistical transporter network with equal colour joins; there is no colouring tool yet, so on a real server
     every transporter is uncoloured.
+
+### Stage 4 additions (hand tests)
+
+25. Factories: craft a Enriching Factory (iron, basic circuits, steel casing around an enrichment chamber), feed it
+    a stack of osmium ore: it works on three ores at once (lore/GUI show the same single input slot) and makes six
+    dust in the time one chamber needs for two.
+26. Tier up: surround the basic factory with alloy and circuits to get the advanced one (5 lanes), and so on to the
+    ultimate (9). Pick it up and place it again: energy, upgrades and tank contents stay.
+27. A factory feeding a second factory through a logistical transporter (item configurator for faces): a stack
+    walks through both without hands.

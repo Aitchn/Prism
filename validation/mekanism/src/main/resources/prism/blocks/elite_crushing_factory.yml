@@ -1,0 +1,13 @@
+# Key: mekanism:elite_crushing_factory. Elite crushing factory: runs the recipes of mekanism:crusher, 7 at once.
+base: minecraft:barrier
+drop: mekanism:elite_crushing_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: elite_crushing_factory
+    recipes_of: crusher
+    lanes: 7
+    energy_capacity: 140000
+    max_receive: 14000
+    tank_capacity: 0

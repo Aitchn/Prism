@@ -33,21 +33,28 @@ import org.jetbrains.annotations.Nullable;
  *     tank_capacity: 0           # millibuckets per tank; 0 for machines without chemicals
  *     buffer: ""                 # "any" or "water": a storage tank that takes and gives back that much
  *     max_extract: 0             # joules per tick it gives to cables; above 0 makes it a battery (energy cube)
+ *     recipes_of: ""             # factories: use the recipes of this machine id instead of its own
+ *     lanes: 1                   # factories: copies of a recipe run at once (3, 5, 7, 9)
  * </pre>
  */
 public record MachineBehavior(String machine, int energyCapacity, int maxReceive, int tankCapacity,
-        int maxExtract, String buffer)
+        int maxExtract, String buffer, String recipesOf, int lanes)
         implements BlockPlaceBehavior, BlockLoadBehavior, BlockTickBehavior, BlockRemoveBehavior,
         BlockInteractBehavior, BlockCapabilityProvider, BlockDropBehavior {
 
     static MachineBehavior fromYaml(ConfigSection section) throws ContentException {
-        section.rejectUnknownKeys(Set.of("machine", "energy_capacity", "max_receive", "tank_capacity", "max_extract", "buffer"));
+        section.rejectUnknownKeys(Set.of("machine", "energy_capacity", "max_receive", "tank_capacity", "max_extract", "buffer",
+                "recipes_of", "lanes"));
         MachineBehavior behavior = new MachineBehavior(section.requireString("machine"),
                 section.getInt("energy_capacity").orElse(20_000), section.getInt("max_receive").orElse(2_000),
                 section.getInt("tank_capacity").orElse(0), section.getInt("max_extract").orElse(0),
-                section.getString("buffer").orElse(""));
+                section.getString("buffer").orElse(""), section.getString("recipes_of").orElse(""),
+                section.getInt("lanes").orElse(1));
         if (!Set.of("", "any", "water").contains(behavior.buffer)) {
             throw section.error("buffer must be any or water");
+        }
+        if (behavior.lanes < 1 || behavior.lanes > 9) {
+            throw section.error("lanes must be 1 to 9");
         }
         if (behavior.energyCapacity < 1 || behavior.maxReceive < 1 || behavior.tankCapacity < 0
                 || behavior.maxExtract < 0) {

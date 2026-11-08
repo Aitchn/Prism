@@ -1,0 +1,13 @@
+# Key: mekanism:ultimate_sawing_factory. Ultimate sawing factory: runs the recipes of mekanism:precision_sawmill, 9 at once.
+base: minecraft:barrier
+drop: mekanism:ultimate_sawing_factory
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: ultimate_sawing_factory
+    recipes_of: precision_sawmill
+    lanes: 9
+    energy_capacity: 180000
+    max_receive: 18000
+    tank_capacity: 0

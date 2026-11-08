@@ -28,6 +28,8 @@ public final class Machine {
     private Stack output;
     private Recipe active;
     private int progress;
+    /** How many copies of the recipe the running operation does at once (factories: up to their lanes). */
+    private int batch = 1;
     private int idleTicks = IDLE_AFTER;
     private long ticks;
     private boolean dead;
@@ -336,7 +338,7 @@ public final class Machine {
             }
             startOperation(active);
         }
-        if (!energy.consume(tickCost(active))) {
+        if (!energy.consume(tickCost(active) * batch)) {
             return false;
         }
         progress += speedFactor();
@@ -344,78 +346,87 @@ public final class Machine {
             finishOperation(active);
             active = null;
             progress = 0;
+            batch = 1;
         }
         return true;
     }
 
     private Recipe findStartable() {
         for (Recipe r : type.recipes()) {
-            if (r.itemIn() != null && (input == null || !input.id().equals(r.itemIn().id())
-                    || input.count() < r.itemIn().count())) {
-                continue;
+            for (int k = type.lanes(); k >= 1; k--) {
+                if (canStart(r, k)) {
+                    batch = k;
+                    return r;
+                }
             }
-            if (r.itemIn2() != null && (extra == null || !extra.id().equals(r.itemIn2().id())
-                    || extra.count() < r.itemIn2().count())) {
-                continue;
-            }
-            if (r.chemicalIn() != null && inTank.drain(r.chemicalIn(), r.chemicalInAmount(), true)
-                    < r.chemicalInAmount()) {
-                continue;
-            }
-            if (r.itemOut() != null && !canFitOutput(r.itemOut())) {
-                continue;
-            }
-            if (r.chemicalIn2() != null && inTank2.drain(r.chemicalIn2(), r.chemicalIn2Amount(), true)
-                    < r.chemicalIn2Amount()) {
-                continue;
-            }
-            if (r.chemicalOut() != null && outTank.fill(r.chemicalOut(), r.chemicalOutAmount(), true)
-                    < r.chemicalOutAmount()) {
-                continue;
-            }
-            if (r.chemicalOut2() != null && outTank2.fill(r.chemicalOut2(), r.chemicalOut2Amount(), true)
-                    < r.chemicalOut2Amount()) {
-                continue;
-            }
-            if (energy.stored() < tickCost(r)) {
-                continue;
-            }
-            return r;
         }
         return null;
     }
 
-    private boolean canFitOutput(Stack out) {
-        return output == null || (output.id().equals(out.id()) && output.count() + out.count() <= Stack.MAX);
+    /** Whether {@code k} copies of {@code r} can start now: inputs, room for outputs and energy for one tick. */
+    private boolean canStart(Recipe r, int k) {
+        if (r.itemIn() != null && (input == null || !input.id().equals(r.itemIn().id())
+                || input.count() < r.itemIn().count() * k)) {
+            return false;
+        }
+        if (r.itemIn2() != null && (extra == null || !extra.id().equals(r.itemIn2().id())
+                || extra.count() < r.itemIn2().count() * k)) {
+            return false;
+        }
+        if (r.chemicalIn() != null && inTank.drain(r.chemicalIn(), r.chemicalInAmount() * k, true)
+                < r.chemicalInAmount() * k) {
+            return false;
+        }
+        if (r.itemOut() != null && !canFitOutput(r.itemOut(), k)) {
+            return false;
+        }
+        if (r.chemicalIn2() != null && inTank2.drain(r.chemicalIn2(), r.chemicalIn2Amount() * k, true)
+                < r.chemicalIn2Amount() * k) {
+            return false;
+        }
+        if (r.chemicalOut() != null && outTank.fill(r.chemicalOut(), r.chemicalOutAmount() * k, true)
+                < r.chemicalOutAmount() * k) {
+            return false;
+        }
+        if (r.chemicalOut2() != null && outTank2.fill(r.chemicalOut2(), r.chemicalOut2Amount() * k, true)
+                < r.chemicalOut2Amount() * k) {
+            return false;
+        }
+        return energy.stored() >= tickCost(r) * k;
+    }
+
+    private boolean canFitOutput(Stack out, int k) {
+        int have = output == null ? 0 : output.count();
+        return (output == null || output.id().equals(out.id())) && have + out.count() * k <= Stack.MAX;
     }
 
     private void startOperation(Recipe r) {
         if (r.itemIn() != null) {
-            int left = input.count() - r.itemIn().count();
+            int left = input.count() - r.itemIn().count() * batch;
             input = left == 0 ? null : input.withCount(left);
         }
         if (r.itemIn2() != null) {
-            int left = extra.count() - r.itemIn2().count();
+            int left = extra.count() - r.itemIn2().count() * batch;
             extra = left == 0 ? null : extra.withCount(left);
         }
         if (r.chemicalIn() != null) {
-            inTank.drain(r.chemicalIn(), r.chemicalInAmount(), false);
+            inTank.drain(r.chemicalIn(), r.chemicalInAmount() * batch, false);
         }
         if (r.chemicalIn2() != null) {
-            inTank2.drain(r.chemicalIn2(), r.chemicalIn2Amount(), false);
+            inTank2.drain(r.chemicalIn2(), r.chemicalIn2Amount() * batch, false);
         }
     }
 
     private void finishOperation(Recipe r) {
         if (r.itemOut() != null) {
             int have = output == null ? 0 : output.count();
-            output = new Stack(r.itemOut().id(), have + r.itemOut().count());
+            output = new Stack(r.itemOut().id(), have + r.itemOut().count() * batch);
         }
         if (r.chemicalOut() != null) {
-            outTank.fill(r.chemicalOut(), r.chemicalOutAmount(), false);
+            outTank.fill(r.chemicalOut(), r.chemicalOutAmount() * batch, false);
         }
         if (r.chemicalOut2() != null) {
-            outTank2.fill(r.chemicalOut2(), r.chemicalOut2Amount(), false);
+            outTank2.fill(r.chemicalOut2(), r.chemicalOut2Amount() * batch, false);
         }
     }
 
@@ -430,6 +441,9 @@ public final class Machine {
         StringBuilder out = new StringBuilder("e=").append(energy.stored());
         if (active != null) {
             out.append("|p=").append(progress).append("|r=").append(type.recipes().indexOf(active));
+            if (batch > 1) {
+                out.append("|k=").append(batch);
+            }
         }
         if (speedUpgrades > 0 || energyUpgrades > 0) {
             out.append("|u=").append(speedUpgrades).append(',').append(energyUpgrades);
@@ -505,6 +519,7 @@ public final class Machine {
     public void load(String text) {
         int recipeIndex = -1;
         int savedProgress = 0;
+        int savedBatch = 1;
         for (String part : text.split("\\|")) {
             int eq = part.indexOf('=');
             if (eq != 1) {
@@ -516,6 +531,7 @@ public final class Machine {
                     case 'e' -> energy.set(Long.parseLong(value));
                     case 'p' -> savedProgress = Integer.parseInt(value);
                     case 'r' -> recipeIndex = Integer.parseInt(value);
+                    case 'k' -> savedBatch = Integer.parseInt(value);
                     case 'i' -> setInput(stack(value));
                     case 'x' -> setExtra(stack(value));
                     case 'f' -> {
@@ -551,6 +567,7 @@ public final class Machine {
         if (recipeIndex >= 0 && recipeIndex < recipes.size() && savedProgress > 0) {
             active = recipes.get(recipeIndex);
             progress = Math.min(savedProgress, active.ticks() - 1);
+            batch = Math.max(1, Math.min(type.lanes(), savedBatch));
         }
     }
 
