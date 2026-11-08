@@ -426,14 +426,15 @@ final class PrismBlockService implements BlockService, Listener {
         TickSchedule<Runnable> schedule = schedule(mirror);
         long base = BlockIndex.packed(custom.block()) << 4;
         Block block = custom.block();
-        // Slot 15 of the block's 16 schedule slots is the ambient sound; behaviors use the others.
+        // With an ambient sound, slot 15 of the block's 16 schedule slots plays it; behaviors use the others.
         ambient.ifPresent(sound -> schedule.add(base | AMBIENT_SLOT, () -> get(block).ifPresent(current -> {
             if (sound.playsIn(current.variant())) {
                 block.getWorld().playSound(block.getLocation().toCenterLocation(), sound.sound().toString(),
                         org.bukkit.SoundCategory.BLOCKS, sound.volume(), sound.pitch());
             }
         }), sound.interval()));
-        for (int i = 0; i < tickers.size() && i < AMBIENT_SLOT; i++) {
+        int slots = ambient.isPresent() ? AMBIENT_SLOT : 16;
+        for (int i = 0; i < tickers.size() && i < slots; i++) {
             BlockTickBehavior ticker = tickers.get(i);
             schedule.add(base | i, () -> get(block).ifPresent(current -> {
                 BlockEventContext context = BlockEventContext.of(current, null);

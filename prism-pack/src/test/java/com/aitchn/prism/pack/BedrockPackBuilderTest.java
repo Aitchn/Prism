@@ -115,6 +115,20 @@ class BedrockPackBuilderTest {
     }
 
     @Test
+    void explicitFrameSequencesAndTimesSurviveConversion() {
+        Map<String, byte[]> files = Map.of("assets/m/textures/block/a.png.mcmeta",
+                "{\"animation\":{\"frametime\":2,\"frames\":[0,{\"index\":1,\"time\":6},0,2]}}"
+                        .getBytes(StandardCharsets.UTF_8));
+        var animation = BedrockPackBuilder.animation(files, "assets/m/textures/block/a.png");
+        assertEquals(2, animation.ticksPerFrame());
+        assertEquals(List.of(0, 1, 1, 1, 0, 2), animation.frames());
+        var plain = BedrockPackBuilder.animation(Map.of("assets/m/textures/block/b.png.mcmeta",
+                "{\"animation\":{\"frametime\":5}}".getBytes(StandardCharsets.UTF_8)), "assets/m/textures/block/b.png");
+        assertEquals(5, plain.ticksPerFrame());
+        assertEquals(null, plain.frames());
+    }
+
+    @Test
     void javaSoundsBecomeBedrockSoundDefinitions() throws Exception {
         Map<String, byte[]> files = new LinkedHashMap<>();
         files.put("assets/m/sounds.json", ("{\"machine.hum\":{\"sounds\":[\"m:machine/hum\","

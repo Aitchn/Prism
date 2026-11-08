@@ -21,6 +21,8 @@ it was easy to leave playing after the block went.
   - Vanilla overrides (the `minecraft` namespace) are skipped. Event references are not followed.
 - **Animated textures use the Java `.png.mcmeta`.** For a block texture that has one, the Bedrock pack adds a
   `flipbook_textures.json` entry for the same strip, with `ticks_per_frame` taken from `frametime`.
+  An explicit `frames` list becomes the flipbook's `frames`. Per-frame `time`s are kept by repeating frames on a step
+  equal to the gcd of all times. `interpolate` is not converted.
 - **`prism:ambient_sound`** (`sound`, `interval`, `volume`, `pitch` and optional `variants`) plays from the block's
   tick schedule (slot 15 of the block's 16). So:
   - it runs only while the chunk ticks;
@@ -30,7 +32,7 @@ it was easy to leave playing after the block went.
 
 ## Consequences
 
-- A block can run at most 15 tick behaviors next to an ambient sound (16 before).
+- A block with an ambient sound can run at most 15 tick behaviors; without one it keeps all 16.
 - Ambient sounds are clips repeated on an interval, not a stream that can be cut off. A clip about as long as the
   interval sounds continuous and stops within one interval.
 - Animated item icons are not converted. Bedrock item atlases have no flipbook.

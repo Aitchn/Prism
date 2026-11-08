@@ -131,13 +131,16 @@ public final class BedrockPackBuilder {
                     String packTexture = "textures/prism/blocks/" + name;
                     files.put(packTexture + ".png", sources.get(texturePath));
                     terrainData.put(name, Map.of("textures", packTexture));
-                    Integer frameTime = animationFrameTime(sources, texturePath);
-                    if (frameTime != null) {
+                    Animation animation = animation(sources, texturePath);
+                    if (animation != null) {
                         // A Java animated texture (.png.mcmeta): the same vertical strip is a Bedrock flipbook.
                         Map<String, Object> flipbook = new LinkedHashMap<>();
                         flipbook.put("flipbook_texture", packTexture);
                         flipbook.put("atlas_tile", name);
-                        flipbook.put("ticks_per_frame", frameTime);
+                        flipbook.put("ticks_per_frame", animation.ticksPerFrame());
+                        if (animation.frames() != null) {
+                            flipbook.put("frames", animation.frames());
+                        }
                         flipbooks.put(name, flipbook);
                     }
                     Map<String, Object> material = new LinkedHashMap<>();
@@ -210,21 +213,58 @@ public final class BedrockPackBuilder {
                 flipbooks.size());
     }
 
-    /** The frame time of an animated texture ({@code <texture>.png.mcmeta} with an {@code animation}), or null. */
-    static Integer animationFrameTime(Map<String, byte[]> sources, String texturePath) {
+    /**
+     * A Bedrock flipbook timing: ticks per frame, and the strip indices to show in order (null: every frame in order).
+     * Java frames with their own {@code time} are repeated so one Bedrock tick step (the gcd of all times) fits them all.
+     */
+    record Animation(int ticksPerFrame, List<Integer> frames) {}
+
+    /** The animation of a texture ({@code <texture>.png.mcmeta} with an {@code animation}), or null. */
+    static Animation animation(Map<String, byte[]> sources, String texturePath) {
         byte[] meta = sources.get(texturePath + ".mcmeta");
         if (meta == null) {
             return null;
         }
         try {
             Object parsed = YamlFiles.parse(texturePath + ".mcmeta", new String(meta, StandardCharsets.UTF_8));
-            if (parsed instanceof Map<?, ?> root && root.get("animation") instanceof Map<?, ?> animation) {
-                return animation.get("frametime") instanceof Number n ? Math.max(1, n.intValue()) : 1;
+            if (!(parsed instanceof Map<?, ?> root) || !(root.get("animation") instanceof Map<?, ?> animation)) {
+                return null;
             }
+            int frameTime = animation.get("frametime") instanceof Number n ? Math.max(1, n.intValue()) : 1;
+            if (!(animation.get("frames") instanceof List<?> declared) || declared.isEmpty()) {
+                return new Animation(frameTime, null);
+            }
+            List<int[]> frames = new ArrayList<>();
+            for (Object frame : declared) {
+                if (frame instanceof Number index) {
+                    frames.add(new int[] {Math.max(0, index.intValue()), frameTime});
+                } else if (frame instanceof Map<?, ?> entry && entry.get("index") instanceof Number index) {
+                    int time = entry.get("time") instanceof Number t ? Math.max(1, t.intValue()) : frameTime;
+                    frames.add(new int[] {Math.max(0, index.intValue()), time});
+                }
+            }
+            if (frames.isEmpty()) {
+                return new Animation(frameTime, null);
+            }
+            int step = 0;
+            for (int[] frame : frames) {
+                step = gcd(step, frame[1]);
+            }
+            List<Integer> sequence = new ArrayList<>();
+            for (int[] frame : frames) {
+                for (int i = 0; i < frame[1] / step; i++) {
+                    sequence.add(frame[0]);
+                }
+            }
+            return new Animation(step, sequence);
         } catch (RuntimeException | com.aitchn.prism.api.content.ContentException ignored) {
             // malformed: the Java client reports it; Bedrock shows the strip as a still texture
         }
         return null;
+    }
+
+    private static int gcd(int a, int b) {
+        return b == 0 ? a : gcd(b, a % b);
     }
 
     /**
