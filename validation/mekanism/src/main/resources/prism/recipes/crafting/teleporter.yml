@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "ACA"
+  - "ESE"
+  - "ACA"
+key:
+  A: mekanism:alloy_reinforced
+  C: mekanism:elite_control_circuit
+  E: minecraft:ender_pearl
+  S: mekanism:steel_casing
+result: mekanism:teleporter

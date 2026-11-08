@@ -10,13 +10,17 @@ import com.aitchn.prism.validation.mekanism.logic.ChemicalTank;
 import com.aitchn.prism.validation.mekanism.logic.EnergyBuffer;
 import com.aitchn.prism.validation.mekanism.logic.Machine;
 import com.aitchn.prism.validation.mekanism.logic.MachineType;
+import com.aitchn.prism.validation.mekanism.logic.Miner;
 import com.aitchn.prism.validation.mekanism.logic.Networks;
 import com.aitchn.prism.validation.mekanism.logic.Plant;
 import com.aitchn.prism.validation.mekanism.logic.Pos;
 import com.aitchn.prism.validation.mekanism.logic.Side;
 import com.aitchn.prism.validation.mekanism.logic.SolarGenerator;
 import com.aitchn.prism.validation.mekanism.logic.Stack;
+import com.aitchn.prism.validation.mekanism.logic.Teleport;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,6 +65,7 @@ final class Grid {
     private final Set<Pos> cables = plant.cables();
     private final Set<Pos> pipes = plant.pipes();
     private final Map<Pos, String> saved = new HashMap<>();
+    private final Map<Pos, Miner> miners = new HashMap<>();
     private final Map<Pos, MachineMenu> viewers = new ConcurrentHashMap<>();
     private volatile io.papermc.paper.threadedregions.scheduler.ScheduledTask loop;
 
@@ -160,6 +165,11 @@ final class Grid {
                 saveMachine(custom, pos, machine);
             }
         });
+        if (spec.miner()) {
+            mineStep(custom, spec);
+            state[0] |= minerBusy(pos);
+            state[1] = !state[0];
+        }
         boolean active = "active".equals(custom.variant());
         if (state[0] && !active) {
             Prism.blocks().setVariant(custom.block(), "active");
@@ -214,6 +224,7 @@ final class Grid {
                 saveMachine(block, pos, machine);
             }
             saved.remove(pos);
+            miners.remove(pos);
             plant.markDirty();
         });
     }
@@ -226,6 +237,7 @@ final class Grid {
         Machine machine = locked(() -> {
             Machine removed = machines.remove(pos);
             saved.remove(pos);
+            miners.remove(pos);
             plant.markDirty();
             if (removed != null) {
                 removed.markDead();
@@ -484,6 +496,182 @@ final class Grid {
         return locked(() -> "Solar generator: " + Text.number(solar.energy().stored()) + " / "
                 + Text.number(solar.energy().capacity()) + " J, " + (solar.sunlit() ? "producing "
                 + SolarGenerator.OUTPUT_PER_TICK + " J/t" : "no sunlight"));
+    }
+
+
+    // ---------------------------------------------------------------- digital miner
+
+    private boolean minerBusy(Pos pos) {
+        return locked(() -> {
+            Miner miner = miners.get(pos);
+            return miner != null && miner.pending() > 0;
+        });
+    }
+
+    /** Lock held. The miner's scan state, restored from the machine's saved attachment the first time. */
+    private Miner miner(Pos pos, Machine machine) {
+        return miners.computeIfAbsent(pos, p -> {
+            Miner miner = new Miner();
+            if (machine.attachment() != null) {
+                miner.load(machine.attachment());
+            }
+            return miner;
+        });
+    }
+
+    /**
+     * One tick of a digital miner. Positions are looked at on the thread that owns them (a Folia region may differ from
+     * the miner's), ores are broken there, and the drops come back under the grid lock into the miner's output; what
+     * does not fit is dropped beside the miner.
+     */
+    void mineStep(CustomBlock custom, MachineBehavior spec) {
+        Block block = custom.block();
+        Pos pos = pos(block);
+        org.bukkit.World world = block.getWorld();
+        int depth = block.getY() - world.getMinHeight();
+        List<int[]> targets = new ArrayList<>();
+        underLock(() -> {
+            Machine machine = machine(custom, spec);
+            Miner miner = miner(pos, machine);
+            if (miner.pending() > 0 || machine.energy().stored() < Miner.COST_PER_BLOCK) {
+                return;
+            }
+            for (int i = 0; i < Miner.LOOKS_PER_TICK && machine.energy().stored() >= Miner.COST_PER_BLOCK; i++) {
+                int[] offset = miner.next(depth);
+                if (offset == null) {
+                    break;
+                }
+                miner.advance();
+                targets.add(offset);
+            }
+            miner.begin(targets.size());
+            machine.setAttachment(miner.save());
+        });
+        Location home = block.getLocation().add(0.5, 1.0, 0.5);
+        for (int[] offset : targets) {
+            Location at = new Location(world, block.getX() + offset[0], block.getY() + offset[1], block.getZ() + offset[2]);
+            Prism.scheduler().runAt(at, () -> mineOne(at, home, pos, custom, spec));
+        }
+    }
+
+    /** On the thread that owns {@code at}. */
+    private void mineOne(Location at, Location home, Pos pos, CustomBlock miner, MachineBehavior spec) {
+        List<ItemStack> drops = List.of();
+        try {
+            if (!at.getWorld().isChunkLoaded(at.getBlockX() >> 4, at.getBlockZ() >> 4)) {
+                return;
+            }
+            Block target = at.getBlock();
+            String id = target.getType().getKey().toString();
+            boolean custom = Prism.blocks().get(target).isPresent();
+            if (!custom && Miner.accepts(id)) {
+                boolean paid = locked(() -> {
+                    Machine machine = machines.get(pos);
+                    return machine != null && machine.energy().consume(Miner.COST_PER_BLOCK);
+                });
+                if (paid) {
+                    drops = new ArrayList<>(target.getDrops());
+                    target.setType(Material.AIR);
+                }
+            }
+        } finally {
+            List<ItemStack> mined = drops;
+            List<ItemStack> spill = locked(() -> {
+                Miner state = miners.get(pos);
+                if (state != null) {
+                    state.finish();
+                }
+                Machine machine = machines.get(pos);
+                List<ItemStack> left = new ArrayList<>();
+                for (ItemStack drop : mined) {
+                    Stack rest = machine == null ? new Stack(itemId(drop), drop.getAmount())
+                            : machine.insertOutput(new Stack(itemId(drop), drop.getAmount()));
+                    if (rest.count() > 0) {
+                        ItemStack copy = drop.clone();
+                        copy.setAmount(rest.count());
+                        left.add(copy);
+                    }
+                }
+                return left;
+            });
+            if (!spill.isEmpty()) {
+                Prism.scheduler().runAt(home, () -> spill.forEach(item -> home.getWorld().dropItemNaturally(home, item)));
+            }
+        }
+    }
+
+    /** Right click on a digital miner holding a compass: the next scan radius (the scan starts again). */
+    boolean setRadius(BlockContext context, Machine machine) {
+        ItemStack held = context.heldItem();
+        Player player = context.player();
+        if (held == null || player == null || held.getType() != Material.COMPASS) {
+            return false;
+        }
+        Pos pos = pos(context.block());
+        String text = locked(() -> {
+            Miner miner = miner(pos, machine);
+            int radius = miner.nextRadius();
+            machine.setAttachment(miner.save());
+            return "Scan radius " + radius + " (" + (2 * radius + 1) + " x " + (2 * radius + 1) + " columns)";
+        });
+        Prism.scheduler().runOn(player, () -> player.sendActionBar(Component.text(text)), null);
+        return true;
+    }
+
+
+    // ---------------------------------------------------------------- teleporter
+
+    /**
+     * Right click on a teleporter. Holding a name tag with a name tunes it to that frequency. Otherwise the player
+     * travels to the next teleporter of the same frequency, and the teleporter they clicked pays the energy.
+     */
+    void teleport(BlockContext context, Machine machine) {
+        Player player = context.player();
+        if (player == null) {
+            return;
+        }
+        Pos here = pos(context.block());
+        ItemStack held = context.heldItem();
+        if (held != null && held.getType() == Material.NAME_TAG && held.hasItemMeta() && held.getItemMeta().hasDisplayName()) {
+            String name = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()
+                    .serialize(held.getItemMeta().displayName()).replace("|", "").replace("=", "");
+            locked(() -> {
+                machine.setAttachment(Teleport.Tuning.parse(machine.attachment()).tuned(name).save());
+                return null;
+            });
+            Prism.scheduler().runOn(player, () -> player.sendActionBar(Component.text("Tuned to \"" + name + "\"")), null);
+            return;
+        }
+        Object[] result = locked(() -> {
+            Teleport.Tuning tuning = Teleport.Tuning.parse(machine.attachment());
+            List<Pos> same = new ArrayList<>();
+            for (var entry : machines.entrySet()) {
+                Machine other = entry.getValue();
+                if (other.type().id().equals(machine.type().id())
+                        && Teleport.Tuning.parse(other.attachment()).frequency().equals(tuning.frequency())) {
+                    same.add(entry.getKey());
+                }
+            }
+            Pos target = Teleport.pick(here, same, tuning.counter());
+            if (target == null) {
+                return new Object[] {"No other teleporter on \"" + tuning.frequency() + "\"", null};
+            }
+            long cost = Teleport.cost(here, target);
+            if (!machine.energy().consume(cost)) {
+                return new Object[] {"Needs " + Text.number(cost) + " J, has " + Text.number(machine.energy().stored()), null};
+            }
+            machine.setAttachment(tuning.next().save());
+            return new Object[] {"Teleporting (" + Text.number(cost) + " J)", target};
+        });
+        Pos target = (Pos) result[1];
+        Prism.scheduler().runOn(player, () -> {
+            player.sendActionBar(Component.text((String) result[0]));
+            org.bukkit.World world = target == null ? null : org.bukkit.Bukkit.getWorld(target.world());
+            if (world != null) {
+                player.teleportAsync(new Location(world, target.x() + 0.5, target.y() + 1.0, target.z() + 0.5,
+                        player.getLocation().getYaw(), player.getLocation().getPitch()));
+            }
+        }, null);
     }
 
     // ---------------------------------------------------------------- conduits

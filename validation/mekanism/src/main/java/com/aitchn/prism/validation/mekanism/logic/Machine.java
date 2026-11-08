@@ -34,6 +34,7 @@ public final class Machine {
     private long ticks;
     private boolean dead;
     private volatile boolean menuOpen;
+    private String attachment;
     private boolean autoEject;
     private Redstone redstone = Redstone.IGNORE;
     private boolean powered;
@@ -63,6 +64,28 @@ public final class Machine {
     /** While a player's menu shows the output slot, transporters leave it alone so both views stay in step. */
     public void setMenuOpen(boolean open) {
         menuOpen = open;
+    }
+
+    /** A short text kept with the machine for a part that lives beside it (a miner's scan); no '|' or '='. */
+    public String attachment() {
+        return attachment;
+    }
+
+    public void setAttachment(String text) {
+        attachment = text;
+    }
+
+    /** Adds items to the output slot (not while a menu shows it); returns what did not fit. */
+    public Stack insertOutput(Stack stack) {
+        if (menuOpen || (output != null && !output.id().equals(stack.id()))) {
+            return stack;
+        }
+        int have = output == null ? 0 : output.count();
+        int accepted = Math.min(stack.count(), Stack.MAX - have);
+        if (accepted > 0) {
+            output = new Stack(stack.id(), have + accepted);
+        }
+        return stack.withCount(stack.count() - accepted);
     }
 
     public boolean autoEject() {
@@ -450,6 +473,9 @@ public final class Machine {
         }
         appendFaces(out);
         appendTransport(out);
+        if (attachment != null) {
+            out.append("|t=").append(attachment);
+        }
         if (input != null) {
             out.append("|i=").append(input.id()).append(',').append(input.count());
         }
@@ -477,6 +503,9 @@ public final class Machine {
         }
         appendFaces(out);
         appendTransport(out);
+        if (attachment != null) {
+            out.append("|t=").append(attachment);
+        }
         appendTank(out, 'a', inTank);
         appendTank(out, 'b', outTank);
         appendTank(out, 'c', outTank2);
@@ -532,6 +561,7 @@ public final class Machine {
                     case 'p' -> savedProgress = Integer.parseInt(value);
                     case 'r' -> recipeIndex = Integer.parseInt(value);
                     case 'k' -> savedBatch = Integer.parseInt(value);
+                    case 't' -> attachment = value;
                     case 'i' -> setInput(stack(value));
                     case 'x' -> setExtra(stack(value));
                     case 'f' -> {

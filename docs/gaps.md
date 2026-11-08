@@ -207,3 +207,11 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
     ultimate (9). Pick it up and place it again: energy, upgrades and tank contents stay.
 27. A factory feeding a second factory through a logistical transporter (item configurator for faces): a stack
     walks through both without hands.
+
+### Stage 4b additions (hand tests)
+
+28. Digital miner: place it above an ore vein, feed it power (cable or energy tablet), watch the GUI output slot fill
+    with raw ore. Use a compass on it to change the radius. With a full output slot the next drops fall beside it.
+29. Teleporter: place two, tune both with a name tag called "home" (anvil rename), power both. Right click one: you
+    arrive on the other; the clicked one loses 2,000 J plus 20 J per block. With no power the action bar says how much
+    it needs.

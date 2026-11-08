@@ -173,11 +173,11 @@ blocks:  # non-machine blocks and transmitter kinds (tiers count under mechanics
   personal_chest: missing
   quantum_entangloporter: missing
   teleporter_frame: missing
-  teleporter: missing
+  teleporter: done
   laser: missing
   laser_amplifier: missing
   laser_tractor_beam: missing
-  digital_miner: missing
+  digital_miner: done
   logistical_sorter: missing
   radioactive_waste_barrel: missing
   chemical_tank: done
@@ -260,8 +260,8 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   radiation: missing              # radiation sources and exposure (6)
   multiblock_dynamic_tank: missing   # needs the Prism structure service (5)
   multiblock_induction_matrix: missing  # needs the Prism structure service (5)
-  digital_miner: missing          # filters, radius, quarry loop (4)
-  teleporter_system: missing      # frequencies, linking, energy cost (4)
+  digital_miner: partial          # scans a radius, mines ores into the output; no custom filters, no silk touch, spills extra stacks
+  teleporter_system: partial      # name-tag frequencies, energy by distance, click to travel; no portal frame, no GUI
   factory_system: done            # nine kinds in four tiers, 3 to 9 lanes; chained with transporters in FactoryTest
   chemical_tanks: partial         # chemical and fluid tank, one tier each
   qio_storage: missing            # QIO drive array network (6)
