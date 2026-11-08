@@ -80,7 +80,7 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
             changed += looks.rewriteSection(sectionY, new SectionStates() {
                 @Override
                 public int get(int x, int y, int z) {
-                    return section.get(version, x, y, z).getGlobalId();
+                    return section.getBlockId(x, y, z);
                 }
 
                 @Override
@@ -109,7 +109,7 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
         int rewritten = looks.rewrite(at.getX() & 15, at.getY(), at.getZ() & 15, state,
                 ClientStates::isLegacyCarrier, (x, y, z) -> foreign.foreign(world.getUID(), at.getX(), y, at.getZ()));
         if (rewritten != state) {
-            wrapper.setBlockId(rewritten);
+            wrapper.setBlockID(rewritten);
             event.markForReEncode(true);
         }
     }
