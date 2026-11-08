@@ -150,6 +150,28 @@ class BedrockPackBuilderTest {
     }
 
     @Test
+    void passableBlocksMapToTripwireWithoutCollision() throws Exception {
+        var flower = new com.aitchn.prism.api.content.BlockDefinition(PrismKey.parse("m:flower"), "mod",
+                PrismKey.parse("minecraft:barrier"), java.util.Optional.empty(), ComponentMap.builder()
+                        .put(com.aitchn.prism.api.content.PrismComponents.PASSABLE,
+                                new com.aitchn.prism.api.content.PrismComponents.Passable(true)).build(), List.of());
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        files.put("assets/m/textures/block/flower.png", PNG);
+        int state = com.aitchn.prism.core.block.TripwireStates.OFFSET + 2;
+        var result = BedrockPackBuilder.build(new BedrockPackBuilder.Input(Map.of("mod", files), List.of(), "test",
+                List.of(flower), Map.of("m:flower", state)));
+        String mappings = result.blockMappings();
+        assertTrue(mappings.contains("\"minecraft:tripwire\""), mappings);
+        assertTrue(!mappings.contains("\"minecraft:note_block\""), mappings);
+        assertTrue(mappings.contains(com.aitchn.prism.core.block.TripwireStates.state(state).variant()), mappings);
+        assertTrue(mappings.contains("\"collision_box\""), mappings);
+        String geometry = new String(entries(result.mcpack()).get("models/blocks/prism/prismb_m_flower.geo.json"),
+                StandardCharsets.UTF_8);
+        assertTrue(geometry.contains("\"rotation\""), geometry);
+        assertEquals(1, result.geometries());
+    }
+
+    @Test
     void javaSoundsBecomeBedrockSoundDefinitions() throws Exception {
         Map<String, byte[]> files = new LinkedHashMap<>();
         files.put("assets/m/sounds.json", ("{\"machine.hum\":{\"sounds\":[\"m:machine/hum\","

@@ -6,6 +6,7 @@ import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.block.ConnectedShapes;
+import com.aitchn.prism.core.block.TripwireStates;
 import com.aitchn.prism.pack.json.JsonWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -121,16 +122,23 @@ public final class JavaPackBuilder {
                 PrismKey model = Appearances.model(block, variant);
                 PrismKey itemModel = Appearances.itemModel(block.key(), variant);
                 String definitionPath = "assets/" + itemModel.namespace() + "/items/" + itemModel.value() + ".json";
+                // A passable block without a model of its own is a cross of its texture, like a flower.
+                boolean cross = Appearances.passable(block);
                 all &= generate(files, warnings, "block " + block.key() + (variant.isEmpty() ? "" : " variant " + variant),
-                        definitionPath, model, "minecraft:block/cube_all", "all", "block");
+                        definitionPath, model, cross ? "minecraft:block/cross" : "minecraft:block/cube_all",
+                        cross ? "cross" : "all", "block");
             }
             if (all) {
                 blocksOk.add(block.key());
             }
         }
-        if (!input.nativeStates().isEmpty()) {
+        if (input.nativeStates().keySet().stream().anyMatch(id -> !TripwireStates.isTripwire(id))) {
             files.put(NativeBlockstates.PATH,
                     NativeBlockstates.noteBlock(input.nativeStates()).getBytes(StandardCharsets.UTF_8));
+        }
+        if (input.nativeStates().keySet().stream().anyMatch(TripwireStates::isTripwire)) {
+            files.put(NativeBlockstates.TRIPWIRE_PATH,
+                    NativeBlockstates.tripwire(input.nativeStates()).getBytes(StandardCharsets.UTF_8));
         }
 
         files.put("pack.mcmeta", mcmeta(input).getBytes(StandardCharsets.UTF_8));

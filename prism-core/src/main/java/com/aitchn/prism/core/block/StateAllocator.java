@@ -15,19 +15,33 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class StateAllocator {
 
-    private static final String PREFIX = "native:";
-
+    private final String prefix;
+    private final int first;
+    private final int end;
     private final DataStore store;
     private final Map<String, Integer> byId = new HashMap<>();
     private final Map<Integer, String> byIndex = new HashMap<>();
 
+    /** Note block states 1 to 799 (state 0 is the plain note block). */
     public StateAllocator(@NotNull DataStore store) {
+        this(store, "native:", 1, NoteBlockStates.COUNT);
+    }
+
+    /** The passable tripwire states ({@link TripwireStates}). */
+    public static @NotNull StateAllocator tripwire(@NotNull DataStore store) {
+        return new StateAllocator(store, "tripwire:", TripwireStates.OFFSET, TripwireStates.OFFSET + TripwireStates.COUNT);
+    }
+
+    private StateAllocator(DataStore store, String prefix, int first, int end) {
+        this.prefix = prefix;
+        this.first = first;
+        this.end = end;
         this.store = store;
-        for (String stored : store.keys(PREFIX)) {
+        for (String stored : store.keys(prefix)) {
             store.get(stored).ifPresent(value -> {
                 try {
                     int index = Integer.parseInt(value);
-                    String id = stored.substring(PREFIX.length());
+                    String id = stored.substring(prefix.length());
                     byId.put(id, index);
                     byIndex.put(index, id);
                 } catch (NumberFormatException ignored) {
@@ -37,17 +51,17 @@ public final class StateAllocator {
         }
     }
 
-    /** The state index of {@code id}, allocating the lowest free one (from 1) on first use. */
+    /** The state index of {@code id}, allocating the lowest free one on first use. */
     public synchronized @NotNull OptionalInt allocate(@NotNull String id) {
         Integer existing = byId.get(id);
         if (existing != null) {
             return OptionalInt.of(existing);
         }
-        for (int index = 1; index < NoteBlockStates.COUNT; index++) {
+        for (int index = first; index < end; index++) {
             if (!byIndex.containsKey(index)) {
                 byId.put(id, index);
                 byIndex.put(index, id);
-                store.put(PREFIX + id, Integer.toString(index));
+                store.put(prefix + id, Integer.toString(index));
                 return OptionalInt.of(index);
             }
         }

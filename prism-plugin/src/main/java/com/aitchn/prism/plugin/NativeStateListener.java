@@ -2,19 +2,22 @@ package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.block.BlockService;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPhysicsEvent;
 import org.bukkit.event.block.NotePlayEvent;
+import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 /**
- * Keeps vanilla note block behaviour from changing or sounding a custom block drawn as a note block state: no
- * re-tuning by click, no instrument change from the block below, no note when powered. Ported from the M5b native
- * backend.
+ * Keeps vanilla behaviour from changing a custom block drawn as a carrier state. Note blocks: no re-tuning by click, no
+ * instrument change from the block below, no note when powered (ported from the M5b native backend). Tripwire
+ * (passable blocks): no connecting to neighbouring string, no pressing by entities, no washing away by water or lava.
  */
 final class NativeStateListener implements Listener {
 
@@ -39,9 +42,42 @@ final class NativeStateListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPhysics(BlockPhysicsEvent event) {
-        if (event.getBlock().getType() == Material.NOTE_BLOCK && blocks.identify(event.getBlock()).isPresent()) {
+        if (carrier(event.getBlock())) {
             event.setCancelled(true);
         }
+    }
+
+    /** An entity or player standing in string presses it ({@code powered}), which would change the look. */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onEntityPress(EntityInteractEvent event) {
+        if (passable(event.getBlock())) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerPress(PlayerInteractEvent event) {
+        if (event.getAction() == Action.PHYSICAL && event.getClickedBlock() != null
+                && passable(event.getClickedBlock())) {
+            event.setUseInteractedBlock(Event.Result.DENY);
+        }
+    }
+
+    /** Flowing water and lava would break string and drop it. */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onFlow(BlockFromToEvent event) {
+        if (passable(event.getToBlock())) {
+            event.setCancelled(true);
+        }
+    }
+
+    private boolean carrier(Block block) {
+        Material type = block.getType();
+        return (type == Material.NOTE_BLOCK || type == Material.TRIPWIRE) && blocks.identify(block).isPresent();
+    }
+
+    private boolean passable(Block block) {
+        return block.getType() == Material.TRIPWIRE && blocks.identify(block).isPresent();
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)

@@ -99,6 +99,15 @@ class ExampleModTest {
     }
 
     @Test
+    void flowerIsPassable() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var flower = harness.block("examplemod:ruby_flower");
+        assertTrue(com.aitchn.prism.core.block.Appearances.passable(flower));
+        assertTrue(!com.aitchn.prism.core.block.Appearances.passable(harness.block("examplemod:ruby_block")));
+    }
+
+    @Test
     void recipesLoadForPrismAndModTypes() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());

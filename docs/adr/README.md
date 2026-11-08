@@ -22,3 +22,4 @@ the ADRs are the authoritative English form.
 | [0014](0014-item-handler-and-text-prompts.md) | Item handler capability and text prompts | Accepted |
 | [0015](0015-sounds-and-animated-textures.md) | Custom sounds, ambient block sounds and animated textures | Accepted |
 | [0016](0016-connected-blocks.md) | Connected blocks | Accepted |
+| [0017](0017-passable-blocks.md) | Passable blocks | Accepted |

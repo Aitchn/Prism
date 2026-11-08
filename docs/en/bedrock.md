@@ -10,6 +10,7 @@ Bedrock players join through Geyser. Prism detects them (Floodgate, then Geyser)
 | Blocks (default) | note block state + resource pack | note block state + Geyser custom block mapping |
 | Blocks with a BetterModel model | animated model (display entity) | static block textured with `textures/block/<name>.png` (a plain note block if there is none), sent to each Bedrock player |
 | Connected blocks (`prism:connections`) | display entity over a barrier | generated shape per combination of sides, sent to each Bedrock player |
+| Passable blocks (`prism:passable`) | tripwire state + resource pack | tripwire state + Geyser mapping without collision |
 | Any block with `blocks.backend: display` | display entity | **not visible** (Geyser cannot draw display entities) |
 | Block variants (`prism:variants`, `setVariant`) | yes | yes |
 | Custom sounds (`sounds.json`, `prism:ambient_sound`) | yes | yes (Bedrock pack `sound_definitions`, played through Geyser) |
@@ -30,7 +31,7 @@ into the proxy's Geyser folder and restart the proxy.
 
 ## Limits
 
-- 799 block looks (variant x facing, or variant x combination of sides) across all mods.
+- 799 block looks (variant x facing, or variant x combination of sides) across all mods, plus 64 passable looks.
 - Custom blocks drawn as note blocks break like note blocks (axe, quick); `prism:mining` applies only to display blocks.
 - A vanilla note block tuned to a state owned by a custom look shows that look.
 

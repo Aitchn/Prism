@@ -36,6 +36,11 @@ its answer changes. Java players see a display entity over a barrier, so the fac
 Bedrock players see a generated shape, one note block state per variant and combination of sides (64 for six sides,
 16 for four). `examplemod:ruby_cable` is an example.
 
+**Passable blocks.** `prism:passable: true` makes a block players walk through, like a flower or a wire. Prism draws
+it with one of 64 tripwire states instead of a note block state, so it has no collision on either edition, does not
+hide the blocks around it and breaks instantly. Without a model of its own, its texture is drawn as a cross, like a
+flower. `examplemod:ruby_flower` is an example.
+
 **Ores.** `prism:ore` generates a block as veins in newly generated chunks: `dimension`, `replace` (vanilla blocks),
 `min_y`, `max_y`, `veins_per_chunk`, `rarity` and `size`, or a list of such specs. Veins stay inside their chunk.
 Chunks that existed before the mod was installed get none. `examplemod:ruby_ore` is an example; it is a note block

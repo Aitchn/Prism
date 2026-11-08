@@ -1,0 +1,6 @@
+# Key: examplemod:ruby_flower. A flower players walk through (prism:passable): drawn as a cross of
+# assets/examplemod/textures/block/ruby_flower.png on a tripwire state, on Java and Bedrock. Breaks instantly.
+base: minecraft:barrier
+drop: examplemod:ruby_flower
+components:
+  prism:passable: true
