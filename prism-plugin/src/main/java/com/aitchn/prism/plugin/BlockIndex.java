@@ -27,7 +27,20 @@ import org.jetbrains.annotations.Nullable;
  */
 final class BlockIndex {
 
-    record Entry(PrismKey key, BlockFace facing, String variant) {}
+    /** {@code connections} is the connection mask of a connected block, or -1 for any other block. */
+    record Entry(PrismKey key, BlockFace facing, String variant, int connections) {
+        Entry(PrismKey key, BlockFace facing, String variant) {
+            this(key, facing, variant, -1);
+        }
+
+        Entry withVariant(String variant) {
+            return new Entry(key, facing, variant, connections);
+        }
+
+        Entry withConnections(int connections) {
+            return new Entry(key, facing, variant, connections);
+        }
+    }
 
     record ChunkId(UUID world, long chunk) {
         static ChunkId of(Chunk chunk) {
@@ -68,6 +81,7 @@ final class BlockIndex {
     private final NamespacedKey facingKey;
     private final NamespacedKey dataKey;
     private final NamespacedKey variantKey;
+    private final NamespacedKey connectionsKey;
     private final Map<ChunkId, Loaded> loaded = new ConcurrentHashMap<>();
 
     BlockIndex(Plugin prism) {
@@ -77,6 +91,7 @@ final class BlockIndex {
         this.facingKey = new NamespacedKey(prism, "facing");
         this.dataKey = new NamespacedKey(prism, "data");
         this.variantKey = new NamespacedKey(prism, "variant");
+        this.connectionsKey = new NamespacedKey(prism, "connections");
     }
 
     /** Reads the chunk's entries into memory (idempotent) and returns the mirror. */
@@ -111,9 +126,10 @@ final class BlockIndex {
             String raw = entry.get(keyKey, PersistentDataType.STRING);
             String facing = entry.getOrDefault(facingKey, PersistentDataType.STRING, "NORTH");
             String variant = entry.getOrDefault(variantKey, PersistentDataType.STRING, "");
+            int connections = entry.getOrDefault(connectionsKey, PersistentDataType.INTEGER, -1);
             try {
-                mirror.blocks.put(BlockPositions.pack(pos[0], pos[1], pos[2]),
-                        new Entry(PrismKey.parse(raw == null ? "" : raw), BlockFace.valueOf(facing), variant));
+                mirror.blocks.put(BlockPositions.pack(pos[0], pos[1], pos[2]), new Entry(
+                        PrismKey.parse(raw == null ? "" : raw), BlockFace.valueOf(facing), variant, connections));
             } catch (IllegalArgumentException e) {
                 // Unreadable entry (for example a hand-edited chunk): ignore it rather than failing the chunk.
             }
@@ -138,6 +154,9 @@ final class BlockIndex {
         stored.set(keyKey, PersistentDataType.STRING, entry.key().toString());
         stored.set(facingKey, PersistentDataType.STRING, entry.facing().name());
         stored.set(variantKey, PersistentDataType.STRING, entry.variant());
+        if (entry.connections() >= 0) {
+            stored.set(connectionsKey, PersistentDataType.INTEGER, entry.connections());
+        }
         stored.set(dataKey, PersistentDataType.TAG_CONTAINER, pdc.getAdapterContext().newPersistentDataContainer());
         pdc.set(entryKey(block), PersistentDataType.TAG_CONTAINER, stored);
         mirror.blocks.put(packed(block), entry);
@@ -146,6 +165,18 @@ final class BlockIndex {
 
     /** Changes the variant of an existing entry; its data is kept. */
     void setVariant(Block block, String variant) {
+        update(block, old -> old.withVariant(variant), stored -> stored.set(variantKey, PersistentDataType.STRING,
+                variant));
+    }
+
+    /** Changes the connection mask of an existing entry; its data is kept. */
+    void setConnections(Block block, int connections) {
+        update(block, old -> old.withConnections(connections), stored -> stored.set(connectionsKey,
+                PersistentDataType.INTEGER, connections));
+    }
+
+    private void update(Block block, java.util.function.UnaryOperator<Entry> change,
+            java.util.function.Consumer<PersistentDataContainer> write) {
         Chunk chunk = block.getChunk();
         Loaded mirror = load(chunk);
         Entry old = mirror.blocks.get(packed(block));
@@ -155,10 +186,10 @@ final class BlockIndex {
         PersistentDataContainer pdc = chunk.getPersistentDataContainer();
         PersistentDataContainer stored = pdc.get(entryKey(block), PersistentDataType.TAG_CONTAINER);
         if (stored != null) {
-            stored.set(variantKey, PersistentDataType.STRING, variant);
+            write.accept(stored);
             pdc.set(entryKey(block), PersistentDataType.TAG_CONTAINER, stored);
         }
-        mirror.blocks.put(packed(block), new Entry(old.key(), old.facing(), variant));
+        mirror.blocks.put(packed(block), change.apply(old));
     }
 
     void remove(Block block) {

@@ -1,0 +1,5 @@
+# The item form of the cable: using it on a block face places examplemod:ruby_cable.
+base: minecraft:paper
+components:
+  prism:display_name: "<red>Ruby Cable"
+  prism:places_block: examplemod:ruby_cable

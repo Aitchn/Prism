@@ -86,6 +86,19 @@ class ExampleModTest {
     }
 
     @Test
+    void cableConnectsToCablesAndCounters() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var cable = harness.block("examplemod:ruby_cable");
+        var connections = cable.components().get(PrismComponents.CONNECTIONS).orElseThrow();
+        assertEquals(java.util.List.of("self", "examplemod:ruby_counter"), connections.connectsTo());
+        assertEquals(PrismComponents.Connections.SIDES, connections.faces());
+        assertEquals(64, connections.masks().size());
+        assertEquals(64, com.aitchn.prism.core.block.Appearances.looks(cable).size());
+        assertEquals("examplemod:ruby_cable", cable.drop().orElseThrow().toString());
+    }
+
+    @Test
     void recipesLoadForPrismAndModTypes() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());
