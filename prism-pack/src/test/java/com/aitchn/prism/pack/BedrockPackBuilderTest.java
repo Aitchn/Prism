@@ -98,6 +98,44 @@ class BedrockPackBuilderTest {
     }
 
     @Test
+    void animatedBlockTexturesBecomeFlipbooks() throws Exception {
+        var block = new com.aitchn.prism.api.content.BlockDefinition(PrismKey.parse("m:screen"), "mod",
+                PrismKey.parse("minecraft:barrier"), java.util.Optional.empty(), ComponentMap.empty(), List.of());
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        files.put("assets/m/textures/block/screen.png", PNG);
+        files.put("assets/m/textures/block/screen.png.mcmeta",
+                "{\"animation\":{\"frametime\":4}}".getBytes(StandardCharsets.UTF_8));
+        var result = BedrockPackBuilder.build(new BedrockPackBuilder.Input(Map.of("mod", files), List.of(), "test",
+                List.of(block), Map.of("m:screen", 3)));
+        String flipbook = new String(entries(result.mcpack()).get("textures/flipbook_textures.json"),
+                StandardCharsets.UTF_8);
+        assertTrue(flipbook.contains("\"atlas_tile\": \"prismb_m_block_screen\""), flipbook);
+        assertTrue(flipbook.contains("\"ticks_per_frame\": 4"), flipbook);
+        assertTrue(flipbook.contains("textures/prism/blocks/prismb_m_block_screen"), flipbook);
+    }
+
+    @Test
+    void javaSoundsBecomeBedrockSoundDefinitions() throws Exception {
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        files.put("assets/m/sounds.json", ("{\"machine.hum\":{\"sounds\":[\"m:machine/hum\","
+                + "{\"name\":\"m:machine/hum2\",\"volume\":0.5,\"stream\":true}]},"
+                + "\"missing\":{\"sounds\":[\"m:nope\"]}}").getBytes(StandardCharsets.UTF_8));
+        files.put("assets/m/sounds/machine/hum.ogg", new byte[] {1, 2});
+        files.put("assets/m/sounds/machine/hum2.ogg", new byte[] {3});
+        files.put("assets/minecraft/sounds.json", "{\"x\":{\"sounds\":[\"y\"]}}".getBytes(StandardCharsets.UTF_8));
+        var result = BedrockPackBuilder.build(input(files));
+        Map<String, byte[]> zip = entries(result.mcpack());
+        String definitions = new String(zip.get("sounds/sound_definitions.json"), StandardCharsets.UTF_8);
+        assertTrue(definitions.contains("\"m:machine.hum\""), definitions);
+        assertTrue(definitions.contains("\"sounds/prism/m/machine/hum\""), definitions);
+        assertTrue(definitions.contains("\"volume\": 0.5"), definitions);
+        assertTrue(!definitions.contains("\"x\""), definitions);
+        assertTrue(!definitions.contains("m:missing"), definitions);
+        assertArrayEquals(new byte[] {1, 2}, zip.get("sounds/prism/m/machine/hum.ogg"));
+        assertTrue(result.warnings().stream().anyMatch(w -> w.contains("m:missing")), result.warnings().toString());
+    }
+
+    @Test
     void manifestVersionFollowsContent() throws Exception {
         String a = new String(entries(BedrockPackBuilder.build(input(Map.of("assets/m/textures/item/ruby.png", PNG),
                 item("m:ruby"))).mcpack()).get("manifest.json"), StandardCharsets.UTF_8);

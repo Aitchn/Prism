@@ -16,6 +16,11 @@
 方塊透過 `BlockCapability` 與 `BlockCapabilityProvider` 對鄰居提供服務；Prism 只提供查找機制與 `PrismCapabilities.INVENTORY`。
 `prism:rotation` 讓方塊面向玩家放置，`prism:mining` 設定生存模式挖掘所需時間。
 
+**音效與動畫材質。** 音效依 Java 資源包的方式放進 jar（`assets/<ns>/sounds.json` 加上 `.ogg` 檔），
+用 Bukkit 的 `playSound(location, "<ns>:<event>", ...)` 播放。Prism 也會把它們放進基岩版資源包，基岩版玩家透過 Geyser 聽得到。
+`prism:ambient_sound` 讓方塊每隔 `interval` 刻自己播放音效，可以限定只在列出的變體播放，方塊消失就停止。
+動畫材質（`<texture>.png.mcmeta` 含 `animation`）在 Java 版會動，在基岩版則轉成 flipbook。紅寶石計數器啟動時會發出嗡嗡聲並閃爍。
+
 **礦石。** `prism:ore` 讓方塊以礦脈形式出現在新生成的區塊：`dimension`、`replace`（可取代的原版方塊）、`min_y`、`max_y`、
 `veins_per_chunk`、`rarity` 與 `size`，也可以寫成多組設定的清單。礦脈不會超出所在區塊。安裝模組之前就存在的區塊不會長出礦石。
 範例是 `examplemod:ruby_ore`；它使用音符盒狀態呈現，所以基岩版玩家也看得到。

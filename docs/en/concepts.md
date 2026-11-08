@@ -20,6 +20,13 @@ neighbour changes and ticks (`BlockTickBehavior`, batched per chunk). `CustomBlo
 `BlockCapability` and `BlockCapabilityProvider`; Prism defines only the lookup and `PrismCapabilities.INVENTORY`.
 `prism:rotation` makes a block face the player; `prism:mining` sets how long it takes to break in survival.
 
+**Sounds and animated textures.** Put sounds in your jar as on a Java resource pack (`assets/<ns>/sounds.json` plus
+`.ogg` files) and play them with Bukkit's `playSound(location, "<ns>:<event>", ...)`. Prism also copies them into the
+Bedrock pack, so Bedrock players hear them through Geyser. `prism:ambient_sound` makes a block play a sound by itself
+every `interval` ticks, only in the listed variants. It stops when the block goes. An animated texture
+(`<texture>.png.mcmeta` with `animation`) animates on Java and becomes a flipbook on Bedrock. The ruby counter hums
+and glows while active.
+
 **Ores.** `prism:ore` generates a block as veins in newly generated chunks: `dimension`, `replace` (vanilla blocks),
 `min_y`, `max_y`, `veins_per_chunk`, `rarity` and `size`, or a list of such specs. Veins stay inside their chunk.
 Chunks that existed before the mod was installed get none. `examplemod:ruby_ore` is an example; it is a note block

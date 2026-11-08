@@ -417,14 +417,23 @@ final class PrismBlockService implements BlockService, Listener {
 
     private void startTicking(CustomBlock custom) {
         List<BlockTickBehavior> tickers = custom.definition().behaviors(BlockTickBehavior.class);
-        if (tickers.isEmpty()) {
+        Optional<PrismComponents.AmbientSound> ambient = custom.definition().components()
+                .get(PrismComponents.AMBIENT_SOUND);
+        if (tickers.isEmpty() && ambient.isEmpty()) {
             return;
         }
         BlockIndex.Loaded mirror = index.load(custom.block().getChunk());
         TickSchedule<Runnable> schedule = schedule(mirror);
         long base = BlockIndex.packed(custom.block()) << 4;
         Block block = custom.block();
-        for (int i = 0; i < tickers.size() && i < 16; i++) {
+        // Slot 15 of the block's 16 schedule slots is the ambient sound; behaviors use the others.
+        ambient.ifPresent(sound -> schedule.add(base | AMBIENT_SLOT, () -> get(block).ifPresent(current -> {
+            if (sound.playsIn(current.variant())) {
+                block.getWorld().playSound(block.getLocation().toCenterLocation(), sound.sound().toString(),
+                        org.bukkit.SoundCategory.BLOCKS, sound.volume(), sound.pitch());
+            }
+        }), sound.interval()));
+        for (int i = 0; i < tickers.size() && i < AMBIENT_SLOT; i++) {
             BlockTickBehavior ticker = tickers.get(i);
             schedule.add(base | i, () -> get(block).ifPresent(current -> {
                 BlockEventContext context = BlockEventContext.of(current, null);
@@ -436,6 +445,8 @@ final class PrismBlockService implements BlockService, Listener {
             }), safeInterval(ticker));
         }
     }
+
+    private static final int AMBIENT_SLOT = 15;
 
     private static int safeInterval(BlockTickBehavior ticker) {
         try {
