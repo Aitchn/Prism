@@ -252,6 +252,21 @@ public final class PrismComponents {
                 return new Connections(ordered, rules, core, arm, texture);
             });
 
+    /**
+     * A block players walk through, like a flower, grass or a wire: no collision on either edition, and it does not hide
+     * the faces of the blocks around it. Prism draws it with one of 64 tripwire states (instead of a note block state),
+     * so it breaks instantly like string, and Bedrock players see it too. Without a model of its own the block's texture
+     * is drawn as a cross, like a flower. Each look (variant x facing) takes one of the 64 states. Ignored on blocks with
+     * {@code prism:connections} or a BetterModel model.
+     * <pre>{@code
+     * prism:passable: true
+     * }</pre>
+     */
+    public static final ComponentType<Passable> PASSABLE = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "passable"),
+            Passable.class,
+            section -> new Passable(section.getBoolean("value", true)));
+
     /** @see #VARIANTS */
     public record Variants(java.util.List<String> names) {}
 
@@ -345,6 +360,9 @@ public final class PrismComponents {
             return java.util.List.copyOf(masks);
         }
     }
+
+    /** @see #PASSABLE */
+    public record Passable(boolean value) {}
 
     /** @see #AMBIENT_SOUND */
     public record AmbientSound(PrismKey sound, int interval, float volume, float pitch,

@@ -72,6 +72,21 @@ class JavaPackBuilderTest {
     }
 
     @Test
+    void passableBlocksAreCrossesOnTheTripwire() throws Exception {
+        var flower = new BlockDefinition(PrismKey.parse("mod:flower"), "mod", PrismKey.parse("minecraft:barrier"),
+                Optional.empty(), ComponentMap.builder().put(PrismComponents.PASSABLE, new PrismComponents.Passable(true))
+                        .build(), List.of());
+        int state = com.aitchn.prism.core.block.TripwireStates.OFFSET;
+        var result = JavaPackBuilder.build(new JavaPackBuilder.Input(
+                Map.of("mod", Map.of("assets/mod/textures/block/flower.png", PNG)), List.of(), List.of(flower), 46,
+                "test", Map.of(state, new NativeBlockstates.StateModel(PrismKey.parse("mod:block/flower"), 0, 0))));
+        var files = entries(result.zip());
+        assertTrue(text(files, "assets/mod/models/block/flower.json").contains("minecraft:block/cross"));
+        assertTrue(text(files, NativeBlockstates.TRIPWIRE_PATH).contains("mod:block/flower"));
+        assertTrue(!files.containsKey(NativeBlockstates.PATH));
+    }
+
+    @Test
     void generatesItemDefinitionAndModelFromTexture() throws Exception {
         var result = JavaPackBuilder.build(new JavaPackBuilder.Input(
                 Map.of("mod", Map.of("assets/mod/textures/item/ruby.png", PNG)),

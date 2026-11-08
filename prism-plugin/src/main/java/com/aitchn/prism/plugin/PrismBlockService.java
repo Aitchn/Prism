@@ -65,6 +65,7 @@ final class PrismBlockService implements BlockService, Listener {
     private final BlockIndex index;
     private final DisplayEntityBackend display;
     private final NoteBlockAppearance noteBlocks;
+    private final TripwireAppearance tripwires;
     private final String backend;
     private final BehaviorDispatcher dispatcher;
     private final PlatformScheduler scheduler;
@@ -78,9 +79,10 @@ final class PrismBlockService implements BlockService, Listener {
      *                them), {@code display} (always display entities) or {@code native} (note block states only)
      */
     PrismBlockService(Registry<BlockDefinition> definitions, ItemService items, BlockIndex index,
-            DisplayEntityBackend display, NoteBlockAppearance noteBlocks, String backend, BehaviorDispatcher dispatcher,
-            PlatformScheduler scheduler, Logger log) {
+            DisplayEntityBackend display, NoteBlockAppearance noteBlocks, TripwireAppearance tripwires, String backend,
+            BehaviorDispatcher dispatcher, PlatformScheduler scheduler, Logger log) {
         this.noteBlocks = noteBlocks;
+        this.tripwires = tripwires;
         this.backend = backend;
         this.definitions = definitions;
         this.items = items;
@@ -331,7 +333,12 @@ final class PrismBlockService implements BlockService, Listener {
 
     /** The appearance new blocks of {@code definition} get. */
     private BlockAppearance appearanceFor(BlockDefinition definition) {
-        return usesNoteBlocks(backend, definition) ? noteBlocks : display;
+        return usesTripwire(backend, definition) ? tripwires : usesNoteBlocks(backend, definition) ? noteBlocks : display;
+    }
+
+    /** Whether new blocks of {@code definition} are drawn as passable tripwire states. */
+    static boolean usesTripwire(String backend, BlockDefinition definition) {
+        return !"display".equals(backend) && Appearances.passable(definition);
     }
 
     /** Whether new blocks of {@code definition} are drawn as note block states under the {@code blocks.backend} setting. */
@@ -339,17 +346,17 @@ final class PrismBlockService implements BlockService, Listener {
         // BetterModel models need an entity to animate, and a connected shape drawn by a note block would hide the faces
         // of its neighbours on Java (the note block is opaque to the client), so both always use a display entity.
         return !"display".equals(backend) && ModelAnchors.modelOf(definition).isEmpty()
-                && !definition.components().has(PrismComponents.CONNECTIONS);
+                && !definition.components().has(PrismComponents.CONNECTIONS) && !Appearances.passable(definition);
     }
 
     /** The appearance an existing block was placed with (blocks keep theirs when the setting changes). */
     BlockAppearance appearanceOf(Block block) {
-        return noteBlocks.draws(block) ? noteBlocks : display;
+        return noteBlocks.draws(block) ? noteBlocks : tripwires.draws(block) ? tripwires : display;
     }
 
     /** Whether the client breaks this block itself (its carrier is breakable), so Prism must not run the dig. */
     boolean clientBreaks(Block block) {
-        return noteBlocks.draws(block);
+        return noteBlocks.draws(block) || tripwires.draws(block);
     }
 
     @Override
@@ -399,6 +406,17 @@ final class PrismBlockService implements BlockService, Listener {
 
     // ---------------------------------------------------------------- neighbours
 
+    /**
+     * Puts a passable block's tripwire state back one tick later, in case the vanilla shape update that follows a
+     * neighbour change (string connecting to its neighbours) got past the physics guard.
+     */
+    private void redrawPassable(Block block) {
+        if (tripwires.draws(block) && index.get(block).isPresent()) {
+            scheduler.runAt(block.getLocation(), () -> get(block).ifPresent(custom -> tripwires.update(block,
+                    custom.definition(), custom.facing(), custom.variant())));
+        }
+    }
+
     /** Like {@link #notifyNeighbors} one tick later, for a change that has not happened yet. */
     void notifyNeighborsLater(Block changed) {
         scheduler.runAt(changed.getLocation(), () -> notifyNeighbors(changed));
@@ -410,6 +428,7 @@ final class PrismBlockService implements BlockService, Listener {
             Block neighbor = changed.getRelative(face);
             Runnable notify = () -> {
                 refreshConnections(neighbor);
+                redrawPassable(neighbor);
                 get(neighbor).ifPresent(custom -> dispatcher.dispatchBlock(custom.key(),
                         neighbor.getLocation(), BlockNeighborBehavior.class, d -> BlockEventContext.of(custom, null),
                         (b, c) -> b.onNeighborChanged(c, face.getOppositeFace())));

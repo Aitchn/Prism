@@ -68,10 +68,12 @@ public final class PrismPlugin extends JavaPlugin {
         String backend = getConfig().getString("blocks.backend", "auto");
         StateAllocator allocator = new StateAllocator(data.store("prism"));
         NoteBlockAppearance noteBlocks = new NoteBlockAppearance(allocator, getLogger());
-        packManager.useNativeStates(allocator, backend);
+        StateAllocator tripwireAllocator = StateAllocator.tripwire(data.store("prism"));
+        TripwireAppearance tripwires = new TripwireAppearance(tripwireAllocator, getLogger());
+        packManager.useNativeStates(allocator, tripwireAllocator, backend);
         packManager.installInto(new GeyserInstaller(getLogger(), getDataFolder().toPath().resolve("geyser")));
         PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, new BlockIndex(this), display,
-                noteBlocks, backend, dispatcher, scheduler, getLogger());
+                noteBlocks, tripwires, backend, dispatcher, scheduler, getLogger());
         RegistryRecipes recipes = new RegistryRecipes(mods.recipeTypes(), mods.recipes());
         VanillaRecipes vanillaRecipes = new VanillaRecipes(recipes, items, scheduler, getLogger());
         ModLifecycle lifecycle = new ModLifecycle(this, mods, () -> {
@@ -122,6 +124,11 @@ public final class PrismPlugin extends JavaPlugin {
         if (connectionSelfTest != null) {
             getServer().getPluginManager().registerEvents(new ConnectionSelfTest(connectionSelfTest, blocks,
                     modelLooks::lookOf, scheduler, getLogger()), this);
+        }
+        String passableSelfTest = System.getProperty("prism.selftest.passable");
+        if (passableSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new PassableSelfTest(
+                    com.aitchn.prism.api.PrismKey.parse(passableSelfTest), blocks, scheduler, getLogger()), this);
         }
         String oreSelfTest = System.getProperty("prism.selftest.ore");
         if (oreSelfTest != null) {

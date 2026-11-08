@@ -2,6 +2,7 @@ package com.aitchn.prism.pack;
 
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.core.block.NoteBlockStates;
+import com.aitchn.prism.core.block.TripwireStates;
 import com.aitchn.prism.pack.json.JsonWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 public final class NativeBlockstates {
 
     public static final String PATH = "assets/minecraft/blockstates/note_block.json";
+    public static final String TRIPWIRE_PATH = "assets/minecraft/blockstates/tripwire.json";
 
     private static final String VANILLA_MODEL = "minecraft:block/note_block";
 
@@ -54,5 +56,59 @@ public final class NativeBlockstates {
             }
         }
         return JsonWriter.write(Map.of("variants", variants));
+    }
+
+    /**
+     * The replacement tripwire blockstates: every vanilla string state keeps its vanilla model, and the allocated
+     * {@code disarmed=true} states ({@link TripwireStates}) get theirs.
+     *
+     * @param states state id to its model; only tripwire ids are read
+     */
+    public static @NotNull String tripwire(@NotNull Map<Integer, StateModel> states) {
+        Map<String, Object> variants = new LinkedHashMap<>();
+        boolean[] values = {false, true};
+        for (boolean attached : values) {
+            for (boolean disarmed : values) {
+                for (boolean east : values) {
+                    for (boolean north : values) {
+                        for (boolean powered : values) {
+                            for (boolean south : values) {
+                                for (boolean west : values) {
+                                    StateModel custom = disarmed ? states.get(TripwireStates.OFFSET + bits(attached,
+                                            east, north, powered, south, west)) : null;
+                                    Map<String, Object> variant = new LinkedHashMap<>();
+                                    if (custom != null) {
+                                        variant.put("model", custom.model().toString());
+                                        if (custom.x() != 0) {
+                                            variant.put("x", custom.x());
+                                        }
+                                        if (custom.y() != 0) {
+                                            variant.put("y", custom.y());
+                                        }
+                                    } else {
+                                        TripwireStates.VanillaModel vanilla =
+                                                TripwireStates.vanilla(attached, east, north, south, west);
+                                        variant.put("model", vanilla.model());
+                                        if (vanilla.y() != 0) {
+                                            variant.put("y", vanilla.y());
+                                        }
+                                    }
+                                    variants.put(TripwireStates.variant(attached, disarmed, east, north, powered,
+                                            south, west), variant);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return JsonWriter.write(Map.of("variants", variants));
+    }
+
+    private static int bits(boolean attached, boolean east, boolean north, boolean powered, boolean south,
+            boolean west) {
+        // The inverse of TripwireStates.state.
+        return (attached ? 1 : 0) | (powered ? 2 : 0) | (east ? 4 : 0) | (north ? 8 : 0) | (south ? 16 : 0)
+                | (west ? 32 : 0);
     }
 }

@@ -8,9 +8,9 @@ import java.util.Map;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * The shapes of connected blocks ({@code prism:connections}): a centred core cube and one arm towards each connected
- * side, as boxes in model pixels (0-16), turned into a Java block model and a Bedrock geometry. Both editions are
- * generated from the same boxes, so they match.
+ * Generated block shapes. Connected blocks ({@code prism:connections}) are a centred core cube and one arm towards each
+ * connected side, as boxes in model pixels (0-16), turned into a Java block model and a Bedrock geometry, so both
+ * editions match. Passable blocks get a Bedrock geometry from their model's boxes, or a cross.
  */
 public final class ConnectedShapes {
 
@@ -108,6 +108,32 @@ public final class ConnectedShapes {
         root.put("format_version", "1.12.0");
         root.put("minecraft:geometry", List.of(geometry));
         return root;
+    }
+
+    /** A Bedrock geometry of two crossed planes across the block, like a Java {@code block/cross} model (a flower). */
+    public static @NotNull Map<String, Object> bedrockCross(@NotNull String identifier) {
+        Map<String, Object> root = bedrockGeometry(identifier, List.of());
+        List<Object> cubes = new ArrayList<>();
+        for (int angle : new int[] {45, -45}) {
+            Map<String, Object> cube = new LinkedHashMap<>();
+            cube.put("origin", List.of(-8, 0, 0));
+            cube.put("size", List.of(16, 16, 0));
+            cube.put("pivot", List.of(0, 8, 0));
+            cube.put("rotation", List.of(0, angle, 0));
+            Map<String, Object> uv = new LinkedHashMap<>();
+            uv.put("north", face(0, 0, 16, 16));
+            uv.put("south", face(0, 0, 16, 16));
+            cube.put("uv", uv);
+            cubes.add(cube);
+        }
+        bones(root).put("cubes", cubes);
+        return root;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> bones(Map<String, Object> root) {
+        var geometry = (Map<String, Object>) ((List<Object>) root.get("minecraft:geometry")).getFirst();
+        return (Map<String, Object>) ((List<Object>) geometry.get("bones")).getFirst();
     }
 
     private static Map<String, Object> face(double u, double v, double w, double h) {

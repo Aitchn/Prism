@@ -150,6 +150,60 @@ class BedrockPackBuilderTest {
     }
 
     @Test
+    void passableBlocksMapToTripwireWithoutCollision() throws Exception {
+        var flower = new com.aitchn.prism.api.content.BlockDefinition(PrismKey.parse("m:flower"), "mod",
+                PrismKey.parse("minecraft:barrier"), java.util.Optional.empty(), ComponentMap.builder()
+                        .put(com.aitchn.prism.api.content.PrismComponents.PASSABLE,
+                                new com.aitchn.prism.api.content.PrismComponents.Passable(true)).build(), List.of());
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        files.put("assets/m/textures/block/flower.png", PNG);
+        int state = com.aitchn.prism.core.block.TripwireStates.OFFSET + 2;
+        var result = BedrockPackBuilder.build(new BedrockPackBuilder.Input(Map.of("mod", files), List.of(), "test",
+                List.of(flower), Map.of("m:flower", state)));
+        String mappings = result.blockMappings();
+        assertTrue(mappings.contains("\"minecraft:tripwire\""), mappings);
+        assertTrue(!mappings.contains("\"minecraft:note_block\""), mappings);
+        assertTrue(mappings.contains(com.aitchn.prism.core.block.TripwireStates.state(state).variant()), mappings);
+        assertTrue(mappings.contains("\"collision_box\""), mappings);
+        String geometry = new String(entries(result.mcpack()).get("models/blocks/prism/prismb_m_flower.geo.json"),
+                StandardCharsets.UTF_8);
+        assertTrue(geometry.contains("\"rotation\""), geometry);
+        assertEquals(1, result.geometries());
+    }
+
+    @Test
+    void passableModelsInheritShapesThroughModParents() {
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        files.put("assets/m/models/block/flower.json",
+                "{\"parent\":\"m:block/flower_base\",\"textures\":{\"cross\":\"m:block/flower\"}}"
+                        .getBytes(StandardCharsets.UTF_8));
+        files.put("assets/m/models/block/flower_base.json",
+                "{\"parent\":\"minecraft:block/cross\"}".getBytes(StandardCharsets.UTF_8));
+        files.put("assets/m/models/block/plate.json",
+                "{\"parent\":\"m:block/plate_base\"}".getBytes(StandardCharsets.UTF_8));
+        files.put("assets/m/models/block/plate_base.json",
+                "{\"elements\":[{\"from\":[0,0,0],\"to\":[16,1,16]}]}".getBytes(StandardCharsets.UTF_8));
+        assertEquals(null, BedrockPackBuilder.modelBoxes(files, PrismKey.parse("m:block/flower")));
+        assertEquals(null, BedrockPackBuilder.modelBoxes(files, PrismKey.parse("m:block/none")));
+        assertEquals(List.of(new com.aitchn.prism.core.block.ConnectedShapes.Box(0, 0, 0, 16, 1, 16)),
+                BedrockPackBuilder.modelBoxes(files, PrismKey.parse("m:block/plate")));
+    }
+
+    @Test
+    void looksKeepTheirStateOnTheOtherCarrier() {
+        var flower = new com.aitchn.prism.api.content.BlockDefinition(PrismKey.parse("m:flower"), "mod",
+                PrismKey.parse("minecraft:barrier"), java.util.Optional.empty(), ComponentMap.builder()
+                        .put(com.aitchn.prism.api.content.PrismComponents.PASSABLE,
+                                new com.aitchn.prism.api.content.PrismComponents.Passable(true)).build(), List.of());
+        Map<String, byte[]> files = Map.of("assets/m/textures/block/flower.png", PNG);
+        var result = BedrockPackBuilder.build(new BedrockPackBuilder.Input(Map.of("mod", files), List.of(), "test",
+                List.of(flower), Map.of("m:flower", com.aitchn.prism.core.block.TripwireStates.OFFSET,
+                        "m:flower" + BedrockPackBuilder.OTHER_CARRIER, 7)));
+        assertTrue(result.blockMappings().contains("\"minecraft:tripwire\""), result.blockMappings());
+        assertTrue(result.blockMappings().contains("\"minecraft:note_block\""), result.blockMappings());
+    }
+
+    @Test
     void javaSoundsBecomeBedrockSoundDefinitions() throws Exception {
         Map<String, byte[]> files = new LinkedHashMap<>();
         files.put("assets/m/sounds.json", ("{\"machine.hum\":{\"sounds\":[\"m:machine/hum\","

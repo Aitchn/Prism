@@ -111,4 +111,11 @@ public final class Appearances {
                 .orElseGet(() -> new PrismKey(block.key().namespace(),
                         "block/" + block.key().value() + (variant.isEmpty() ? "" : "_" + variant)));
     }
+
+    /** Whether {@code block} is drawn as a passable tripwire state ({@code prism:passable: true}). */
+    public static boolean passable(@NotNull BlockDefinition block) {
+        return block.components().get(PrismComponents.PASSABLE).map(PrismComponents.Passable::value).orElse(false)
+                && !block.components().has(PrismComponents.CONNECTIONS)
+                && !block.components().has(PrismComponents.MODEL_REF);
+    }
 }
