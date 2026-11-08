@@ -41,6 +41,14 @@ it with one of 64 tripwire states instead of a note block state, so it has no co
 hide the blocks around it and breaks instantly. Without a model of its own, its texture is drawn as a cross, like a
 flower. `examplemod:ruby_flower` is an example.
 
+**Multiblock structures.** `prism:structure` makes a block the controller of a structure. You give `layers` (bottom
+to top, rows north to south split by `/`), a `key` of one-character symbols to block keys, `@` for the controller,
+a space for any block, `.` for air, and whether the pattern may be turned (`rotate`, default true). Prism checks the
+pattern when the controller or a nearby block is placed or removed, and when the chunk loads. It then calls the
+controller's `StructureBehavior.onFormed` or `onBroken`. `BlockService.structure(controller)` and `controllerOf(member)`
+answer at any time. What a formed structure does is up to the mod. `examplemod:ruby_core` lights up on top of a 3x3
+ruby floor.
+
 **Ores.** `prism:ore` generates a block as veins in newly generated chunks: `dimension`, `replace` (vanilla blocks),
 `min_y`, `max_y`, `veins_per_chunk`, `rarity` and `size`, or a list of such specs. Veins stay inside their chunk.
 Chunks that existed before the mod was installed get none. `examplemod:ruby_ore` is an example; it is a note block

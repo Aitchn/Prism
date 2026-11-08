@@ -29,6 +29,7 @@ public final class ExampleMod extends JavaPlugin implements PrismMod {
         context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
         context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
         context.registerBehavior("use_counter", UseCounterBehavior.class, UseCounterBehavior::fromYaml);
+        context.registerBehavior("core", CoreBehavior.class, CoreBehavior::fromYaml);
         polishing = context.registerRecipeType("polishing", Polishing.class, Polishing::decode);
     }
 

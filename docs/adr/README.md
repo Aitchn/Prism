@@ -23,3 +23,4 @@ the ADRs are the authoritative English form.
 | [0015](0015-sounds-and-animated-textures.md) | Custom sounds, ambient block sounds and animated textures | Accepted |
 | [0016](0016-connected-blocks.md) | Connected blocks | Accepted |
 | [0017](0017-passable-blocks.md) | Passable blocks | Accepted |
+| [0018](0018-multiblock-structures.md) | Multiblock structures | Accepted |

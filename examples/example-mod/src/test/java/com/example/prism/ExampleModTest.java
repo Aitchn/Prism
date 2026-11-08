@@ -23,6 +23,7 @@ class ExampleModTest {
             context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
             context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
             context.registerBehavior("use_counter", UseCounterBehavior.class, UseCounterBehavior::fromYaml);
+            context.registerBehavior("core", CoreBehavior.class, CoreBehavior::fromYaml);
             ExampleMod.polishing = context.registerRecipeType("polishing", Polishing.class, Polishing::decode);
         }
     }
@@ -105,6 +106,19 @@ class ExampleModTest {
         var flower = harness.block("examplemod:ruby_flower");
         assertTrue(com.aitchn.prism.core.block.Appearances.passable(flower));
         assertTrue(!com.aitchn.prism.core.block.Appearances.passable(harness.block("examplemod:ruby_block")));
+    }
+
+    @Test
+    void coreControlsAThreeByThreeStructure() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var core = harness.block("examplemod:ruby_core");
+        var pattern = com.aitchn.prism.core.structure.StructurePattern.compile(
+                core.components().get(PrismComponents.STRUCTURE).orElseThrow());
+        assertEquals(9, pattern.cells(0).size());
+        assertTrue(pattern.cells(0).stream().allMatch(cell -> cell.dy() == -1
+                && cell.expect().equals("examplemod:ruby_block")));
+        assertEquals(1, core.behaviors(com.aitchn.prism.api.block.StructureBehavior.class).size());
     }
 
     @Test

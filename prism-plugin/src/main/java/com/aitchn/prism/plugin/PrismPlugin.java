@@ -125,6 +125,11 @@ public final class PrismPlugin extends JavaPlugin {
             getServer().getPluginManager().registerEvents(new ConnectionSelfTest(connectionSelfTest, blocks,
                     modelLooks::lookOf, scheduler, getLogger()), this);
         }
+        String structureSelfTest = System.getProperty("prism.selftest.structure");
+        if (structureSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new StructureSelfTest(structureSelfTest, blocks, scheduler,
+                    getLogger()), this);
+        }
         String passableSelfTest = System.getProperty("prism.selftest.passable");
         if (passableSelfTest != null) {
             getServer().getPluginManager().registerEvents(new PassableSelfTest(

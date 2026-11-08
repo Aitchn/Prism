@@ -1,0 +1,15 @@
+# Key: examplemod:ruby_core. The controller of a multiblock: place it on top of the middle of a 3x3 floor of ruby
+# blocks (in any order) and it lights up; break any of them and it goes dark. Textures block/ruby_core_idle.png and
+# block/ruby_core_formed.png.
+base: minecraft:barrier
+drop: examplemod:ruby_core
+components:
+  prism:variants: [idle, formed]
+  prism:structure:
+    layers:
+      - "RRR/RRR/RRR"
+      - "   / @ /   "
+    key:
+      R: examplemod:ruby_block
+behaviors:
+  - type: examplemod:core

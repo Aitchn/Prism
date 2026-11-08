@@ -267,6 +267,59 @@ public final class PrismComponents {
             Passable.class,
             section -> new Passable(section.getBoolean("value", true)));
 
+    /**
+     * Makes this block the controller of a multiblock structure: a tank, a furnace, an altar. Prism checks the pattern
+     * when the controller is placed, when a block next to a possible member changes, and when the chunk loads, and calls
+     * the controller's {@code StructureBehavior} when the structure forms or breaks. Prism only matches blocks; what a
+     * formed structure does is the mod's.
+     * <pre>{@code
+     * prism:structure:
+     *   layers:                 # bottom to top; rows north to south split by '/', columns west to east
+     *     - "RRR/RRR/RRR"
+     *     - "   / @ /   "
+     *   key:                    # one character each: a custom or vanilla block key
+     *     R: examplemod:ruby_block
+     *   rotate: true            # also match the pattern turned to face east, south and west (default true)
+     * }</pre>
+     * {@code @} is the controller itself and must appear once; a space matches any block; {@code .} matches air.
+     */
+    public static final ComponentType<Structure> STRUCTURE = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "structure"),
+            Structure.class,
+            section -> {
+                section.rejectUnknownKeys(java.util.Set.of("layers", "key", "rotate"));
+                java.util.List<String> layers = section.getStringList("layers");
+                if (layers.isEmpty()) {
+                    throw section.error("layers must list at least one layer");
+                }
+                java.util.Map<Character, String> key = new java.util.LinkedHashMap<>();
+                ConfigSection keys = section.requireSection("key");
+                for (String symbol : keys.keys()) {
+                    if (symbol.length() != 1 || symbol.equals("@") || symbol.equals(" ") || symbol.equals(".")
+                            || symbol.equals("/")) {
+                        throw section.error("key symbols are single characters other than @, space, . and /: "
+                                + symbol);
+                    }
+                    PrismKey block = keys.requireKey(symbol);
+                    key.put(symbol.charAt(0), block.toString());
+                }
+                int controllers = 0;
+                for (String layer : layers) {
+                    for (char c : layer.toCharArray()) {
+                        if (c == '@') {
+                            controllers++;
+                        } else if (c != ' ' && c != '.' && c != '/' && !key.containsKey(c)) {
+                            throw section.error("symbol '" + c + "' is not in key");
+                        }
+                    }
+                }
+                if (controllers != 1) {
+                    throw section.error("the pattern must hold exactly one @ (the controller), found " + controllers);
+                }
+                return new Structure(java.util.List.copyOf(layers), java.util.Map.copyOf(key),
+                        section.getBoolean("rotate", true));
+            });
+
     /** @see #VARIANTS */
     public record Variants(java.util.List<String> names) {}
 
@@ -360,6 +413,9 @@ public final class PrismComponents {
             return java.util.List.copyOf(masks);
         }
     }
+
+    /** @see #STRUCTURE */
+    public record Structure(java.util.List<String> layers, java.util.Map<Character, String> key, boolean rotate) {}
 
     /** @see #PASSABLE */
     public record Passable(boolean value) {}
