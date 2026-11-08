@@ -4,10 +4,10 @@ import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockContext;
 import com.aitchn.prism.api.block.CustomBlock;
+import com.aitchn.prism.api.block.FormedStructure;
 import com.aitchn.prism.api.recipe.ItemResult;
 import com.aitchn.prism.validation.mekanism.logic.ChemicalPorts;
 import com.aitchn.prism.validation.mekanism.logic.ChemicalTank;
-import com.aitchn.prism.validation.mekanism.logic.Cuboid;
 import com.aitchn.prism.validation.mekanism.logic.EnergyBuffer;
 import com.aitchn.prism.validation.mekanism.logic.Machine;
 import com.aitchn.prism.validation.mekanism.logic.MachineType;
@@ -22,9 +22,9 @@ import com.aitchn.prism.validation.mekanism.logic.Structures;
 import com.aitchn.prism.validation.mekanism.logic.Teleport;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -703,90 +703,66 @@ final class Grid {
 
     // ---------------------------------------------------------------- dynamic tanks
 
-    void addMember(CustomBlock block, boolean valve) {
+    private static Structures.Box box(FormedStructure structure) {
+        return new Structures.Box(pos(structure.min()), pos(structure.max()));
+    }
+
+    /** The chunk of a valve loaded: its saved content waits for the box to be reported. */
+    void loadValve(CustomBlock block) {
         Pos pos = pos(block.block());
         String text = block.data().get(STATE, PersistentDataType.STRING);
         underLock(() -> {
-            plant.structures().members().add(pos);
-            if (valve) {
-                plant.structures().valves().add(pos);
-            }
             if (text != null) {
                 plant.structures().restore(pos, text);
                 saved.put(pos, text); // so that emptying the tank later overwrites the loaded text
             }
-            plant.markDirty();
         });
+        syncValve(block);
     }
 
-    /** {@code unloading}: the chunk goes away, so the anchor writes what the structure holds first. */
-    void removeMember(CustomBlock block, boolean unloading) {
+    /** Prism reports a box around the valve. */
+    void attachValve(CustomBlock block, FormedStructure structure) {
+        Pos pos = pos(block.block());
+        Structures.Box box = box(structure);
+        underLock(() -> plant.structures().attach(pos, box));
+    }
+
+    /** {@code unloading}: the chunk goes away, so the valve writes what the box holds first. */
+    void detachValve(CustomBlock block, boolean unloading) {
         Pos pos = pos(block.block());
         underLock(() -> {
             if (unloading) {
                 writeContent(block, pos);
             }
-            plant.structures().members().remove(pos);
-            plant.structures().valves().remove(pos);
-            plant.markDirty();
-            plant.rebuildIfNeeded();
+            plant.structures().detach(pos, unloading);
             if (unloading) {
-                plant.structures().forget(pos);
+                saved.remove(pos);
             }
         });
     }
 
-    void tickMember(CustomBlock block) {
+    void tickValve(CustomBlock block) {
+        syncValve(block);
         Pos pos = pos(block.block());
         underLock(() -> writeContent(block, pos));
-        scanInterior(block, pos);
     }
 
-    /**
-     * Looks inside the box whose minimum corner is {@code pos}: a vanilla block in the middle (stone, water, a chest)
-     * is not hollow. Only chunks this thread owns and that are loaded are read, so on Folia a box across two regions
-     * is judged by the part its anchor owns; the rest is looked at when their own casings tick.
-     */
-    private void scanInterior(CustomBlock block, Pos pos) {
-        org.bukkit.Location origin = block.block().getLocation();
-        Cuboid.Result box = locked(() -> plant.structures().boxes().get(pos));
-        if (box == null) {
-            return;
-        }
-        Set<Pos> blocked = new HashSet<>();
-        Map<Long, Boolean> readable = new HashMap<>();
-        org.bukkit.World world = origin.getWorld();
-        for (int x = box.min().x() + 1; x < box.max().x(); x++) {
-            for (int z = box.min().z() + 1; z < box.max().z(); z++) {
-                long chunk = ((long) (x >> 4) << 32) ^ (z >> 4 & 0xffffffffL);
-                final int cx = x;
-                final int cz = z;
-                boolean ok = readable.computeIfAbsent(chunk, c -> world.isChunkLoaded(cx >> 4, cz >> 4)
-                        && Prism.scheduler().isOwnedByCurrentThread(new Location(world, cx, origin.getBlockY(), cz)));
-                if (!ok) {
-                    continue;
-                }
-                for (int y = box.min().y() + 1; y < box.max().y(); y++) {
-                    if (!world.getBlockAt(x, y, z).getType().isAir()) {
-                        blocked.add(new Pos(box.min().world(), x, y, z));
-                    }
-                }
-            }
-        }
+    /** A box formed before a restart is not announced again, so ask Prism what stands around the valve. */
+    private void syncValve(CustomBlock block) {
+        Pos pos = pos(block.block());
+        Optional<FormedStructure> found = Prism.blocks().structure(block.block());
         underLock(() -> {
-            if (plant.structures().setInteriorBlocked(pos, blocked)) {
-                plant.markDirty();
+            if (found.isPresent()) {
+                plant.structures().attach(pos, box(found.get()));
+            } else if (plant.structures().at(pos) != null) {
+                plant.structures().detach(pos, false);
             }
         });
     }
 
-    /** Lock held. Writes the content to the block's data when it is the structure's anchor and the text changed. */
+    /** Lock held. Writes the content of the valve's box to the valve's data when the text changed. */
     private void writeContent(CustomBlock block, Pos pos) {
-        Structures.Formed formed = plant.structures().at(pos);
-        String content = (formed != null && !formed.anchor().equals(pos)) ? null : plant.structures().contentOf(pos);
-        if (formed != null && !formed.anchor().equals(pos)) {
-            return;
-        }
+        String content = plant.structures().contentOf(pos);
         String key = content == null ? "" : content;
         if (!key.equals(saved.getOrDefault(pos, ""))) {
             if (content == null) {
@@ -800,20 +776,18 @@ final class Grid {
 
     /** What the Energy Tablet shows for a dynamic tank block, or null when {@code block} is none. */
     String describeStructure(Block block) {
-        Pos pos = pos(block);
+        Block controller = Prism.blocks().controllerOf(block).orElse(block);
+        Pos pos = pos(controller);
         return locked(() -> {
-            plant.rebuildIfNeeded();
-            if (!plant.structures().members().contains(pos)) {
-                return null;
-            }
             Structures.Formed formed = plant.structures().at(pos);
             if (formed == null) {
-                return "Dynamic tank: not a complete box (hollow, "
-                        + Structures.MIN + " to " + Structures.MAX + " blocks a side, no extra casing)";
+                return Prism.blocks().get(controller).map(c -> c.key().toString().equals("mekanism:dynamic_valve")).orElse(false)
+                        ? "Dynamic tank: not a complete box (hollow, 3 to 18 blocks a side, walls of tank blocks, valves and glass)"
+                        : null;
             }
             ChemicalTank tank = formed.tank();
-            return "Dynamic tank " + formed.size() + ": " + Text.number(tank.amount()) + " / " + Text.number(tank.capacity())
-                    + " mB " + (tank.type() == null ? "empty" : tank.type().id());
+            return "Dynamic tank " + formed.box().size() + ": " + Text.number(tank.amount()) + " / "
+                    + Text.number(tank.capacity()) + " mB " + (tank.type() == null ? "empty" : tank.type().id());
         });
     }
 

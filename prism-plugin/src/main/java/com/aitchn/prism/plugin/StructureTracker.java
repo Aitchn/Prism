@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -39,7 +40,8 @@ final class StructureTracker {
     private final PlatformScheduler scheduler;
     private final Map<PrismKey, StructureShape> shapes = new ConcurrentHashMap<>();
     private final Map<Location, Formed> formed = new ConcurrentHashMap<>();
-    private final Map<Location, Location> controllerOf = new ConcurrentHashMap<>();
+    /** Cell to the formed controllers that watch it: several controllers (valves of one box) can share cells. */
+    private final Map<Location, Set<Location>> controllersOf = new ConcurrentHashMap<>();
     private volatile int reach = -1;
 
     StructureTracker(PrismBlockService blocks, Registry<BlockDefinition> definitions, BlockIndex index,
@@ -78,10 +80,13 @@ final class StructureTracker {
     }
 
     Optional<Block> controllerOf(Block member) {
-        Location controller = controllerOf.get(member.getLocation());
-        Formed found = controller == null ? null : formed.get(controller);
-        return found != null && found.members().contains(member.getLocation())
-                ? Optional.of(controller.getBlock()) : Optional.empty();
+        for (Location controller : controllersOf.getOrDefault(member.getLocation(), Set.of())) {
+            Formed found = formed.get(controller);
+            if (found != null && found.members().contains(member.getLocation())) {
+                return Optional.of(controller.getBlock());
+            }
+        }
+        return Optional.empty();
     }
 
     /** {@code changed} was placed or removed: re-check structures it belongs to or could complete. */
@@ -90,8 +95,7 @@ final class StructureTracker {
             return; // no mod defines a structure
         }
         Location at = changed.getLocation();
-        Location owner = controllerOf.get(at);
-        if (owner != null) {
+        for (Location owner : List.copyOf(controllersOf.getOrDefault(at, Set.of()))) {
             recheck(owner.getBlock());
         }
         if (!formed.containsKey(at)) {
@@ -164,7 +168,7 @@ final class StructureTracker {
                     || location.getBlockZ() >> 4 != chunk.getZ()) {
                 return false;
             }
-            controllerOf.values().removeIf(location::equals);
+            controllersOf.values().forEach(set -> set.remove(location));
             return true;
         });
     }
@@ -268,7 +272,7 @@ final class StructureTracker {
         formed.put(at, new Formed(BlockFace.valueOf(match.facing()), match.signature(), List.copyOf(members),
                 List.copyOf(watched), origin.getRelative(min[0], min[1], min[2]).getLocation(),
                 origin.getRelative(max[0], max[1], max[2]).getLocation()));
-        watched.forEach(cell -> controllerOf.put(cell, at));
+        watched.forEach(cell -> controllersOf.computeIfAbsent(cell, c -> ConcurrentHashMap.newKeySet()).add(at));
         index.setStructure(origin, match.signature());
         if (announce) {
             FormedStructure structure = structure(origin).orElseThrow();
@@ -285,7 +289,10 @@ final class StructureTracker {
     private void forget(Location controller) {
         Formed old = formed.remove(controller);
         if (old != null) {
-            old.watched().forEach(cell -> controllerOf.remove(cell, controller));
+            old.watched().forEach(cell -> controllersOf.computeIfPresent(cell, (c, set) -> {
+                set.remove(controller);
+                return set.isEmpty() ? null : set;
+            }));
         }
     }
 

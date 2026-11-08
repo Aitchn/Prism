@@ -123,8 +123,6 @@ public final class Plant {
             cableNets = Networks.build(cables);
             pipeNets = Networks.build(pipes);
             itemNets = Networks.build(transporters, (a, b) -> colour(a) == colour(b));
-            structures.rebuild(p -> machines.containsKey(p) || solars.containsKey(p) || cables.contains(p)
-                    || pipes.contains(p) || transporters.contains(p));
             topologyChanged = false;
         }
     }

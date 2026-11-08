@@ -42,6 +42,9 @@ within limits, so one pattern per size does not work. The search has to find the
 - The walls cannot be restricted by position: there are no edge-only or face-only blocks. A mod can check that in
   `onFormed` using `members`.
 
+- Several controllers can be in one box (a tank with many valves). Each cell remembers every controller that watches
+  it, so changing a wall or the inside re-checks all of them, not only the last one that formed.
+
 ## Not verified by CI
 
 - Building a 3x3x3 and a 7x7x7 ruby/glass box by hand with the tank in a wall, on Java and on Bedrock: the tank
