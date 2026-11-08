@@ -56,17 +56,18 @@ public final class ModManager {
     public ModManager(@NotNull Predicate<PrismKey> baseItemExists, @NotNull Predicate<PrismKey> carrierBlockExists) {
         this.baseItemExists = Objects.requireNonNull(baseItemExists, "baseItemExists");
         this.carrierBlockExists = Objects.requireNonNull(carrierBlockExists, "carrierBlockExists");
-        componentTypes.publish(BUILTIN_OWNER, Map.of(
-                PrismComponents.DISPLAY_NAME.key(), PrismComponents.DISPLAY_NAME,
-                PrismComponents.MAX_STACK_SIZE.key(), PrismComponents.MAX_STACK_SIZE,
-                PrismComponents.MODEL.key(), PrismComponents.MODEL,
-                PrismComponents.PLACES_BLOCK.key(), PrismComponents.PLACES_BLOCK,
-                PrismComponents.MODEL_REF.key(), PrismComponents.MODEL_REF,
-                PrismComponents.MINING.key(), PrismComponents.MINING,
-                PrismComponents.ROTATION.key(), PrismComponents.ROTATION,
-                PrismComponents.VARIANTS.key(), PrismComponents.VARIANTS,
-                PrismComponents.LORE.key(), PrismComponents.LORE,
-                PrismComponents.ORE.key(), PrismComponents.ORE));
+        componentTypes.publish(BUILTIN_OWNER, Map.ofEntries(
+                Map.entry(PrismComponents.DISPLAY_NAME.key(), PrismComponents.DISPLAY_NAME),
+                Map.entry(PrismComponents.MAX_STACK_SIZE.key(), PrismComponents.MAX_STACK_SIZE),
+                Map.entry(PrismComponents.MODEL.key(), PrismComponents.MODEL),
+                Map.entry(PrismComponents.PLACES_BLOCK.key(), PrismComponents.PLACES_BLOCK),
+                Map.entry(PrismComponents.MODEL_REF.key(), PrismComponents.MODEL_REF),
+                Map.entry(PrismComponents.MINING.key(), PrismComponents.MINING),
+                Map.entry(PrismComponents.ROTATION.key(), PrismComponents.ROTATION),
+                Map.entry(PrismComponents.VARIANTS.key(), PrismComponents.VARIANTS),
+                Map.entry(PrismComponents.LORE.key(), PrismComponents.LORE),
+                Map.entry(PrismComponents.ORE.key(), PrismComponents.ORE),
+                Map.entry(PrismComponents.AMBIENT_SOUND.key(), PrismComponents.AMBIENT_SOUND)));
         Map<PrismKey, RecipeType<?>> builtinRecipes = new LinkedHashMap<>();
         PrismRecipes.ALL.forEach(type -> builtinRecipes.put(type.key(), type));
         recipeTypes.publish(BUILTIN_OWNER, builtinRecipes);

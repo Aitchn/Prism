@@ -62,6 +62,10 @@ class ExampleModTest {
                 counter.components().get(PrismComponents.VARIANTS).orElseThrow().names());
         assertEquals(20, counter.behaviors(com.aitchn.prism.api.block.BlockTickBehavior.class).getFirst()
                 .tickInterval());
+        var hum = counter.components().get(PrismComponents.AMBIENT_SOUND).orElseThrow();
+        assertEquals("examplemod:block.counter.hum", hum.sound().toString());
+        assertTrue(hum.playsIn("active"));
+        assertTrue(!hum.playsIn("idle"));
     }
 
     @Test

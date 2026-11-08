@@ -20,3 +20,4 @@ the ADRs are the authoritative English form.
 | [0012](0012-ore-generation.md) | Ore generation | Accepted |
 | [0013](0013-bedrock-look-for-model-blocks.md) | Bedrock look for blocks drawn by a model | Accepted |
 | [0014](0014-item-handler-and-text-prompts.md) | Item handler capability and text prompts | Accepted |
+| [0015](0015-sounds-and-animated-textures.md) | Custom sounds, ambient block sounds and animated textures | Accepted |

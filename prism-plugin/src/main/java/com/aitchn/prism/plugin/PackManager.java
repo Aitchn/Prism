@@ -123,6 +123,7 @@ final class PackManager implements Listener {
             ensureServer().publishBedrock(bedrock.sha1(), bedrock.mcpack(), bedrock.mappings());
             plugin.getLogger().info("PRISM_BEDROCK_PACK_READY sha1=" + bedrock.sha1() + " items="
                     + bedrock.itemsWithIcon().size() + " blocks=" + bedrock.blockLooks().size()
+                    + " sounds=" + bedrock.soundEvents() + " flipbooks=" + bedrock.flipbooks()
                     + " bytes=" + bedrock.mcpack().length);
             GeyserInstaller installer = geyser;
             if (installer != null) {

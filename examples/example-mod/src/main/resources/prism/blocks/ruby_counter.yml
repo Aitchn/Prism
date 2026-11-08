@@ -6,6 +6,13 @@ drop: examplemod:ruby_counter
 components:
   prism:rotation: horizontal
   prism:variants: [idle, active]
+  # Hums while active (custom sound from assets/examplemod/sounds.json, also put in the Bedrock pack). The active
+  # texture is animated (ruby_counter_active.png.mcmeta), which becomes a flipbook on Bedrock.
+  prism:ambient_sound:
+    sound: examplemod:block.counter.hum
+    interval: 20
+    volume: 0.6
+    variants: [active]
   prism:mining:
     hardness: 1.5
     tool: pickaxe

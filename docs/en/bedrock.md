@@ -11,6 +11,8 @@ Bedrock players join through Geyser. Prism detects them (Floodgate, then Geyser)
 | Blocks with a BetterModel model | animated model (display entity) | static block textured with `textures/block/<name>.png` (a plain note block if there is none), sent to each Bedrock player |
 | Any block with `blocks.backend: display` | display entity | **not visible** (Geyser cannot draw display entities) |
 | Block variants (`prism:variants`, `setVariant`) | yes | yes |
+| Custom sounds (`sounds.json`, `prism:ambient_sound`) | yes | yes (Bedrock pack `sound_definitions`, played through Geyser) |
+| Animated block textures (`.png.mcmeta`) | yes | yes (flipbook) |
 | Menus | chest container | chest container (Geyser translates); native forms not implemented |
 
 ## Setup

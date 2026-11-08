@@ -11,6 +11,8 @@ Mod 依「能力」而非「版本」調整。
 | 使用 BetterModel 模型的方塊 | 動畫模型（顯示實體） | 以 `textures/block/<name>.png` 貼圖的靜態方塊（沒有貼圖時是普通音符盒），個別送給每位基岩版玩家 |
 | `blocks.backend: display` 下的所有方塊 | 顯示實體 | **看不見**（Geyser 無法繪製顯示實體） |
 | 方塊外觀變體（`prism:variants`、`setVariant`） | 有 | 有 |
+| 自訂音效（`sounds.json`、`prism:ambient_sound`） | 有 | 有（基岩版資源包的 `sound_definitions`，經 Geyser 播放） |
+| 動畫方塊材質（`.png.mcmeta`） | 有 | 有（flipbook） |
 | 選單 | 箱子介面 | 箱子介面（Geyser 轉譯）；原生表單未實作 |
 
 ## 設定

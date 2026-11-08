@@ -1,0 +1,6 @@
+{
+  "block.counter.hum": {
+    "subtitle": "Ruby counter hums",
+    "sounds": ["examplemod:block/counter_hum"]
+  }
+}

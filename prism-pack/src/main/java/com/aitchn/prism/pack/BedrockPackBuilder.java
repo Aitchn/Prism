@@ -58,7 +58,9 @@ public final class BedrockPackBuilder {
             @NotNull List<String> warnings,
             @NotNull Set<PrismKey> itemsWithIcon,
             @NotNull String blockMappings,
-            @NotNull Set<String> blockLooks) {}
+            @NotNull Set<String> blockLooks,
+            int soundEvents,
+            int flipbooks) {}
 
     private static final UUID HEADER = UUID.nameUUIDFromBytes("prism:bedrock:header".getBytes(StandardCharsets.UTF_8));
     private static final UUID MODULE = UUID.nameUUIDFromBytes("prism:bedrock:module".getBytes(StandardCharsets.UTF_8));
@@ -106,6 +108,7 @@ public final class BedrockPackBuilder {
         }
 
         Map<String, Object> terrainData = new TreeMap<>();
+        Map<String, Object> flipbooks = new TreeMap<>();
         Map<String, Object> stateOverrides = new TreeMap<>();
         Set<String> looksDone = new LinkedHashSet<>();
         for (BlockDefinition block : input.blocks()) {
@@ -128,6 +131,18 @@ public final class BedrockPackBuilder {
                     String packTexture = "textures/prism/blocks/" + name;
                     files.put(packTexture + ".png", sources.get(texturePath));
                     terrainData.put(name, Map.of("textures", packTexture));
+                    Animation animation = animation(sources, texturePath);
+                    if (animation != null) {
+                        // A Java animated texture (.png.mcmeta): the same vertical strip is a Bedrock flipbook.
+                        Map<String, Object> flipbook = new LinkedHashMap<>();
+                        flipbook.put("flipbook_texture", packTexture);
+                        flipbook.put("atlas_tile", name);
+                        flipbook.put("ticks_per_frame", animation.ticksPerFrame());
+                        if (animation.frames() != null) {
+                            flipbook.put("frames", animation.frames());
+                        }
+                        flipbooks.put(name, flipbook);
+                    }
                     Map<String, Object> material = new LinkedHashMap<>();
                     material.put("texture", name);
                     material.put("render_method", "alpha_test");
@@ -156,6 +171,17 @@ public final class BedrockPackBuilder {
             terrain.put("texture_data", terrainData);
             files.put("textures/terrain_texture.json", JsonWriter.write(terrain).getBytes(StandardCharsets.UTF_8));
         }
+        if (!flipbooks.isEmpty()) {
+            files.put("textures/flipbook_textures.json",
+                    JsonWriter.write(new ArrayList<>(flipbooks.values())).getBytes(StandardCharsets.UTF_8));
+        }
+        Map<String, Object> soundDefinitions = sounds(sources, files, warnings);
+        if (!soundDefinitions.isEmpty()) {
+            Map<String, Object> root = new LinkedHashMap<>();
+            root.put("format_version", "1.14.0");
+            root.put("sound_definitions", soundDefinitions);
+            files.put("sounds/sound_definitions.json", JsonWriter.write(root).getBytes(StandardCharsets.UTF_8));
+        }
         Map<String, Object> blockMappings = new LinkedHashMap<>();
         blockMappings.put("format_version", 1);
         Map<String, Object> blocks = new LinkedHashMap<>();
@@ -183,7 +209,130 @@ public final class BedrockPackBuilder {
         mappings.put("items", new LinkedHashMap<String, Object>(byBase));
         byte[] zip = JavaPackBuilder.zip(files);
         return new Result(zip, JavaPackBuilder.sha1(zip), JsonWriter.write(mappings), List.copyOf(warnings),
-                Set.copyOf(done), JsonWriter.write(blockMappings), Set.copyOf(looksDone));
+                Set.copyOf(done), JsonWriter.write(blockMappings), Set.copyOf(looksDone), soundDefinitions.size(),
+                flipbooks.size());
+    }
+
+    /**
+     * A Bedrock flipbook timing: ticks per frame, and the strip indices to show in order (null: every frame in order).
+     * Java frames with their own {@code time} are repeated so one Bedrock tick step (the gcd of all times) fits them all.
+     */
+    record Animation(int ticksPerFrame, List<Integer> frames) {}
+
+    /** The animation of a texture ({@code <texture>.png.mcmeta} with an {@code animation}), or null. */
+    static Animation animation(Map<String, byte[]> sources, String texturePath) {
+        byte[] meta = sources.get(texturePath + ".mcmeta");
+        if (meta == null) {
+            return null;
+        }
+        try {
+            Object parsed = YamlFiles.parse(texturePath + ".mcmeta", new String(meta, StandardCharsets.UTF_8));
+            if (!(parsed instanceof Map<?, ?> root) || !(root.get("animation") instanceof Map<?, ?> animation)) {
+                return null;
+            }
+            int frameTime = animation.get("frametime") instanceof Number n ? Math.max(1, n.intValue()) : 1;
+            if (!(animation.get("frames") instanceof List<?> declared) || declared.isEmpty()) {
+                return new Animation(frameTime, null);
+            }
+            List<int[]> frames = new ArrayList<>();
+            for (Object frame : declared) {
+                if (frame instanceof Number index) {
+                    frames.add(new int[] {Math.max(0, index.intValue()), frameTime});
+                } else if (frame instanceof Map<?, ?> entry && entry.get("index") instanceof Number index) {
+                    int time = entry.get("time") instanceof Number t ? Math.max(1, t.intValue()) : frameTime;
+                    frames.add(new int[] {Math.max(0, index.intValue()), time});
+                }
+            }
+            if (frames.isEmpty()) {
+                return new Animation(frameTime, null);
+            }
+            int step = 0;
+            for (int[] frame : frames) {
+                step = gcd(step, frame[1]);
+            }
+            List<Integer> sequence = new ArrayList<>();
+            for (int[] frame : frames) {
+                for (int i = 0; i < frame[1] / step; i++) {
+                    sequence.add(frame[0]);
+                }
+            }
+            return new Animation(step, sequence);
+        } catch (RuntimeException | com.aitchn.prism.api.content.ContentException ignored) {
+            // malformed: the Java client reports it; Bedrock shows the strip as a still texture
+        }
+        return null;
+    }
+
+    private static int gcd(int a, int b) {
+        return b == 0 ? a : gcd(b, a % b);
+    }
+
+    /**
+     * Bedrock {@code sound_definitions} from every mod's Java {@code assets/<ns>/sounds.json}, copying the .ogg files.
+     * Geyser forwards a custom Java sound event under its full name ({@code ns:event}), so that is the Bedrock key.
+     * Vanilla overrides ({@code minecraft} namespace) are left to Bedrock's own sounds.
+     */
+    static Map<String, Object> sounds(Map<String, byte[]> sources, Map<String, byte[]> files, List<String> warnings) {
+        Map<String, Object> definitions = new TreeMap<>();
+        for (Map.Entry<String, byte[]> entry : new TreeMap<>(sources).entrySet()) {
+            String path = entry.getKey();
+            String[] parts = path.split("/");
+            if (parts.length != 3 || !parts[0].equals("assets") || !parts[2].equals("sounds.json")
+                    || parts[1].equals("minecraft")) {
+                continue;
+            }
+            String namespace = parts[1];
+            Object parsed;
+            try {
+                parsed = YamlFiles.parse(path, new String(entry.getValue(), StandardCharsets.UTF_8));
+            } catch (RuntimeException | com.aitchn.prism.api.content.ContentException e) {
+                warnings.add("bedrock sounds: " + path + " is not valid JSON");
+                continue;
+            }
+            if (!(parsed instanceof Map<?, ?> events)) {
+                continue;
+            }
+            events.forEach((event, value) -> {
+                if (!(value instanceof Map<?, ?> definition) || !(definition.get("sounds") instanceof List<?> list)) {
+                    return;
+                }
+                List<Object> bedrockSounds = new ArrayList<>();
+                for (Object sound : list) {
+                    Map<?, ?> options = sound instanceof Map<?, ?> m ? m : Map.of();
+                    Object name = sound instanceof Map<?, ?> m ? m.get("name") : sound;
+                    if (!(name instanceof String file) || "event".equals(options.get("type"))) {
+                        continue; // references to other events are not followed
+                    }
+                    PrismKey key = file.contains(":") ? PrismKey.parse(file) : new PrismKey("minecraft", file);
+                    String source = "assets/" + key.namespace() + "/sounds/" + key.value() + ".ogg";
+                    if (!sources.containsKey(source)) {
+                        warnings.add("bedrock sound " + namespace + ":" + event + ": missing " + source);
+                        continue;
+                    }
+                    String target = "sounds/prism/" + key.namespace() + "/" + key.value();
+                    files.put(target + ".ogg", sources.get(source));
+                    Map<String, Object> bedrock = new LinkedHashMap<>();
+                    bedrock.put("name", target);
+                    if (options.get("volume") instanceof Number volume) {
+                        bedrock.put("volume", volume);
+                    }
+                    if (options.get("pitch") instanceof Number pitch) {
+                        bedrock.put("pitch", pitch);
+                    }
+                    if (Boolean.TRUE.equals(options.get("stream"))) {
+                        bedrock.put("stream", true);
+                    }
+                    bedrockSounds.add(bedrock);
+                }
+                if (!bedrockSounds.isEmpty()) {
+                    Map<String, Object> bedrockDefinition = new LinkedHashMap<>();
+                    bedrockDefinition.put("category", "block");
+                    bedrockDefinition.put("sounds", bedrockSounds);
+                    definitions.put(namespace + ":" + event, bedrockDefinition);
+                }
+            });
+        }
+        return definitions;
     }
 
     /** The texture an item icon is cut from: layer0 of its model JSON when present, else the model's own name. */

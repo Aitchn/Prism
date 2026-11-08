@@ -158,6 +158,40 @@ public final class PrismComponents {
                 return new Ore(java.util.List.copyOf(veins));
             });
 
+    /**
+     * A sound a block plays by itself while it is loaded, repeated every {@code interval} ticks: a machine's hum, a
+     * portal's whoosh. Prism stops it when the block goes, and plays it only in the listed variants (all when none are
+     * listed), so switching a machine to idle silences it. Pick a clip about as long as the interval. Custom sounds come
+     * from the mod's {@code assets/<ns>/sounds.json}; Prism also puts them in the Bedrock pack.
+     * <pre>{@code
+     * prism:ambient_sound:
+     *   sound: examplemod:block.counter.hum   # a sound event, custom or vanilla
+     *   interval: 20                          # ticks, default 20
+     *   volume: 0.6                           # default 1
+     *   pitch: 1.0                            # default 1
+     *   variants: [active]                    # default: every variant
+     * }</pre>
+     */
+    public static final ComponentType<AmbientSound> AMBIENT_SOUND = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "ambient_sound"),
+            AmbientSound.class,
+            section -> {
+                section.rejectUnknownKeys(java.util.Set.of("value", "sound", "interval", "volume", "pitch",
+                        "variants"));
+                PrismKey sound = section.has("value") ? section.requireKey("value") : section.requireKey("sound");
+                int interval = section.getInt("interval").orElse(20);
+                double volume = section.getDouble("volume").orElse(1.0);
+                double pitch = section.getDouble("pitch").orElse(1.0);
+                if (interval < 1) {
+                    throw section.error("interval must be at least 1, got " + interval);
+                }
+                if (volume <= 0 || pitch <= 0) {
+                    throw section.error("volume and pitch must be above 0");
+                }
+                return new AmbientSound(sound, interval, (float) volume, (float) pitch,
+                        java.util.List.copyOf(section.getStringList("variants")));
+            });
+
     /** @see #VARIANTS */
     public record Variants(java.util.List<String> names) {}
 
@@ -220,6 +254,16 @@ public final class PrismComponents {
                 return new Vein(dimension, java.util.List.copyOf(replace.isEmpty() ? defaultReplace(dimension) : replace),
                         minY, maxY, perChunk, rarity, size);
             }
+        }
+    }
+
+    /** @see #AMBIENT_SOUND */
+    public record AmbientSound(PrismKey sound, int interval, float volume, float pitch,
+            java.util.List<String> variants) {
+
+        /** Whether the sound plays while the block shows {@code variant}. */
+        public boolean playsIn(String variant) {
+            return variants.isEmpty() || variants.contains(variant);
         }
     }
 
