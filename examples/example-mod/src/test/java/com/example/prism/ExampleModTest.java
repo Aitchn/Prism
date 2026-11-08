@@ -23,6 +23,7 @@ class ExampleModTest {
             context.registerBehavior("heal", HealBehavior.class, HealBehavior::fromYaml);
             context.registerBehavior("counter", CounterBehavior.class, CounterBehavior::fromYaml);
             context.registerBehavior("use_counter", UseCounterBehavior.class, UseCounterBehavior::fromYaml);
+            context.registerBehavior("core", CoreBehavior.class, CoreBehavior::fromYaml);
             ExampleMod.polishing = context.registerRecipeType("polishing", Polishing.class, Polishing::decode);
         }
     }
