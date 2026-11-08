@@ -62,6 +62,20 @@ class GaugeIconsTest {
     }
 
     @Test
+    void middleStepsNeverLookEmptyOrFullAtTheMostSteps() {
+        for (String style : PrismComponents.Gauge.STYLES) {
+            var gauge = new PrismComponents.Gauge(style, 0x30D030, 32);
+            int[] empty = GaugeIcons.pixels(gauge, 0);
+            int[] full = GaugeIcons.pixels(gauge, 32);
+            for (int step = 1; step < 32; step++) {
+                int[] pixels = GaugeIcons.pixels(gauge, step);
+                assertFalse(Arrays.equals(empty, pixels), style + " step " + step + " looks empty");
+                assertFalse(Arrays.equals(full, pixels), style + " step " + step + " looks full");
+            }
+        }
+    }
+
+    @Test
     void javaPackGetsOneDefinitionPerStepAndKeepsShippedTextures() {
         byte[] own = {1, 2, 3};
         Map<String, byte[]> assets = new LinkedHashMap<>();

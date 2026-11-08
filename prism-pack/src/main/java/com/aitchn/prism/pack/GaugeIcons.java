@@ -51,7 +51,7 @@ public final class GaugeIcons {
         int light = 0xFF000000 | lighter(gauge.color());
         if (gauge.style().equals("arrow")) {
             // An arrow pointing right: a shaft (x 1-10) and a head (x 11-15) with a dark outline, filled from the left.
-            int filled = Math.round(13f * step / gauge.steps()) + 1; // inside columns 2..14
+            int filled = scaled(step, gauge.steps(), 13) + 1; // inside columns 2..14
             for (int x = 1; x < SIZE; x++) {
                 int half = x <= 10 ? 3 : 6 - (x - 11); // shaft rows 5-10; the head narrows from rows 2-13 to 6-9
                 int top = 8 - half;
@@ -70,7 +70,7 @@ public final class GaugeIcons {
                 argb[y * SIZE + x] = FRAME;
             }
         }
-        int height = Math.round(14f * step / gauge.steps());
+        int height = scaled(step, gauge.steps(), 14);
         for (int y = 1; y <= 14; y++) {
             boolean filledRow = y > 14 - height;
             for (int x = 5; x <= 10; x++) {
@@ -78,6 +78,17 @@ public final class GaugeIcons {
             }
         }
         return argb;
+    }
+
+    /** {@code step} of {@code steps} in pixels out of {@code max}; only the ends are empty or full. */
+    static int scaled(int step, int steps, int max) {
+        if (step <= 0) {
+            return 0;
+        }
+        if (step >= steps) {
+            return max;
+        }
+        return Math.max(1, Math.min(max - 1, Math.round((float) max * step / steps)));
     }
 
     private static int lighter(int rgb) {
