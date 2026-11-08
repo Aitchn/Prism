@@ -396,7 +396,8 @@ public final class Machine {
     }
 
     private boolean canFitOutput(Stack out, int k) {
-        return output == null || (output.id().equals(out.id()) && output.count() + out.count() * k <= Stack.MAX);
+        int have = output == null ? 0 : output.count();
+        return (output == null || output.id().equals(out.id())) && have + out.count() * k <= Stack.MAX;
     }
 
     private void startOperation(Recipe r) {

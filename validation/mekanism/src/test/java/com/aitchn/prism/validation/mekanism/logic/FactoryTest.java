@@ -111,4 +111,18 @@ class FactoryTest {
                 + (w.machine(b).input() == null ? 0 : w.machine(b).input().count());
         assertEquals(64, made, "all 64 items made it through both factories");
     }
+
+    @Test
+    void a_big_recipe_never_makes_a_stack_above_the_limit_even_from_an_empty_slot() {
+        List<Recipe> recipes = List.of(Recipe.item("x:a", 1, "x:out", 8, 10, 10));
+        Machine m = new Machine(new MachineType("big", () -> recipes, 500_000, 50_000, 0, 0, null, 9));
+        m.insertInput(new Stack("x:a", 9));
+        for (int i = 0; i < 100; i++) {
+            m.energy().set(m.energy().capacity());
+            m.tick();
+            assertTrue(m.output() == null || m.output().count() <= Stack.MAX);
+        }
+        assertEquals(64, m.output().count(), "eight copies fit exactly");
+        assertEquals(1, m.input().count());
+    }
 }
