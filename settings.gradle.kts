@@ -23,5 +23,6 @@ dependencyResolutionManagement {
         mavenCentral()
         maven("https://repo.papermc.io/repository/maven-public/") { name = "papermc" }
         maven("https://repo.codemc.io/repository/maven-releases/") { name = "codemc" }
+        maven("https://repo.opencollab.dev/main/") { name = "opencollab" }
     }
 }

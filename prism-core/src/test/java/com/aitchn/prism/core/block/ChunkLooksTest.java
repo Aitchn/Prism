@@ -175,4 +175,76 @@ class ChunkLooksTest {
         assertEquals(List.of("15,-5,0=9", "1,70,2=4"), seen);
         assertFalse(looks(1, 70, 2, 300).hasDisplays());
     }
+
+    private static final int SYNTHETIC = 40_000;
+
+    /** A chunk with two custom blocks: one with a synthetic Bedrock state, one without (registered later, say). */
+    private static ChunkLooks withBedrock() {
+        Map<Long, BlockLook> map = new HashMap<>();
+        map.put(BlockPositions.pack(1, 2, 3), new BlockLook(CARRIER, 300, BlockLook.NO_DISPLAY, SYNTHETIC));
+        map.put(BlockPositions.pack(4, 5, 6), new BlockLook(CARRIER, 301));
+        return ChunkLooks.of(map);
+    }
+
+    @Test
+    void aJavaViewerNeverReceivesASyntheticState() {
+        ChunkLooks looks = withBedrock();
+        ArraySection section = new ArraySection();
+        section.set(1, 2, 3, CARRIER);
+        section.set(4, 5, 6, CARRIER);
+        assertEquals(2, looks.rewriteSection(0, section, IS_LEGACY, (x, y, z) -> {}));
+        assertEquals(300, section.get(1, 2, 3));
+        assertEquals(301, section.get(4, 5, 6));
+        assertEquals(300, looks.rewrite(1, 2, 3, CARRIER, IS_LEGACY, (x, y, z) -> {}));
+        assertTrue(looks.hasBedrock());
+        assertEquals(SYNTHETIC, looks.at(1, 2, 3).bedrock());
+        assertFalse(looks.at(4, 5, 6).hasBedrock());
+    }
+
+    @Test
+    void aBedrockViewerReceivesTheSyntheticStateAndTheJavaLookWhereThereIsNone() {
+        ChunkLooks looks = withBedrock();
+        ArraySection section = new ArraySection();
+        section.set(1, 2, 3, CARRIER);
+        section.set(4, 5, 6, CARRIER);
+        assertEquals(2, looks.rewriteSection(0, section, IS_LEGACY, (x, y, z) -> {}, true));
+        assertEquals(SYNTHETIC, section.get(1, 2, 3));
+        assertEquals(301, section.get(4, 5, 6), "a look without a synthetic state falls back to the Java look");
+        assertEquals(SYNTHETIC, looks.rewrite(1, 2, 3, CARRIER, IS_LEGACY, (x, y, z) -> {}, true));
+        assertEquals(301, looks.rewrite(4, 5, 6, CARRIER, IS_LEGACY, (x, y, z) -> {}, true));
+    }
+
+    @Test
+    void aJavaLookSentByACorrectionIsMovedToTheSyntheticStateForBedrock() {
+        ChunkLooks looks = withBedrock();
+        // LookReconciler and block updates send the Java look; a Geyser viewer must not see it
+        assertEquals(SYNTHETIC, looks.rewrite(1, 2, 3, 300, IS_LEGACY, (x, y, z) -> {}, true));
+        assertEquals(300, looks.rewrite(1, 2, 3, 300, IS_LEGACY, (x, y, z) -> {}, false));
+        ArraySection section = new ArraySection();
+        section.set(1, 2, 3, 300);
+        assertEquals(1, looks.rewriteSection(0, section, IS_LEGACY, (x, y, z) -> {}, true));
+        assertEquals(SYNTHETIC, section.get(1, 2, 3));
+        assertEquals(0, looks.rewriteSection(0, section, IS_LEGACY, (x, y, z) -> {}, true), "already shown");
+    }
+
+    @Test
+    void foreignStatesAreLeftAloneAndReportedForBedrockToo() {
+        ChunkLooks looks = withBedrock();
+        ArraySection section = new ArraySection();
+        section.set(1, 2, 3, STONE);
+        section.set(4, 5, 6, CARRIER);
+        List<String> foreign = new ArrayList<>();
+        assertEquals(1, looks.rewriteSection(0, section, IS_LEGACY, (x, y, z) -> foreign.add(x + "," + y + "," + z), true));
+        assertEquals(STONE, section.get(1, 2, 3));
+        assertEquals(List.of("1,2,3"), foreign);
+        assertEquals(STONE, looks.rewrite(1, 2, 3, STONE, IS_LEGACY, (x, y, z) -> {}, true));
+    }
+
+    @Test
+    void shownToPicksTheViewersState() {
+        BlockLook look = new BlockLook(CARRIER, 300, 4, SYNTHETIC);
+        assertEquals(300, look.shownTo(false));
+        assertEquals(SYNTHETIC, look.shownTo(true));
+        assertEquals(300, new BlockLook(CARRIER, 300).shownTo(true));
+    }
 }

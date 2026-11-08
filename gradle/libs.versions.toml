@@ -9,6 +9,9 @@ jetbrains-annotations = "26.1.0"
 junit = "5.13.4"
 archunit = "1.5.1"
 snakeyaml = "2.4"
+# Geyser API, compile-only: the version only has to offer the block and resource pack events used by prism-bedrock
+# (2.9.5 or newer). Geyser itself is whatever the server runs.
+geyser = "2.12.1-SNAPSHOT"
 sqlite-jdbc = "3.50.3.0"
 shadow = "9.6.1"
 
@@ -22,6 +25,7 @@ junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
 junit-launcher = { module = "org.junit.platform:junit-platform-launcher" }
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 snakeyaml = { module = "org.yaml:snakeyaml", version.ref = "snakeyaml" }
+geyser-api = { module = "org.geysermc.geyser:api", version.ref = "geyser" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 
 [plugins]

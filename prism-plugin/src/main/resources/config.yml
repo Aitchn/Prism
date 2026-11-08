@@ -35,3 +35,18 @@ blocks:
     # Also use the opaque shell of the note block family for opaque display blocks. Exact, but only invisible if the
     # client's solid render layer ignores transparent texels, which no known client does; leave off unless tested.
     solid-shells: false
+bedrock:
+  # How Geyser players are shown custom blocks (ADR-0024).
+  #   auto  - when Geyser runs in this server, Prism registers one real Bedrock custom block per look through the
+  #           Geyser API, with its geometry, texture, collision and hardness. There is no limit on the number of
+  #           looks. Without Geyser here nothing changes. If registration fails, Prism logs a warning and keeps
+  #           the older note block and tripwire mappings.
+  #   proxy - Geyser runs on a proxy. Prism fixes the ids at server load and writes
+  #           plugins/Prism/geyser/prism_synthetic_blocks.json for a Prism Geyser extension that registers them on
+  #           the proxy. Use this only with that extension; see docs/en/bedrock.md.
+  #   off   - the older route only: Geyser's JSON mappings for the note block and tripwire looks.
+  # Changing this needs a restart.
+  synthetic-blocks: auto
+  # First synthetic block state id. 0 picks it from the server (its block state count plus 4096). Set it only when
+  # Geyser runs on a proxy whose Geyser build has more block states than this server.
+  synthetic-base: 0

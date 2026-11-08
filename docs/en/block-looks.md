@@ -61,8 +61,7 @@ instantly, as before.
   of display-layer blocks to blocks that matter, or lower the distance.
 - A solid display block is shown to the client as a cube that does not hide neighbouring faces and sounds like grass
   (unless you opted into the note block shell). The layer itself hides faces behind other solid display blocks.
-- Bedrock players see only borrowed note block and tripwire looks (through Geyser). A display-layer block is invisible
-  to them: give it `prism:render: state` and keep the number of such blocks below the pool if it must be visible on Bedrock.
+- Bedrock players see every look as a real custom block when Geyser runs on the same server (`bedrock.synthetic-blocks`, ADR-0024; see `bedrock.md`). Without that, they see only borrowed note block and tripwire looks, and a display-layer block is invisible to them: give it `prism:render: state` and keep the number of such blocks below the pool if it must be visible then.
 - A block of a mod that is not installed has no look; players see the plain carrier.
 
 See [ADR-0023](https://github.com/Aitchn/Prism/blob/main/docs/adr/0023-look-pool-and-display-layer.md) for the design,

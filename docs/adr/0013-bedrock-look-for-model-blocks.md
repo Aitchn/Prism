@@ -3,6 +3,8 @@
 Status: Accepted (2026-11-08). The look's state allocation and Bedrock mapping are covered by the model self test and
 the Bedrock pack in the smoke test. What a Bedrock client shows is not covered (see below).
 
+Update: when synthetic Bedrock blocks are active (ADR-0024), the per-player block change carries the look's synthetic state id instead of the note block state; the note block route here is the fallback.
+
 ## Context
 
 Row 48 of [platform-triage.md](../platform-triage.md). A block with `prism:model_ref` is drawn by BetterModel through

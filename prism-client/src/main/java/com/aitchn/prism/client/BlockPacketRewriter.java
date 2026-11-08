@@ -59,14 +59,21 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
 
     private void chunk(PacketSendEvent event) {
         World world = worldOf(event);
-        ClientCanon canon = source.canon();
-        if (world == null || !(source.anyIn(world.getUID()) || !canon.isEmpty())) {
+        if (world == null) {
+            return;
+        }
+        boolean bedrock = bedrockViewer(event);
+        // A Geyser viewer is shown synthetic states only it knows, so it never needs the canonical siblings (nothing it
+        // is shown is a borrowed vanilla state), and every chunk has to be checked for the width of a global palette.
+        ClientCanon canon = bedrock ? ClientCanon.none() : source.canon();
+        if (!bedrock && !(source.anyIn(world.getUID()) || !canon.isEmpty())) {
             return;
         }
         WrapperPlayServerChunkData wrapper = new WrapperPlayServerChunkData(event);
         Column column = wrapper.getColumn();
         ChunkLooks looks = source.chunk(world.getUID(), column.getX(), column.getZ());
-        if (looks.isEmpty() && canon.isEmpty()) {
+        int globalBits = bedrock ? source.bedrockGlobalBits() : 0;
+        if (looks.isEmpty() && canon.isEmpty() && !(bedrock && globalBits > 0)) {
             return;
         }
         ClientVersion version = serverVersion();
@@ -76,14 +83,24 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
         for (int i = 0; i < sections.length; i++) {
             int sectionY = minSection + i;
             BaseChunk section = sections[i];
+            int baseX = column.getX() << 4;
+            int baseZ = column.getZ() << 4;
+            if (bedrock && section instanceof Chunk_v1_18 modern) {
+                if (looks.hasSection(sectionY)) {
+                    changed += BedrockSections.rewrite(modern, looks, sectionY, globalBits,
+                            ClientStates::isLegacyCarrier,
+                            (x, y, z) -> foreign.foreign(world.getUID(), baseX + x, y, baseZ + z));
+                } else if (BedrockSections.normalizeWidth(modern, globalBits)) {
+                    changed++;
+                }
+                continue;
+            }
             if (!canon.isEmpty() && needsCanon(section, canon)) {
                 changed += canonicalize(section, version, canon);
             }
             if (!looks.hasSection(sectionY)) {
                 continue;
             }
-            int baseX = column.getX() << 4;
-            int baseZ = column.getZ() << 4;
             changed += looks.rewriteSection(sectionY, new SectionStates() {
                 @Override
                 public int get(int x, int y, int z) {
@@ -103,15 +120,19 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
 
     private void single(PacketSendEvent event) {
         World world = worldOf(event);
-        ClientCanon canon = source.canon();
-        if (world == null || !(source.anyIn(world.getUID()) || !canon.isEmpty())) {
+        if (world == null) {
+            return;
+        }
+        boolean bedrock = bedrockViewer(event);
+        ClientCanon canon = bedrock ? ClientCanon.none() : source.canon();
+        if (!(source.anyIn(world.getUID()) || !canon.isEmpty())) {
             return;
         }
         WrapperPlayServerBlockChange wrapper = new WrapperPlayServerBlockChange(event);
         Vector3i at = wrapper.getBlockPosition();
         ChunkLooks looks = source.chunk(world.getUID(), at.getX() >> 4, at.getZ() >> 4);
         int state = wrapper.getBlockId();
-        int rewritten = shown(looks, canon, world.getUID(), at.getX(), at.getY(), at.getZ(), state);
+        int rewritten = shown(looks, canon, world.getUID(), at.getX(), at.getY(), at.getZ(), state, bedrock);
         if (rewritten != state) {
             wrapper.setBlockID(rewritten);
             event.markForReEncode(true);
@@ -120,8 +141,12 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
 
     private void multi(PacketSendEvent event) {
         World world = worldOf(event);
-        ClientCanon canon = source.canon();
-        if (world == null || !(source.anyIn(world.getUID()) || !canon.isEmpty())) {
+        if (world == null) {
+            return;
+        }
+        boolean bedrock = bedrockViewer(event);
+        ClientCanon canon = bedrock ? ClientCanon.none() : source.canon();
+        if (!(source.anyIn(world.getUID()) || !canon.isEmpty())) {
             return;
         }
         WrapperPlayServerMultiBlockChange wrapper = new WrapperPlayServerMultiBlockChange(event);
@@ -130,7 +155,7 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
         for (WrapperPlayServerMultiBlockChange.EncodedBlock block : wrapper.getBlocks()) {
             ChunkLooks looks = source.chunk(id, block.getX() >> 4, block.getZ() >> 4);
             int state = block.getBlockId();
-            int rewritten = shown(looks, canon, id, block.getX(), block.getY(), block.getZ(), state);
+            int rewritten = shown(looks, canon, id, block.getX(), block.getY(), block.getZ(), state, bedrock);
             if (rewritten != state) {
                 block.setBlockId(rewritten);
                 changed = true;
@@ -142,17 +167,24 @@ final class BlockPacketRewriter extends PacketListenerAbstract {
     }
 
     /**
-     * The state to send for {@code state} at a world position: the look if it is a custom block, else the canonical
-     * sibling of a borrowed family's real state.
+     * The state to send for {@code state} at a world position: the look (the synthetic state for a Geyser viewer) if it
+     * is a custom block, else the canonical sibling of a borrowed family's real state.
      */
-    private int shown(ChunkLooks looks, ClientCanon canon, UUID world, int x, int y, int z, int state) {
+    private int shown(ChunkLooks looks, ClientCanon canon, UUID world, int x, int y, int z, int state,
+            boolean bedrock) {
         int localX = x & 15;
         int localZ = z & 15;
         if (looks.has(localX, y, localZ)) {
             return looks.rewrite(localX, y, localZ, state, ClientStates::isLegacyCarrier,
-                    (lx, ly, lz) -> foreign.foreign(world, x, ly, z));
+                    (lx, ly, lz) -> foreign.foreign(world, x, ly, z), bedrock);
         }
         return canon.of(state);
+    }
+
+    /** Whether the viewer of this packet is a Geyser connection that knows the synthetic states. */
+    private boolean bedrockViewer(PacketSendEvent event) {
+        return source.bedrockStates() && event.getPlayer() instanceof Player player
+                && source.isBedrock(player.getUniqueId());
     }
 
     /** Whether a section holds a state that {@code canon} replaces (read from its palette, no block is visited). */

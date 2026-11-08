@@ -20,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
 final class ClientLooks {
 
     static final ClientLooks EMPTY = new ClientLooks(LookTable.empty(), DisplayTable.empty(), Map.of(),
-            ClientCanon.none(), Map.of());
+            ClientCanon.none(), Map.of(), Map.of());
 
     private final LookTable table;
     private final DisplayTable displays;
@@ -29,14 +29,27 @@ final class ClientLooks {
     private final ClientCanon canon;
     /** Client state id to whether the borrowed look hides neighbouring faces (state tier only). */
     private final Map<Integer, Boolean> stateOccludes;
+    /** Look id to the synthetic state id Geyser viewers are shown; only looks registered with Geyser (ADR-0024). */
+    private final Map<String, Integer> bedrockIds;
 
     private ClientLooks(LookTable table, DisplayTable displays, Map<String, int[]> ids, ClientCanon canon,
-            Map<Integer, Boolean> stateOccludes) {
+            Map<Integer, Boolean> stateOccludes, Map<String, Integer> bedrockIds) {
         this.table = table;
         this.displays = displays;
         this.ids = ids;
         this.canon = canon;
         this.stateOccludes = stateOccludes;
+        this.bedrockIds = bedrockIds;
+    }
+
+    /** The same looks with {@code registered} as the synthetic ids Geyser viewers see (empty: none). */
+    ClientLooks withBedrock(Map<String, Integer> registered) {
+        return new ClientLooks(table, displays, ids, canon, stateOccludes, Map.copyOf(registered));
+    }
+
+    /** The synthetic state id of {@code lookId} for Geyser viewers, or {@link BlockLook#NO_BEDROCK}. */
+    int bedrockId(String lookId) {
+        return bedrockIds.getOrDefault(lookId, BlockLook.NO_BEDROCK);
     }
 
     /** Resolves the packet ids of {@code table}. Needs the packet library's block mappings. */
@@ -51,7 +64,8 @@ final class ClientLooks {
                 occludes.put(ids.get(placement.lookId())[0], placement.wanted().occludes());
             }
         }
-        return new ClientLooks(table, displays, Map.copyOf(ids), ClientCanon.of(table), Map.copyOf(occludes));
+        return new ClientLooks(table, displays, Map.copyOf(ids), ClientCanon.of(table), Map.copyOf(occludes),
+                Map.of());
     }
 
     LookTable table() {
@@ -76,7 +90,7 @@ final class ClientLooks {
         if (found == null || placement == null || placement.bedrockOnly()) {
             return null;
         }
-        return new BlockLook(carrier.clientId(), found[0], found[1]);
+        return new BlockLook(carrier.clientId(), found[0], found[1], bedrockId(lookId));
     }
 
     /** Whether the custom block shown as {@code look} hides the faces of its neighbours. */

@@ -18,7 +18,7 @@ import org.jetbrains.annotations.Nullable;
 public final class ChunkLooks {
 
     /** The snapshot of a chunk without custom blocks. */
-    public static final ChunkLooks EMPTY = new ChunkLooks(new long[0], new int[0], new int[0], new int[0]);
+    public static final ChunkLooks EMPTY = new ChunkLooks(new long[0], new int[0], new int[0], new int[0], new int[0]);
 
     /** Told about a position whose state is neither the carrier nor a legacy carrier: something else replaced it. */
     @FunctionalInterface
@@ -30,12 +30,14 @@ public final class ChunkLooks {
     private final int[] carrier;
     private final int[] look;
     private final int[] display;
+    private final int[] bedrock;
 
-    private ChunkLooks(long[] packed, int[] carrier, int[] look, int[] display) {
+    private ChunkLooks(long[] packed, int[] carrier, int[] look, int[] display, int[] bedrock) {
         this.packed = packed;
         this.carrier = carrier;
         this.look = look;
         this.display = display;
+        this.bedrock = bedrock;
     }
 
     /** Builds a snapshot from {@code packed position -> look}. The map is copied. */
@@ -48,15 +50,17 @@ public final class ChunkLooks {
         int[] carrier = new int[packed.length];
         int[] look = new int[packed.length];
         int[] display = new int[packed.length];
+        int[] bedrock = new int[packed.length];
         int i = 0;
         for (Map.Entry<Long, BlockLook> entry : sorted.entrySet()) {
             packed[i] = entry.getKey();
             carrier[i] = entry.getValue().carrier();
             look[i] = entry.getValue().look();
             display[i] = entry.getValue().display();
+            bedrock[i] = entry.getValue().bedrock();
             i++;
         }
-        return new ChunkLooks(packed, carrier, look, display);
+        return new ChunkLooks(packed, carrier, look, display, bedrock);
     }
 
     public int size() {
@@ -70,7 +74,7 @@ public final class ChunkLooks {
     /** The look at chunk-local {@code x}, {@code z} and block {@code y}, or null if there is no custom block. */
     public @Nullable BlockLook at(int x, int y, int z) {
         int i = Arrays.binarySearch(packed, BlockPositions.pack(x, y, z));
-        return i < 0 ? null : new BlockLook(carrier[i], look[i], display[i]);
+        return i < 0 ? null : new BlockLook(carrier[i], look[i], display[i], bedrock[i]);
     }
 
     /** Whether there is a custom block at chunk-local {@code x}, {@code z} and block {@code y}. */
@@ -103,6 +107,16 @@ public final class ChunkLooks {
         return false;
     }
 
+    /** Whether any position of this chunk has a synthetic state for Geyser viewers. */
+    public boolean hasBedrock() {
+        for (int b : bedrock) {
+            if (b != BlockLook.NO_BEDROCK) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Whether any custom block is in section {@code sectionY} (block y divided by 16, rounded down). */
     public boolean hasSection(int sectionY) {
         int i = lowerBound(sectionY);
@@ -120,6 +134,17 @@ public final class ChunkLooks {
      */
     public int rewriteSection(int sectionY, @NotNull SectionStates states, @NotNull IntPredicate legacy,
             @NotNull ForeignSink foreign) {
+        return rewriteSection(sectionY, states, legacy, foreign, false);
+    }
+
+    /**
+     * As {@link #rewriteSection(int, SectionStates, IntPredicate, ForeignSink)} for a viewer that may be a Geyser
+     * connection: with {@code bedrock} a position that has a synthetic state is rewritten to it instead of the Java
+     * look, and a position already holding the Java look (sent by a correction, which knows only Java looks) is moved
+     * to the synthetic state too.
+     */
+    public int rewriteSection(int sectionY, @NotNull SectionStates states, @NotNull IntPredicate legacy,
+            @NotNull ForeignSink foreign, boolean bedrock) {
         int changed = 0;
         for (int i = lowerBound(sectionY); i < packed.length; i++) {
             int y = y(packed[i]);
@@ -129,11 +154,12 @@ public final class ChunkLooks {
             int x = (int) ((packed[i] >> 4) & 15);
             int z = (int) (packed[i] & 15);
             int current = states.get(x, y & 15, z);
-            if (current == look[i]) {
+            int target = shown(i, bedrock);
+            if (current == target) {
                 continue;
             }
-            if (current == carrier[i] || legacy.test(current)) {
-                states.set(x, y & 15, z, look[i]);
+            if (current == carrier[i] || legacy.test(current) || (target != look[i] && current == look[i])) {
+                states.set(x, y & 15, z, target);
                 changed++;
             } else {
                 foreign.foreign(x, y, z);
@@ -148,15 +174,29 @@ public final class ChunkLooks {
      * {@code state} itself (reporting a foreign state to {@code foreign}).
      */
     public int rewrite(int x, int y, int z, int state, @NotNull IntPredicate legacy, @NotNull ForeignSink foreign) {
+        return rewrite(x, y, z, state, legacy, foreign, false);
+    }
+
+    /** As {@link #rewrite(int, int, int, int, IntPredicate, ForeignSink)}, for a viewer that may be a Geyser connection. */
+    public int rewrite(int x, int y, int z, int state, @NotNull IntPredicate legacy, @NotNull ForeignSink foreign,
+            boolean bedrock) {
         int i = Arrays.binarySearch(packed, BlockPositions.pack(x, y, z));
-        if (i < 0 || state == look[i]) {
+        if (i < 0) {
             return state;
         }
-        if (state == carrier[i] || legacy.test(state)) {
-            return look[i];
+        int target = shown(i, bedrock);
+        if (state == target) {
+            return state;
+        }
+        if (state == carrier[i] || legacy.test(state) || (target != look[i] && state == look[i])) {
+            return target;
         }
         foreign.foreign(x, y, z);
         return state;
+    }
+
+    private int shown(int i, boolean bedrockViewer) {
+        return bedrockViewer && bedrock[i] != BlockLook.NO_BEDROCK ? bedrock[i] : look[i];
     }
 
     /** The index of the first entry in section {@code sectionY} or later. */

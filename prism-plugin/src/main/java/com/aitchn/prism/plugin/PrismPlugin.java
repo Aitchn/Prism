@@ -72,6 +72,7 @@ public final class PrismPlugin extends JavaPlugin {
         }
         String backend = getConfig().getString("blocks.backend", "auto");
         packManager.configure(backend, getConfig().getBoolean("blocks.display.solid-shells", false));
+        packManager.bedrockBlocks().attach();
         packManager.installInto(new GeyserInstaller(getLogger(), getDataFolder().toPath().resolve("geyser")));
         PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, new BlockIndex(this), display,
                 packManager::looks, backend, dispatcher, scheduler, getLogger());
@@ -87,7 +88,9 @@ public final class PrismPlugin extends JavaPlugin {
         ChestMenus menus = new ChestMenus(items, scheduler, getLogger());
         BedrockDetector bedrockPlayers = BedrockDetector.create(getLogger());
         BedrockModelLooks modelLooks = new BedrockModelLooks(blocks, packManager::looks, bedrockPlayers, scheduler);
+        packManager.onRelook(() -> scheduler.runGlobal(blocks::contentChanged));
         blocks.onLookChanged(modelLooks::changed);
+        blocks.onChunkRelooked(modelLooks::relooked);
         getServer().getPluginManager().registerEvents(modelLooks, this);
         DisplayLayer displayLayer = new DisplayLayer(blocks, packManager::looks, scheduler, bedrockPlayers,
                 Math.max(0, getConfig().getInt("blocks.display.view-distance", 8)),
@@ -95,7 +98,8 @@ public final class PrismPlugin extends JavaPlugin {
         blocks.onLookChanged(displayLayer::changed);
         blocks.onChunkRelooked(displayLayer::relooked);
         getServer().getPluginManager().registerEvents(displayLayer, this);
-        getServer().getPluginManager().registerEvents(new BreakFeel(this, blocks, packManager::looks), this);
+        getServer().getPluginManager().registerEvents(new BreakFeel(this, blocks, packManager::looks,
+                id -> packManager.bedrockBlocks().bedrockStates() && bedrockPlayers.test(id)), this);
         Prism.install(lifecycle, items, blocks, new Profiles(bedrockPlayers), menus, data,
                 new SchedulerAdapter(scheduler), recipes);
         getServer().getPluginManager().registerEvents(menus, this);
@@ -123,6 +127,21 @@ public final class PrismPlugin extends JavaPlugin {
             @Override
             public ClientCanon canon() {
                 return packManager.looks().canon();
+            }
+
+            @Override
+            public boolean bedrockStates() {
+                return packManager.bedrockBlocks().bedrockStates();
+            }
+
+            @Override
+            public boolean isBedrock(UUID player) {
+                return bedrockPlayers.test(player);
+            }
+
+            @Override
+            public int bedrockGlobalBits() {
+                return packManager.bedrockBlocks().globalBits();
             }
         }, blocks::foreignChange);
         var command = getCommand("prism");

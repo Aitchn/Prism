@@ -5,6 +5,8 @@ allocation, canonicalization table, face splitting, pack output, break speed mat
 catalogue check against the game's own blockstate files. What a real client draws, and the packet layer against a real
 PacketEvents and Paper, is not (see "Not verified").
 
+Update: ADR-0024 lifts the Bedrock limit stated below: with Geyser on the same server, display-layer blocks are real Bedrock custom blocks too.
+
 ## Context
 
 Stage 1 made the index the only truth and the server carrier inert, but a Java client can still tell apart only as many

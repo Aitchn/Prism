@@ -47,11 +47,15 @@ final class BreakFeel implements Listener {
     private final Supplier<ClientLooks> looks;
     private final NamespacedKey key;
     private final Logger log;
+    /** Players whose client draws the block as a Bedrock custom block: Geyser derives their break speed itself. */
+    private final java.util.function.Predicate<UUID> syntheticViewer;
     private final Map<UUID, Dig> digs = new ConcurrentHashMap<>();
 
     private record Dig(Block block, long startedNanos, int ticks) {}
 
-    BreakFeel(Plugin plugin, PrismBlockService blocks, Supplier<ClientLooks> looks) {
+    BreakFeel(Plugin plugin, PrismBlockService blocks, Supplier<ClientLooks> looks,
+            java.util.function.Predicate<UUID> syntheticViewer) {
+        this.syntheticViewer = syntheticViewer;
         this.blocks = blocks;
         this.looks = looks;
         this.key = new NamespacedKey(plugin, "break_speed");
@@ -79,6 +83,12 @@ final class BreakFeel implements Listener {
         int ticks = DigMath.ticksToBreak(mining, held.getType().name(), efficiency,
                 level(player, PotionEffectType.HASTE), level(player, PotionEffectType.MINING_FATIGUE), true, false);
         digs.put(player.getUniqueId(), new Dig(block, System.nanoTime(), ticks));
+        if (looks.get().bedrockId(lookId) != com.aitchn.prism.core.block.BlockLook.NO_BEDROCK
+                && syntheticViewer.test(player.getUniqueId())) {
+            // A Geyser viewer is shown the synthetic block, whose hardness is the custom one already (ADR-0024). The
+            // server's own earliest-break check above still applies.
+            return;
+        }
         double factor = DigMath.breakSpeedFactor(mining, client, held.getType().name(), efficiency);
         if (Double.isNaN(factor)) {
             log.fine("PRISM_BREAK_INSTANT " + lookId + " is drawn with a state the client breaks instantly");

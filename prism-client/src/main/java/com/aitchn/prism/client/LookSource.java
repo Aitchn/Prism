@@ -22,4 +22,26 @@ public interface LookSource {
     default ClientCanon canon() {
         return ClientCanon.none();
     }
+
+    /**
+     * Whether synthetic Bedrock block states are registered with Geyser (ADR-0024). A cheap check made before asking
+     * about a viewer; while it is false every viewer is rewritten as a Java client.
+     */
+    default boolean bedrockStates() {
+        return false;
+    }
+
+    /** Whether {@code player} is a Geyser connection. Only asked while {@link #bedrockStates()} holds. */
+    default boolean isBedrock(UUID player) {
+        return false;
+    }
+
+    /**
+     * Bits per block of the global palette Geyser reads, derived from the size of its block state registry once the
+     * synthetic states are registered. A section a Geyser viewer receives in the global palette is written with this
+     * width.
+     */
+    default int bedrockGlobalBits() {
+        return 0;
+    }
 }
