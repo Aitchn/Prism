@@ -8,7 +8,6 @@ import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -69,14 +68,15 @@ final class OreSelfTest implements Listener {
             }
             Chunk chunk = world.getChunkAt(chunkX, chunkZ);
             List<CustomBlock> ores = blocks.blocksIn(chunk).stream().filter(b -> b.key().equals(key)).toList();
-            boolean visible = !ores.isEmpty() && ores.stream().allMatch(b -> b.block().getType() == Material.NOTE_BLOCK);
+            boolean visible = !ores.isEmpty() && ores.stream().allMatch(b -> b.block().getType() == Carrier.SOLID.material()
+                    && blocks.lookOf(b.block()) != null);
             int targets = (int) blocks.oreTargets().stream().filter(t -> t.block().equals(key)).count();
             boolean ok = targets > 0 && visible;
             // What the ore could replace, to tell "no stone here" from "generation did not run".
             String sample = chunk.getBlock(8, -40, 8).getType() + "," + chunk.getBlock(8, -20, 8).getType();
             world.removePluginChunkTicket(chunkX, chunkZ, prism);
             log.info((ok ? "PRISM_ORE_SELFTEST_OK " : "PRISM_ORE_SELFTEST_FAIL ") + key + " targets=" + targets
-                    + " blocks=" + ores.size() + " noteBlocks=" + visible + " chunk=" + chunkX + "," + chunkZ + " sample=" + sample + " " + blocks.oreStats());
+                    + " blocks=" + ores.size() + " looks=" + visible + " chunk=" + chunkX + "," + chunkZ + " sample=" + sample + " " + blocks.oreStats());
         } catch (RuntimeException e) {
             log.severe("PRISM_ORE_SELFTEST_FAIL " + e);
         }

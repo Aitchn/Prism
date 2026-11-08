@@ -20,6 +20,14 @@ neighbour changes and ticks (`BlockTickBehavior`, batched per chunk). `CustomBlo
 `BlockCapability` and `BlockCapabilityProvider`; Prism defines only the lookup and `PrismCapabilities.INVENTORY`.
 `prism:rotation` makes a block face the player; `prism:mining` sets how long it takes to break in survival.
 
+Blocks that are drawn as a note block or tripwire state (the default) are not stored as those states. The world holds
+an inert vanilla block (a brown mushroom block for solid blocks, structure void for passable ones) that has no states, ticks or
+neighbour reactions, and Prism tells every player what it looks like by rewriting the outgoing block packets from its
+index. After a player places, breaks or clicks next to such a block, Prism sends the looks of the block and its
+neighbours again, because the Java client predicts shape updates on its own. If another plugin or WorldEdit replaces
+the carrier, the block counts as gone. Plugins that read the world see the carrier, so use
+`Prism.blocks().identify(block)` or `get(block)` to find out what a block is. See ADR-0022.
+
 **Sounds and animated textures.** Put sounds in your jar as on a Java resource pack (`assets/<ns>/sounds.json` plus
 `.ogg` files) and play them with Bukkit's `playSound(location, "<ns>:<event>", ...)`. Prism also copies them into the
 Bedrock pack, so Bedrock players hear them through Geyser. `prism:ambient_sound` makes a block play a sound by itself
@@ -37,8 +45,8 @@ Bedrock players see a generated shape, one note block state per variant and comb
 16 for four). `examplemod:ruby_cable` is an example.
 
 **Passable blocks.** `prism:passable: true` makes a block players walk through, like a flower or a wire. Prism draws
-it with one of 64 tripwire states instead of a note block state, so it has no collision on either edition, does not
-hide the blocks around it and breaks instantly. Without a model of its own, its texture is drawn as a cross, like a
+it with one of 64 tripwire states instead of a note block state (players see the state; the world holds structure void),
+so it has no collision on either edition, does not hide the blocks around it and breaks instantly. Without a model of its own, its texture is drawn as a cross, like a
 flower. `examplemod:ruby_flower` is an example.
 
 **Multiblock structures.** `prism:structure` makes a block the controller of a structure. You give `layers` (bottom

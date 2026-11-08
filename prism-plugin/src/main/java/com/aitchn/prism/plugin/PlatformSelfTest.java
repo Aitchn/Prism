@@ -77,13 +77,14 @@ final class PlatformSelfTest implements Listener {
             Optional<CustomBlock> custom = blocks.get(block);
             boolean facing = custom.map(c -> c.facing() == BlockFace.EAST).orElse(false);
             boolean placeRan = custom.map(c -> c.data().has(placedKey, PersistentDataType.LONG)).orElse(false);
-            // Variants: placed with the first, switched at runtime, unknown names refused, the look follows.
-            String before = block.getBlockData().getAsString();
+            // Variants: placed with the first, switched at runtime, unknown names refused, the look follows. The world
+            // keeps the inert carrier (ADR-0022), so the look is the state the packet rewrite sends to clients.
+            int before = blocks.expectedLookId(block);
             boolean variant = custom.map(c -> c.variant().equals("idle")).orElse(false)
                     && blocks.setVariant(block, "active")
                     && blocks.get(block).map(c -> c.variant().equals("active")).orElse(false)
                     && !blocks.setVariant(block, "missing")
-                    && !before.equals(block.getBlockData().getAsString());
+                    && before != -1 && before != blocks.expectedLookId(block);
 
             Block chest = block.getRelative(BlockFace.NORTH);
             chest.setType(Material.CHEST, false);

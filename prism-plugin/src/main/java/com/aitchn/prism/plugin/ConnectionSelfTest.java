@@ -7,7 +7,6 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -67,7 +66,7 @@ final class ConnectionSelfTest implements Listener {
             boolean masks = joined.equals("c3/c8");
             boolean model = modelShown(a, "c3");
             boolean bedrock = blocks.get(a).map(bedrockLook).isPresent() && blocks.get(b).map(bedrockLook).isPresent();
-            boolean carrier = a.getType() != Material.NOTE_BLOCK;
+            boolean carrier = !blocks.drawnAsLook(a);
             blocks.remove(b, false);
             String after = drawn(a);
             boolean unlinked = after.equals("c1");

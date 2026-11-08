@@ -11,7 +11,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
@@ -47,7 +46,7 @@ final class BedrockModelLooks implements Listener {
     BlockData lookOf(CustomBlock custom) {
         boolean displayed = ModelAnchors.modelOf(custom.definition()).isPresent()
                 || custom.definition().components().has(PrismComponents.CONNECTIONS);
-        if (!displayed || custom.block().getType() == Material.NOTE_BLOCK) {
+        if (!displayed || blocks.drawnAsLook(custom.block())) {
             return null;
         }
         return noteBlocks.existingState(custom.definition(), custom.facing(), blocks.drawnVariant(custom));

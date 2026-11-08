@@ -16,6 +16,12 @@ interface BlockAppearance {
     /** Removes what draws the block and sets the carrier to air. */
     void despawn(Block block);
 
+    /**
+     * The carrier was replaced by something outside Prism (the world wins): drops what drew the block but leaves the
+     * block that is there now alone. For a look that lives only in packets there is nothing to drop.
+     */
+    default void orphaned(Block block) {}
+
     /** Whether {@code block}'s carrier belongs to this appearance. */
     boolean draws(Block block);
 }

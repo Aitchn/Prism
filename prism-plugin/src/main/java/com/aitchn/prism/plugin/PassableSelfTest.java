@@ -19,7 +19,7 @@ import org.bukkit.inventory.ItemStack;
 /**
  * Optional startup check of passable blocks, enabled with {@code -Dprism.selftest.passable=<block key>}; the smoke
  * test passes {@code examplemod:ruby_flower}. Places two side by side on stone, puts stone next to one with physics
- * and drops an item onto the other, then checks a few ticks later that both still show their own tripwire state
+ * and drops an item onto the other, then checks a few ticks later that both still hold the inert carrier, have their tripwire look in the index
  * (vanilla string would have connected or been pressed) and can be walked through.
  */
 final class PassableSelfTest implements Listener {
@@ -55,7 +55,8 @@ final class PassableSelfTest implements Listener {
             b.getRelative(BlockFace.DOWN).setType(Material.STONE, false);
             boolean placed = blocks.place(key, a.getLocation()) && blocks.place(key, b.getLocation());
             BlockData before = a.getBlockData();
-            boolean carrier = a.getType() == Material.TRIPWIRE && b.getType() == Material.TRIPWIRE;
+            boolean carrier = a.getType() == Carrier.PASSABLE.material() && b.getType() == Carrier.PASSABLE.material()
+                    && blocks.lookOf(a) != null && blocks.lookOf(b) != null;
             a.getRelative(BlockFace.WEST).setType(Material.STONE, true);
             blocks.notifyNeighbors(a.getRelative(BlockFace.WEST));
             Item dropped = b.getWorld().dropItem(b.getLocation().add(0.5, 0.1, 0.5), new ItemStack(Material.STICK));
@@ -77,7 +78,7 @@ final class PassableSelfTest implements Listener {
             a.getRelative(BlockFace.WEST).setType(Material.AIR, false);
             boolean ok = placed && carrier && kept && passable && indexed;
             log.info((ok ? "PRISM_PASSABLE_SELFTEST_OK " : "PRISM_PASSABLE_SELFTEST_FAIL ") + key + " placed=" + placed
-                    + " tripwire=" + carrier + " kept=" + kept + " passable=" + passable + " indexed=" + indexed
+                    + " carrier=" + carrier + " kept=" + kept + " passable=" + passable + " indexed=" + indexed
                     + " state=" + state);
         } catch (RuntimeException e) {
             log.severe("PRISM_PASSABLE_SELFTEST_FAIL " + e);
