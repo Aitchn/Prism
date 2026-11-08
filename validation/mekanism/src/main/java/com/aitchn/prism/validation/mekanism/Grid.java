@@ -530,12 +530,14 @@ final class Grid {
         org.bukkit.World world = block.getWorld();
         int depth = block.getY() - world.getMinHeight();
         List<int[]> targets = new ArrayList<>();
+        int[] first = new int[1];
         underLock(() -> {
             Machine machine = machine(custom, spec);
             Miner miner = miner(pos, machine);
-            if (miner.pending() > 0 || machine.energy().stored() < Miner.COST_PER_BLOCK) {
+            if (miner.pending() > 0 || !machine.enabled() || machine.energy().stored() < Miner.COST_PER_BLOCK) {
                 return;
             }
+            first[0] = miner.index();
             for (int i = 0; i < Miner.LOOKS_PER_TICK && machine.energy().stored() >= Miner.COST_PER_BLOCK; i++) {
                 int[] offset = miner.next(depth);
                 if (offset == null) {
@@ -548,14 +550,16 @@ final class Grid {
             machine.setAttachment(miner.save());
         });
         Location home = block.getLocation().add(0.5, 1.0, 0.5);
-        for (int[] offset : targets) {
+        for (int i = 0; i < targets.size(); i++) {
+            int[] offset = targets.get(i);
+            int index = first[0] + i;
             Location at = new Location(world, block.getX() + offset[0], block.getY() + offset[1], block.getZ() + offset[2]);
-            Prism.scheduler().runAt(at, () -> mineOne(at, home, pos, custom, spec));
+            Prism.scheduler().runAt(at, () -> mineOne(at, home, pos, index));
         }
     }
 
     /** On the thread that owns {@code at}. */
-    private void mineOne(Location at, Location home, Pos pos, CustomBlock miner, MachineBehavior spec) {
+    private void mineOne(Location at, Location home, Pos pos, int index) {
         List<ItemStack> drops = List.of();
         try {
             if (!at.getWorld().isChunkLoaded(at.getBlockX() >> 4, at.getBlockZ() >> 4)) {
@@ -567,9 +571,19 @@ final class Grid {
             if (!custom && Miner.accepts(id)) {
                 boolean paid = locked(() -> {
                     Machine machine = machines.get(pos);
-                    return machine != null && machine.energy().consume(Miner.COST_PER_BLOCK);
+                    return machine != null && machine.enabled() && machine.energy().consume(Miner.COST_PER_BLOCK);
                 });
-                if (paid) {
+                if (!paid) {
+                    // no power or no signal right now: look at this ore again later
+                    underLock(() -> {
+                        Miner state = miners.get(pos);
+                        Machine machine = machines.get(pos);
+                        if (state != null && machine != null) {
+                            state.rewind(index);
+                            machine.setAttachment(state.save());
+                        }
+                    });
+                } else {
                     drops = new ArrayList<>(target.getDrops());
                     target.setType(Material.AIR);
                 }

@@ -88,6 +88,11 @@ public final class Machine {
         return stack.withCount(stack.count() - accepted);
     }
 
+    /** Whether the redstone mode lets this machine work with the signal it has now. */
+    public boolean enabled() {
+        return redstone.allows(powered);
+    }
+
     public boolean autoEject() {
         return autoEject;
     }

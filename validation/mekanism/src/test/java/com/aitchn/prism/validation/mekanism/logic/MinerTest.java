@@ -94,4 +94,28 @@ class MinerTest {
         miner.finish();
         assertEquals(0, miner.pending());
     }
+
+    @Test
+    void an_ore_that_could_not_be_paid_for_is_looked_at_again() {
+        Miner miner = new Miner();
+        for (int i = 0; i < 40; i++) {
+            miner.advance();
+        }
+        miner.rewind(35);
+        assertEquals(35, miner.index());
+        miner.rewind(38);
+        assertEquals(35, miner.index(), "rewinding never moves forward");
+        miner.rewind(-5);
+        assertEquals(0, miner.index());
+    }
+
+    @Test
+    void the_redstone_mode_gates_the_miners_machine() {
+        Machine machine = new Machine(MachineType.fixed("digital_miner", List.of(), 1, 1, 0));
+        assertTrue(machine.enabled());
+        machine.setRedstone(Redstone.HIGH);
+        assertFalse(machine.enabled());
+        machine.setPowered(true);
+        assertTrue(machine.enabled());
+    }
 }

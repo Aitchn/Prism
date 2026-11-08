@@ -82,6 +82,11 @@ public final class Miner {
         return new int[] {in % side - radius, -(layer + 1), in / side - radius};
     }
 
+    /** A position that could not be mined yet (no power, no signal): look again from there. Never moves forward. */
+    public void rewind(int toIndex) {
+        index = Math.max(0, Math.min(index, toIndex));
+    }
+
     public void advance() {
         index++;
     }
