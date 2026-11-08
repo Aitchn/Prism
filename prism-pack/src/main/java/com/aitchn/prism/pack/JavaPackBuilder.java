@@ -6,7 +6,11 @@ import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.block.ConnectedShapes;
-import com.aitchn.prism.core.block.TripwireStates;
+import com.aitchn.prism.core.look.DisplayPlan;
+import com.aitchn.prism.core.look.LookTable;
+import com.aitchn.prism.core.look.ModelRef;
+import com.aitchn.prism.core.look.ResolvedPool;
+import com.aitchn.prism.core.look.StateRef;
 import com.aitchn.prism.pack.json.JsonWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -43,23 +47,25 @@ public final class JavaPackBuilder {
             @NotNull Collection<BlockDefinition> blocks,
             int packFormat,
             @NotNull String description,
-            @NotNull Map<Integer, NativeBlockstates.StateModel> nativeStates) {
+            @NotNull LookTable looks) {
 
         public Input(@NotNull Map<String, Map<String, byte[]>> assets, @NotNull Collection<ItemDefinition> items,
                 @NotNull Collection<BlockDefinition> blocks, int packFormat, @NotNull String description) {
-            this(assets, items, blocks, packFormat, description, Map.of());
+            this(assets, items, blocks, packFormat, description, LookTable.empty());
         }
     }
 
     /**
      * @param itemsWithAppearance  items that got an item definition; only these may carry {@code item_model}
      * @param blocksWithAppearance blocks that got one, drawn with item model {@code <ns>:block/<value>}
+     * @param displayPlans         for each look of the input's {@link LookTable} that the display layer draws, how
      */
     public record Resolved(
             @NotNull Map<String, byte[]> files,
             @NotNull List<String> warnings,
             @NotNull Set<PrismKey> itemsWithAppearance,
-            @NotNull Set<PrismKey> blocksWithAppearance) {}
+            @NotNull Set<PrismKey> blocksWithAppearance,
+            @NotNull Map<String, DisplayPlan> displayPlans) {}
 
     public record Result(
             byte @NotNull [] zip,
@@ -67,7 +73,8 @@ public final class JavaPackBuilder {
             @NotNull List<String> warnings,
             int fileCount,
             @NotNull Set<PrismKey> itemsWithAppearance,
-            @NotNull Set<PrismKey> blocksWithAppearance) {}
+            @NotNull Set<PrismKey> blocksWithAppearance,
+            @NotNull Map<String, DisplayPlan> displayPlans) {}
 
     private JavaPackBuilder() {}
 
@@ -76,7 +83,7 @@ public final class JavaPackBuilder {
         Resolved resolved = resolve(input);
         byte[] zip = zip(resolved.files());
         return new Result(zip, sha1(zip), resolved.warnings(), resolved.files().size(),
-                resolved.itemsWithAppearance(), resolved.blocksWithAppearance());
+                resolved.itemsWithAppearance(), resolved.blocksWithAppearance(), resolved.displayPlans());
     }
 
     /** Merges assets and generates definitions and models, without compressing anything. */
@@ -148,17 +155,54 @@ public final class JavaPackBuilder {
                 blocksOk.add(block.key());
             }
         }
-        if (input.nativeStates().keySet().stream().anyMatch(id -> !TripwireStates.isTripwire(id))) {
-            files.put(NativeBlockstates.PATH,
-                    NativeBlockstates.noteBlock(input.nativeStates()).getBytes(StandardCharsets.UTF_8));
-        }
-        if (input.nativeStates().keySet().stream().anyMatch(TripwireStates::isTripwire)) {
-            files.put(NativeBlockstates.TRIPWIRE_PATH,
-                    NativeBlockstates.tripwire(input.nativeStates()).getBytes(StandardCharsets.UTF_8));
-        }
+        Map<String, DisplayPlan> plans = looks(input, files, warnings);
 
         files.put("pack.mcmeta", mcmeta(input).getBytes(StandardCharsets.UTF_8));
-        return new Resolved(files, List.copyOf(warnings), Set.copyOf(itemsOk), Set.copyOf(blocksOk));
+        return new Resolved(files, List.copyOf(warnings), Set.copyOf(itemsOk), Set.copyOf(blocksOk), Map.copyOf(plans));
+    }
+
+    /**
+     * The client side of the look table: blockstate files that give every borrowed state its look's model, and for the
+     * looks drawn by the display layer the invisible shell and the face models. Returns the display plan of each such look.
+     */
+    private static Map<String, DisplayPlan> looks(Input input, Map<String, byte[]> files, List<String> warnings) {
+        LookTable table = input.looks();
+        Map<String, Map<StateRef, ModelRef>> custom = new LinkedHashMap<>();
+        Set<String> shells = new LinkedHashSet<>();
+        Map<String, DisplayPlan> plans = new TreeMap<>();
+        DisplayModels displays = new DisplayModels(files, warnings);
+        for (BlockDefinition block : input.blocks()) {
+            for (Appearances.Look look : Appearances.looks(block)) {
+                LookTable.Placement placement = table.placement(look.id());
+                if (placement == null || placement.bedrockOnly()) {
+                    continue;
+                }
+                PrismKey model = Appearances.model(block, look.variant());
+                if (placement.tier() == LookTable.Tier.STATE) {
+                    int[] rotation = Appearances.rotation(look.facing());
+                    custom.computeIfAbsent(placement.state().block(), k -> new LinkedHashMap<>())
+                            .put(placement.state(), new ModelRef(model.toString(), rotation[0], rotation[1]));
+                } else {
+                    shells.add(placement.state().block());
+                    PrismKey itemModel = Appearances.itemModel(block.key(), look.variant());
+                    String whole = files.containsKey("assets/" + itemModel.namespace() + "/items/" + itemModel.value()
+                            + ".json") ? itemModel.toString() : "";
+                    plans.put(look.id(), displays.plan("block " + look.id(), model, whole));
+                }
+            }
+        }
+        for (ResolvedPool.Family family : table.pool().families()) {
+            Map<StateRef, ModelRef> states = custom.getOrDefault(family.family().block(), Map.of());
+            boolean shell = shells.contains(family.family().block());
+            if (!states.isEmpty() || shell) {
+                files.put(LookBlockstates.path(family.family().block()),
+                        LookBlockstates.write(family, states, shell).getBytes(StandardCharsets.UTF_8));
+            }
+        }
+        if (!shells.isEmpty()) {
+            LookBlockstates.addShell(files);
+        }
+        return plans;
     }
 
     /**

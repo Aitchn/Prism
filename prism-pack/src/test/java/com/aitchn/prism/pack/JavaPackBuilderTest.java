@@ -76,14 +76,20 @@ class JavaPackBuilderTest {
         var flower = new BlockDefinition(PrismKey.parse("mod:flower"), "mod", PrismKey.parse("minecraft:barrier"),
                 Optional.empty(), ComponentMap.builder().put(PrismComponents.PASSABLE, new PrismComponents.Passable(true))
                         .build(), List.of());
-        int state = com.aitchn.prism.core.block.TripwireStates.OFFSET;
+        var looks = com.aitchn.prism.core.look.LookAllocator.allocate(
+                com.aitchn.prism.core.look.ResolvedPool.standard(),
+                List.of(new com.aitchn.prism.core.look.LookRequest("mod:flower",
+                        com.aitchn.prism.core.block.Appearances.physics(flower), PrismComponents.Render.AUTO, false)),
+                false);
         var result = JavaPackBuilder.build(new JavaPackBuilder.Input(
                 Map.of("mod", Map.of("assets/mod/textures/block/flower.png", PNG)), List.of(), List.of(flower), 46,
-                "test", Map.of(state, new NativeBlockstates.StateModel(PrismKey.parse("mod:block/flower"), 0, 0))));
+                "test", looks));
         var files = entries(result.zip());
         assertTrue(text(files, "assets/mod/models/block/flower.json").contains("minecraft:block/cross"));
-        assertTrue(text(files, NativeBlockstates.TRIPWIRE_PATH).contains("mod:block/flower"));
-        assertTrue(!files.containsKey(NativeBlockstates.PATH));
+        String tripwire = text(files, LookBlockstates.path("minecraft:tripwire"));
+        assertTrue(tripwire.contains("mod:block/flower"));
+        assertEquals(1, tripwire.split("mod:block/flower", -1).length - 1, "one state is drawn as the flower");
+        assertTrue(!files.containsKey(LookBlockstates.path("minecraft:note_block")));
     }
 
     @Test

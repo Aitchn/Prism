@@ -1,6 +1,7 @@
 package com.aitchn.prism.core.block;
 
 import com.aitchn.prism.api.content.PrismComponents.Mining;
+import com.aitchn.prism.core.look.ClientBreak;
 import java.util.Locale;
 
 /**
@@ -48,6 +49,39 @@ public final class DigMath {
             speed /= 5;
         }
         return Math.max(1, (int) Math.ceil(mining.hardness() * 20 / speed));
+    }
+
+    /** The largest value of the {@code block_break_speed} attribute. */
+    public static final double MAX_BREAK_SPEED = 1024;
+
+    /**
+     * The factor to multiply the player's {@code block_break_speed} attribute with so that a client that predicts
+     * breaking the vanilla state {@code client} takes as long as the custom block {@code custom} does for the held tool.
+     * Everything both sides apply equally (haste, mining fatigue, water, air) cancels. Vanilla progress per tick is
+     * {@code speed / (seconds * 20)}, where {@code seconds} is the hardness by hand: 1.5 times the block's hardness if
+     * the tool may harvest it, 5 times if it may not.
+     *
+     * @return the factor, {@code 0} for a block that cannot be broken (the client never finishes, the server never
+     *         agrees), {@link #MAX_BREAK_SPEED} at most, or {@link Double#NaN} if the client state breaks instantly and
+     *         no factor can slow it
+     */
+    public static double breakSpeedFactor(Mining custom, ClientBreak client, String heldMaterial, int efficiency) {
+        if (custom.hardness() < 0) {
+            return 0;
+        }
+        if (client.instant()) {
+            return Double.NaN;
+        }
+        boolean clientTool = !"none".equals(client.tool()) && toolType(heldMaterial).equals(client.tool());
+        double clientSeconds = client.hardness() * (!client.requiresTool() || clientTool ? 1.5 : 5);
+        double clientSpeed = clientTool ? tierSpeed(heldMaterial) + (efficiency > 0 ? efficiency * efficiency + 1 : 0) : 1;
+        if (custom.hardness() == 0) {
+            return MAX_BREAK_SPEED;
+        }
+        boolean customTool = !"none".equals(custom.tool()) && toolType(heldMaterial).equals(custom.tool());
+        double customSpeed = customTool ? tierSpeed(heldMaterial) + (efficiency > 0 ? efficiency * efficiency + 1 : 0) : 1;
+        double factor = customSpeed * clientSeconds / (clientSpeed * custom.hardness());
+        return Math.max(0, Math.min(MAX_BREAK_SPEED, factor));
     }
 
     /** {@code pickaxe}, {@code axe}, ... for a tool material name, or {@code none}. */
