@@ -106,6 +106,14 @@ final class DisplayEntityBackend implements BlockAppearance {
         block.setType(Material.AIR, false);
     }
 
+    @Override
+    public void orphaned(Block block) {
+        for (ItemDisplay display : displays(block)) {
+            anchors.detach(display.getUniqueId());
+            display.remove();
+        }
+    }
+
     /** Calls {@code found} for every marked display in {@code chunk}; used to migrate pre-index worlds. */
     void forEachMarker(Chunk chunk, BiConsumer<Block, PrismKey> found) {
         for (Entity entity : chunk.getEntities()) {

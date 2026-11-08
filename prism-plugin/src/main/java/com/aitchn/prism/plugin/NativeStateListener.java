@@ -1,7 +1,6 @@
 package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.block.BlockService;
-import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
@@ -9,15 +8,14 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockFromToEvent;
-import org.bukkit.event.block.BlockPhysicsEvent;
-import org.bukkit.event.block.NotePlayEvent;
-import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 /**
- * Keeps vanilla behaviour from changing a custom block drawn as a carrier state. Note blocks: no re-tuning by click, no
- * instrument change from the block below, no note when powered (ported from the M5b native backend). Tripwire
- * (passable blocks): no connecting to neighbouring string, no pressing by entities, no washing away by water or lava.
+ * The few vanilla behaviours that could still act on an inert {@link Carrier}. The carriers have no states that change,
+ * no ticks and no neighbour reactions, so the guards earlier versions needed against note block re-tuning, instrument
+ * changes and tripwire connecting are gone (neighbour physics events, for example, now flow normally). What is left is
+ * defensive: a tool use that would turn a carrier into another block (no vanilla tool does that to a mushroom block
+ * today) and fluid flowing into structure void.
  */
 final class NativeStateListener implements Listener {
 
@@ -31,58 +29,22 @@ final class NativeStateListener implements Listener {
     // (BlockListener), which skips cancelled events.
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
-        if (event.getClickedBlock() == null || event.getClickedBlock().getType() != Material.NOTE_BLOCK) {
+        Block clicked = event.getClickedBlock();
+        if (clicked == null || Carrier.of(clicked.getType()) == null) {
             return;
         }
-        // Right click only: denying a left click would also stop the player from breaking the block.
-        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && blocks.identify(event.getClickedBlock()).isPresent()) {
+        // Right click only: denying a left click would also stop the player from breaking the block. Denying the use
+        // keeps a tool from turning the carrier into another block.
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK && blocks.identify(clicked).isPresent()) {
             event.setUseInteractedBlock(Event.Result.DENY);
         }
     }
 
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onPhysics(BlockPhysicsEvent event) {
-        if (carrier(event.getBlock())) {
-            event.setCancelled(true);
-        }
-    }
-
-    /** An entity or player standing in string presses it ({@code powered}), which would change the look. */
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onEntityPress(EntityInteractEvent event) {
-        if (passable(event.getBlock())) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST)
-    public void onPlayerPress(PlayerInteractEvent event) {
-        if (event.getAction() == Action.PHYSICAL && event.getClickedBlock() != null
-                && passable(event.getClickedBlock())) {
-            event.setUseInteractedBlock(Event.Result.DENY);
-        }
-    }
-
-    /** Flowing water and lava would break string and drop it. */
+    /** Fluids would replace the passable carrier (and with it the block). */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onFlow(BlockFromToEvent event) {
-        if (passable(event.getToBlock())) {
-            event.setCancelled(true);
-        }
-    }
-
-    private boolean carrier(Block block) {
-        Material type = block.getType();
-        return (type == Material.NOTE_BLOCK || type == Material.TRIPWIRE) && blocks.identify(block).isPresent();
-    }
-
-    private boolean passable(Block block) {
-        return block.getType() == Material.TRIPWIRE && blocks.identify(block).isPresent();
-    }
-
-    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-    public void onNote(NotePlayEvent event) {
-        if (blocks.identify(event.getBlock()).isPresent()) {
+        Block to = event.getToBlock();
+        if (to.getType() == Carrier.PASSABLE.material() && blocks.identify(to).isPresent()) {
             event.setCancelled(true);
         }
     }

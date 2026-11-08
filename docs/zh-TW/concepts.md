@@ -16,6 +16,12 @@
 方塊透過 `BlockCapability` 與 `BlockCapabilityProvider` 對鄰居提供服務；Prism 只提供查找機制與 `PrismCapabilities.INVENTORY`。
 `prism:rotation` 讓方塊面向玩家放置，`prism:mining` 設定生存模式挖掘所需時間。
 
+以音符盒或絆線狀態呈現的方塊（預設）並不是把這些狀態存進世界。世界裡放的是一個惰性的原版方塊（實心方塊用棕色蘑菇方塊，
+可穿過的方塊用結構空位），它沒有狀態、沒有 tick、也不會對鄰居起反應；Prism 依自己的索引改寫送出的方塊封包，
+告訴每位玩家它長什麼樣子。玩家在這種方塊旁放置、破壞或點擊後，Prism 會把該方塊與鄰居的外觀重送一次，
+因為 Java 版客戶端會自己預測形狀更新。若其他插件或 WorldEdit 把載體換掉，這個方塊就視為已消失。
+讀取世界的插件看到的是載體，請用 `Prism.blocks().identify(block)` 或 `get(block)` 判斷方塊是什麼。詳見 ADR-0022。
+
 **音效與動畫材質。** 音效依 Java 資源包的方式放進 jar（`assets/<ns>/sounds.json` 加上 `.ogg` 檔），
 用 Bukkit 的 `playSound(location, "<ns>:<event>", ...)` 播放。Prism 也會把它們放進基岩版資源包，基岩版玩家透過 Geyser 聽得到。
 `prism:ambient_sound` 讓方塊每隔 `interval` 刻自己播放音效，可以限定只在列出的變體播放，方塊消失就停止。
@@ -29,7 +35,7 @@ Java 版玩家看到的是屏障方塊上的顯示實體，所以相鄰方塊的
 每個變體與連接組合各佔一個音符盒狀態（六面為 64 個，四面為 16 個）。範例是 `examplemod:ruby_cable`。
 
 **可穿過的方塊。** `prism:passable: true` 讓方塊像花或細線一樣可以直接走過去。Prism 用 64 個絆線狀態之一
-（而不是音符盒狀態）呈現它，所以兩個版本都沒有碰撞、不會遮住周圍方塊，而且一碰就破。沒有自己的模型時，貼圖會畫成像花一樣的十字形。
+（而不是音符盒狀態；玩家看到的是該狀態，世界裡放的是結構空位）呈現它，所以兩個版本都沒有碰撞、不會遮住周圍方塊，而且一碰就破。沒有自己的模型時，貼圖會畫成像花一樣的十字形。
 範例是 `examplemod:ruby_flower`。
 
 **多方塊結構。** `prism:structure` 讓方塊成為結構的控制器。寫法如下：

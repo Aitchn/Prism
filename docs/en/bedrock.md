@@ -36,5 +36,6 @@ into the proxy's Geyser folder and restart the proxy.
 - 799 block looks (variant x facing, or variant x combination of sides) across all mods, plus 64 passable looks.
 - Custom blocks drawn as note blocks break like note blocks (axe, quick); `prism:mining` applies only to display blocks.
 - A vanilla note block tuned to a state owned by a custom look shows that look.
+- The server stores an inert carrier (a brown mushroom block or structure void) for these blocks; Geyser is shown the look through the same packet rewriting as Java players (ADR-0022).
 
 Nothing on this page is checked by CI with a real client; see ADR-0008 for the hand test list.

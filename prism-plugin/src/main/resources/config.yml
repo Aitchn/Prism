@@ -15,7 +15,9 @@ pack:
 blocks:
   # How custom blocks are drawn.
   #   auto    - as vanilla note block states (Java and Bedrock see them; Bedrock through Geyser's custom
-  #             block mappings, which Prism installs into Geyser's folder). Blocks with an animated
+  #             block mappings, which Prism installs into Geyser's folder). The world stores an inert
+  #             carrier block (brown mushroom block; structure void for passable blocks) and Prism shows players the
+  #             note block or tripwire look by rewriting block packets. Blocks with an animated
   #             model (model_ref) still use display entities.
   #   native  - same as auto.
   #   display - always as an item display entity on a barrier (Java only; Geyser cannot draw these).

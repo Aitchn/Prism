@@ -1,7 +1,9 @@
 package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.PrismKey;
+import com.aitchn.prism.core.block.BlockLook;
 import com.aitchn.prism.core.block.BlockPositions;
+import com.aitchn.prism.core.block.ChunkLooks;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -10,6 +12,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.bukkit.Chunk;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -23,22 +26,38 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Where the custom blocks are. The source of truth is the chunk's persistent data (saved with the chunk by the
  * server): one entry {@code prism:b/<x>/<y>/<z>} per block holding its key, facing and per-block data. Loaded chunks
- * are mirrored in memory so lookups are constant time. All access to one chunk happens on the thread that owns it.
+ * are mirrored in memory so lookups are constant time. All writes to one chunk happen on the thread that owns it.
+ *
+ * <p>Network threads must not use the mirror's mutable maps. They read {@link #looks}: an immutable
+ * {@link ChunkLooks} snapshot per chunk, rebuilt after a change, that names the custom block positions and the look a
+ * viewer is shown for each (see ADR-0022).
  */
 final class BlockIndex {
 
-    /** {@code connections} is the connection mask of a connected block, or -1 for any other block. */
-    record Entry(PrismKey key, BlockFace facing, String variant, int connections) {
+    /**
+     * {@code connections} is the connection mask of a connected block, or -1 for any other block. {@code carrier} is the
+     * inert block the server stores for a block that viewers are shown a client-side look for, or null for a block drawn
+     * by a display entity.
+     */
+    record Entry(PrismKey key, BlockFace facing, String variant, int connections, @Nullable Carrier carrier) {
+        Entry(PrismKey key, BlockFace facing, String variant, int connections) {
+            this(key, facing, variant, connections, null);
+        }
+
         Entry(PrismKey key, BlockFace facing, String variant) {
-            this(key, facing, variant, -1);
+            this(key, facing, variant, -1, null);
         }
 
         Entry withVariant(String variant) {
-            return new Entry(key, facing, variant, connections);
+            return new Entry(key, facing, variant, connections, carrier);
         }
 
         Entry withConnections(int connections) {
-            return new Entry(key, facing, variant, connections);
+            return new Entry(key, facing, variant, connections, carrier);
+        }
+
+        Entry withCarrier(@Nullable Carrier carrier) {
+            return new Entry(key, facing, variant, connections, carrier);
         }
     }
 
@@ -59,12 +78,63 @@ final class BlockIndex {
         final int chunkZ;
         final Map<Long, Entry> blocks = new ConcurrentHashMap<>();
         final Map<Long, PersistentDataContainer> data = new ConcurrentHashMap<>();
+        /** What viewers are shown at the positions drawn as a client-side look; only written on the owning thread. */
+        final Map<Long, BlockLook> looks = new ConcurrentHashMap<>();
         Object ticker;
+        private final AtomicInteger worldLookChunks;
+        private volatile ChunkLooks snapshot = ChunkLooks.EMPTY;
+        private volatile boolean dirty;
+        private boolean disposed;
 
-        Loaded(World world, int chunkX, int chunkZ) {
+        Loaded(World world, int chunkX, int chunkZ, AtomicInteger worldLookChunks) {
             this.world = world;
             this.chunkX = chunkX;
             this.chunkZ = chunkZ;
+            this.worldLookChunks = worldLookChunks;
+        }
+
+        /** Records the look viewers see at {@code packed}. */
+        synchronized void setLook(long packed, BlockLook look) {
+            if (disposed) {
+                return;
+            }
+            boolean wasEmpty = looks.isEmpty();
+            BlockLook old = looks.put(packed, look);
+            if (!look.equals(old)) {
+                dirty = true;
+            }
+            if (wasEmpty) {
+                worldLookChunks.incrementAndGet();
+            }
+        }
+
+        /** Forgets the look at {@code packed}: the position is not drawn as a client-side look any more. */
+        synchronized void clearLook(long packed) {
+            if (disposed) {
+                return;
+            }
+            if (looks.remove(packed) != null) {
+                dirty = true;
+                if (looks.isEmpty()) {
+                    worldLookChunks.decrementAndGet();
+                }
+            }
+        }
+
+        /** The immutable view for network threads; rebuilt only after a change. Safe from any thread. */
+        ChunkLooks snapshot() {
+            if (dirty) {
+                dirty = false;
+                snapshot = ChunkLooks.of(looks);
+            }
+            return snapshot;
+        }
+
+        synchronized void dispose() {
+            if (!disposed && !looks.isEmpty()) {
+                worldLookChunks.decrementAndGet();
+            }
+            disposed = true;
         }
 
         Block block(long packed) {
@@ -84,7 +154,11 @@ final class BlockIndex {
     private final NamespacedKey connectionsKey;
     private final NamespacedKey structureKey;
     private final NamespacedKey lightKey;
+    private final NamespacedKey carrierKey;
     private final Map<ChunkId, Loaded> loaded = new ConcurrentHashMap<>();
+    private volatile java.util.function.Consumer<Loaded> onLoaded = mirror -> {};
+    /** Per world, the number of loaded chunks that have at least one look; lets network threads skip other worlds. */
+    private final Map<UUID, AtomicInteger> lookChunks = new ConcurrentHashMap<>();
 
     BlockIndex(Plugin prism) {
         this.prism = prism;
@@ -96,11 +170,28 @@ final class BlockIndex {
         this.connectionsKey = new NamespacedKey(prism, "connections");
         this.structureKey = new NamespacedKey(prism, "structure");
         this.lightKey = new NamespacedKey(prism, "light");
+        this.carrierKey = new NamespacedKey(prism, "carrier");
     }
 
     /** Reads the chunk's entries into memory (idempotent) and returns the mirror. */
     Loaded load(Chunk chunk) {
-        return loaded.computeIfAbsent(ChunkId.of(chunk), id -> read(chunk));
+        ChunkId id = ChunkId.of(chunk);
+        Loaded mirror = loaded.get(id);
+        if (mirror != null) {
+            return mirror;
+        }
+        Loaded fresh = read(chunk);
+        Loaded raced = loaded.putIfAbsent(id, fresh);
+        if (raced != null) {
+            return raced;
+        }
+        onLoaded.accept(fresh); // outside the map update: the hook may look at other chunks
+        return fresh;
+    }
+
+    /** Called once for every chunk mirror right after it was read, on the thread that read it. */
+    void onLoaded(java.util.function.Consumer<Loaded> hook) {
+        this.onLoaded = hook;
     }
 
     @Nullable Loaded loaded(Chunk chunk) {
@@ -113,7 +204,23 @@ final class BlockIndex {
     }
 
     @Nullable Loaded unload(Chunk chunk) {
-        return loaded.remove(ChunkId.of(chunk));
+        Loaded mirror = loaded.remove(ChunkId.of(chunk));
+        if (mirror != null) {
+            mirror.dispose();
+        }
+        return mirror;
+    }
+
+    /** The look snapshot of a chunk, for network threads: touches no world or chunk state. */
+    ChunkLooks looks(UUID world, int chunkX, int chunkZ) {
+        Loaded mirror = loaded.get(new ChunkId(world, BlockPositions.chunkKey(chunkX, chunkZ)));
+        return mirror == null ? ChunkLooks.EMPTY : mirror.snapshot();
+    }
+
+    /** Whether any loaded chunk of {@code world} has a look; for network threads. */
+    boolean anyLooks(UUID world) {
+        AtomicInteger count = lookChunks.get(world);
+        return count != null && count.get() > 0;
     }
 
     List<Loaded> allLoaded() {
@@ -121,7 +228,8 @@ final class BlockIndex {
     }
 
     private Loaded read(Chunk chunk) {
-        Loaded mirror = new Loaded(chunk.getWorld(), chunk.getX(), chunk.getZ());
+        Loaded mirror = new Loaded(chunk.getWorld(), chunk.getX(), chunk.getZ(),
+                lookChunks.computeIfAbsent(chunk.getWorld().getUID(), id -> new AtomicInteger()));
         PersistentDataContainer pdc = chunk.getPersistentDataContainer();
         for (NamespacedKey key : pdc.getKeys()) {
             if (!key.getNamespace().equals(namespace)) {
@@ -136,9 +244,11 @@ final class BlockIndex {
             String facing = entry.getOrDefault(facingKey, PersistentDataType.STRING, "NORTH");
             String variant = entry.getOrDefault(variantKey, PersistentDataType.STRING, "");
             int connections = entry.getOrDefault(connectionsKey, PersistentDataType.INTEGER, -1);
+            String carrier = entry.get(carrierKey, PersistentDataType.STRING);
             try {
                 mirror.blocks.put(BlockPositions.pack(pos[0], pos[1], pos[2]), new Entry(
-                        PrismKey.parse(raw == null ? "" : raw), BlockFace.valueOf(facing), variant, connections));
+                        PrismKey.parse(raw == null ? "" : raw), BlockFace.valueOf(facing), variant, connections,
+                        Carrier.parse(carrier)));
             } catch (IllegalArgumentException e) {
                 // Unreadable entry (for example a hand-edited chunk): ignore it rather than failing the chunk.
             }
@@ -166,6 +276,9 @@ final class BlockIndex {
         if (entry.connections() >= 0) {
             stored.set(connectionsKey, PersistentDataType.INTEGER, entry.connections());
         }
+        if (entry.carrier() != null) {
+            stored.set(carrierKey, PersistentDataType.STRING, entry.carrier().name());
+        }
         stored.set(dataKey, PersistentDataType.TAG_CONTAINER, pdc.getAdapterContext().newPersistentDataContainer());
         pdc.set(entryKey(block), PersistentDataType.TAG_CONTAINER, stored);
         mirror.blocks.put(packed(block), entry);
@@ -182,6 +295,17 @@ final class BlockIndex {
     void setConnections(Block block, int connections) {
         update(block, old -> old.withConnections(connections), stored -> stored.set(connectionsKey,
                 PersistentDataType.INTEGER, connections));
+    }
+
+    /** Records which inert carrier the server stores for an existing entry (a migrated block), or none (null). */
+    void setCarrier(Block block, @Nullable Carrier carrier) {
+        update(block, old -> old.withCarrier(carrier), stored -> {
+            if (carrier == null) {
+                stored.remove(carrierKey);
+            } else {
+                stored.set(carrierKey, PersistentDataType.STRING, carrier.name());
+            }
+        });
     }
 
     private void update(Block block, java.util.function.UnaryOperator<Entry> change,
@@ -254,6 +378,7 @@ final class BlockIndex {
         chunk.getPersistentDataContainer().remove(entryKey(block));
         mirror.blocks.remove(packed(block));
         mirror.data.remove(packed(block));
+        mirror.clearLook(packed(block));
     }
 
     /** The live per-block data container; every change is written back to the chunk immediately. */

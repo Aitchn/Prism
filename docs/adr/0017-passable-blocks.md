@@ -1,6 +1,8 @@
 # ADR-0017: Passable blocks
 
-Status: Accepted (2026-11-08). The smoke test places two passable blocks, puts stone next to one and drops an item on
+Status: Accepted (2026-11-08). The carrier and the guards described here were replaced by [ADR-0022](0022-inert-block-carrier.md):
+the world now stores structure void and players are shown the tripwire state.
+The smoke test places two passable blocks, puts stone next to one and drops an item on
 the other, and checks that both keep their state and can be walked through. Seeing them on clients is not covered
 (see below).
 

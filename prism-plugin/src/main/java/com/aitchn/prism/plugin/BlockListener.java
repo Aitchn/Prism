@@ -174,6 +174,9 @@ final class BlockListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onVanillaPlace(BlockPlaceEvent event) {
         if (event != probing) {
+            // A block placed into a passable carrier (structure void is replaceable) replaces it: the check drops the
+            // custom block's entry now instead of waiting for the next lookup or packet.
+            blocks.identify(event.getBlock());
             blocks.notifyNeighbors(event.getBlock());
         }
     }

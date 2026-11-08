@@ -1,5 +1,6 @@
 package com.aitchn.prism.plugin;
 
+import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.block.StateAllocator;
@@ -12,10 +13,11 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.type.Tripwire;
 
 /**
- * Passable custom blocks ({@code prism:passable}) as tripwire states with {@code disarmed=true}: no collision, not
- * hiding their neighbours, drawn on Java by the pack's {@code tripwire} blockstates and on Bedrock by the Geyser
- * mapping. Each look owns one of {@link TripwireStates#COUNT} states. {@link NativeStateListener} keeps vanilla string
- * behaviour (connecting to neighbours, being pressed) from changing them.
+ * Passable custom blocks ({@code prism:passable}) drawn as tripwire states with {@code disarmed=true}: no collision,
+ * not hiding their neighbours, drawn on Java by the pack's {@code tripwire} blockstates and on Bedrock by the Geyser
+ * mapping. The server stores the inert {@link Carrier#PASSABLE} block, so vanilla string behaviour (connecting to
+ * neighbours, being pressed) has nothing to act on; viewers are shown the tripwire state ({@code BlockPacketRewriter}).
+ * Each look owns one of {@link TripwireStates#COUNT} states.
  */
 final class TripwireAppearance implements BlockAppearance {
 
@@ -29,21 +31,16 @@ final class TripwireAppearance implements BlockAppearance {
 
     @Override
     public boolean spawn(Block block, BlockDefinition definition, BlockFace facing, String variant) {
-        Tripwire data = state(definition, facing, variant);
-        if (data == null) {
+        if (lookData(definition, facing, variant) == null) {
             return false;
         }
-        block.setBlockData(data, false);
+        block.setType(Carrier.PASSABLE.material(), false);
         return true;
     }
 
+    /** Nothing to do in the world: the carrier never changes. The new look is published by the block service. */
     @Override
-    public void update(Block block, BlockDefinition definition, BlockFace facing, String variant) {
-        Tripwire data = state(definition, facing, variant);
-        if (data != null && block.getType() == Material.TRIPWIRE) {
-            block.setBlockData(data, false);
-        }
-    }
+    public void update(Block block, BlockDefinition definition, BlockFace facing, String variant) {}
 
     @Override
     public void despawn(Block block) {
@@ -52,10 +49,12 @@ final class TripwireAppearance implements BlockAppearance {
 
     @Override
     public boolean draws(Block block) {
-        return block.getType() == Material.TRIPWIRE;
+        // A tripwire is the carrier of earlier versions, still there until its chunk is migrated.
+        return block.getType() == Carrier.PASSABLE.material() || block.getType() == Material.TRIPWIRE;
     }
 
-    private Tripwire state(BlockDefinition definition, BlockFace facing, String variant) {
+    /** The tripwire state viewers see for this look, allocating it on first use; null if all states are taken. */
+    Tripwire lookData(BlockDefinition definition, BlockFace facing, String variant) {
         String id = new Appearances.Look(definition.key(), variant, facing.name()).id();
         OptionalInt index = allocator.allocate(id);
         if (index.isEmpty()) {
@@ -64,6 +63,12 @@ final class TripwireAppearance implements BlockAppearance {
             return null;
         }
         return data(index.getAsInt());
+    }
+
+    /** The state already allocated to this look, or null; never allocates. Works for blocks of absent mods. */
+    Tripwire existingState(PrismKey key, BlockFace facing, String variant) {
+        OptionalInt index = allocator.indexOf(new Appearances.Look(key, variant, facing.name()).id());
+        return index.isEmpty() ? null : data(index.getAsInt());
     }
 
     /** The block data of tripwire state {@code id}. */

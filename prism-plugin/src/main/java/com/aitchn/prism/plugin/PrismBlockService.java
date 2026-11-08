@@ -17,7 +17,11 @@ import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.registry.Registry;
+import com.aitchn.prism.client.ClientStates;
+import com.aitchn.prism.client.LookSender;
 import com.aitchn.prism.core.block.Appearances;
+import com.aitchn.prism.core.block.BlockLook;
+import com.aitchn.prism.core.block.ChunkLooks;
 import com.aitchn.prism.core.block.TickSchedule;
 import com.aitchn.prism.core.mod.BehaviorDispatcher;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
@@ -25,16 +29,21 @@ import com.aitchn.prism.platform.spi.ScheduledTask;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.block.Container;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -52,7 +61,10 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * The block platform: placement and removal with lifecycle behaviors, the chunk index, per-block data, batched
- * ticking, neighbour notifications and capability lookup. Appearance is delegated to {@link DisplayEntityBackend}.
+ * ticking, neighbour notifications and capability lookup. Appearance is delegated to {@link DisplayEntityBackend}, or,
+ * for blocks drawn as a client-side look, to an inert {@link Carrier} in the world plus the look this service publishes
+ * to {@link BlockIndex} for the packet rewriter ({@code BlockPacketRewriter}). The index is the source of truth: if the
+ * world no longer holds a block's carrier, the block is gone (see ADR-0022).
  */
 final class PrismBlockService implements BlockService, Listener {
 
@@ -96,6 +108,7 @@ final class PrismBlockService implements BlockService, Listener {
         this.ores = new OreGenerator(definitions, log);
         this.structures = new StructureTracker(this, definitions, index, dispatcher, scheduler);
         this.lights = new BlockLights(index, scheduler);
+        index.onLoaded(this::onMirrorLoaded);
     }
 
     /** A custom block handle. Cheap; created per lookup. */
@@ -114,7 +127,7 @@ final class PrismBlockService implements BlockService, Listener {
             @NotNull BlockFace facing, @Nullable ItemStack from) {
         Optional<BlockDefinition> found = definitions.get(key);
         Block block = location.getBlock();
-        if (found.isEmpty() || !(block.isEmpty() || block.isReplaceable()) || index.get(block).isPresent()) {
+        if (found.isEmpty() || !(block.isEmpty() || block.isReplaceable()) || entry(block).isPresent()) {
             return false;
         }
         BlockDefinition definition = found.get();
@@ -127,7 +140,8 @@ final class PrismBlockService implements BlockService, Listener {
         if (!appearanceFor(definition).spawn(block, definition, actual, Appearances.drawnVariant(variant, mask))) {
             return false;
         }
-        index.put(block, new BlockIndex.Entry(key, actual, variant, mask));
+        index.put(block, new BlockIndex.Entry(key, actual, variant, mask, carrierFor(definition)));
+        publishLook(block);
         Handle handle = new Handle(block, key, definition, actual, variant, index);
         dispatcher.dispatchBlock(key, block.getLocation(), BlockPlaceBehavior.class,
                 d -> BlockEventContext.of(handle, placer).placedFrom(from), (b, c) -> b.onPlace(c));
@@ -164,20 +178,21 @@ final class PrismBlockService implements BlockService, Listener {
         if (!appearanceFor(definition).spawn(block, definition, BlockFace.NORTH, Appearances.drawnVariant(variant, mask))) {
             return false;
         }
-        index.put(block, new BlockIndex.Entry(definition.key(), BlockFace.NORTH, variant, mask));
+        index.put(block, new BlockIndex.Entry(definition.key(), BlockFace.NORTH, variant, mask, carrierFor(definition)));
+        publishLook(block);
         return true;
     }
 
     @Override
     public @NotNull Optional<CustomBlock> get(@NotNull Block block) {
-        return index.get(block).flatMap(entry -> definitions.get(entry.key())
+        return entry(block).flatMap(entry -> definitions.get(entry.key())
                 .map(definition -> new Handle(block, entry.key(), definition, entry.facing(), entry.variant(), index)));
     }
 
     @Override
     public @NotNull Optional<PrismKey> identify(@NotNull Block block) {
         // Answers even for blocks whose mod is not loaded, so they are still protected from vanilla changes.
-        return index.get(block).map(BlockIndex.Entry::key);
+        return entry(block).map(BlockIndex.Entry::key);
     }
 
     @Override
@@ -198,6 +213,14 @@ final class PrismBlockService implements BlockService, Listener {
 
     /** Removes like {@code remove(block, true)} but hands the filled drop to {@code sink} instead of the world. */
     boolean remove(Block block, boolean dropItem, Consumer<ItemStack> sink) {
+        return remove(block, dropItem, sink, false);
+    }
+
+    /**
+     * @param orphan the world no longer holds the block's carrier (something else replaced it), so the block that is
+     *               there now must be left alone: only the entry, its behaviors and its drawing are removed
+     */
+    private boolean remove(Block block, boolean dropItem, Consumer<ItemStack> sink, boolean orphan) {
         Optional<BlockIndex.Entry> entry = index.get(block);
         if (entry.isEmpty()) {
             return false;
@@ -218,7 +241,11 @@ final class PrismBlockService implements BlockService, Listener {
                     x -> BlockEventContext.of(handle, null), (b, c) -> b.onRemove(c));
         });
         stopTicking(block);
-        appearanceOf(block).despawn(block);
+        if (orphan) {
+            appearanceOf(block).orphaned(block);
+        } else {
+            appearanceOf(block).despawn(block);
+        }
         index.remove(block);
         drop.ifPresent(sink);
         notifyNeighbors(block);
@@ -237,6 +264,8 @@ final class PrismBlockService implements BlockService, Listener {
             appearanceOf(block).update(block, custom.get().definition(), custom.get().facing(),
                     Appearances.drawnVariant(variant, mask));
             index.setVariant(block, variant);
+            publishLook(block);
+            broadcastLook(block);
             get(block).ifPresent(lights::update);
             lookChanged.accept(block);
         }
@@ -266,6 +295,8 @@ final class PrismBlockService implements BlockService, Listener {
             index.setConnections(block, mask);
             appearanceOf(block).update(block, custom.get().definition(), custom.get().facing(),
                     Appearances.drawnVariant(custom.get().variant(), mask));
+            publishLook(block);
+            broadcastLook(block);
             lookChanged.accept(block);
         }
     }
@@ -367,14 +398,29 @@ final class PrismBlockService implements BlockService, Listener {
                 && !definition.components().has(PrismComponents.CONNECTIONS) && !Appearances.passable(definition);
     }
 
+    /** The inert carrier new blocks of {@code definition} get, or null if they are drawn by a display entity. */
+    private Carrier carrierFor(BlockDefinition definition) {
+        return usesTripwire(backend, definition) ? Carrier.PASSABLE
+                : usesNoteBlocks(backend, definition) ? Carrier.SOLID : null;
+    }
+
     /** The appearance an existing block was placed with (blocks keep theirs when the setting changes). */
     BlockAppearance appearanceOf(Block block) {
-        return noteBlocks.draws(block) ? noteBlocks : tripwires.draws(block) ? tripwires : display;
+        Carrier carrier = index.get(block).map(BlockIndex.Entry::carrier).orElse(null);
+        if (carrier == null) {
+            carrier = Carrier.legacy(block.getType()); // a block of an earlier version, not migrated yet
+        }
+        return carrier == Carrier.SOLID ? noteBlocks : carrier == Carrier.PASSABLE ? tripwires : display;
     }
 
     /** Whether the client breaks this block itself (its carrier is breakable), so Prism must not run the dig. */
     boolean clientBreaks(Block block) {
-        return noteBlocks.draws(block) || tripwires.draws(block);
+        return appearanceOf(block) != display;
+    }
+
+    /** Whether {@code block} is drawn as a client-side look (the server stores an inert carrier). */
+    boolean drawnAsLook(Block block) {
+        return index.get(block).map(BlockIndex.Entry::carrier).isPresent();
     }
 
     @Override
@@ -424,17 +470,6 @@ final class PrismBlockService implements BlockService, Listener {
 
     // ---------------------------------------------------------------- neighbours
 
-    /**
-     * Puts a passable block's tripwire state back one tick later, in case the vanilla shape update that follows a
-     * neighbour change (string connecting to its neighbours) got past the physics guard.
-     */
-    private void redrawPassable(Block block) {
-        if (tripwires.draws(block) && index.get(block).isPresent()) {
-            scheduler.runAt(block.getLocation(), () -> get(block).ifPresent(custom -> tripwires.update(block,
-                    custom.definition(), custom.facing(), custom.variant())));
-        }
-    }
-
     /** Like {@link #notifyNeighbors} one tick later, for a change that has not happened yet. */
     void notifyNeighborsLater(Block changed) {
         scheduler.runAt(changed.getLocation(), () -> notifyNeighbors(changed));
@@ -447,7 +482,6 @@ final class PrismBlockService implements BlockService, Listener {
             Block neighbor = changed.getRelative(face);
             Runnable notify = () -> {
                 refreshConnections(neighbor);
-                redrawPassable(neighbor);
                 // A lit block whose light cell was built into moves its light (update is a no-op otherwise).
                 get(neighbor).filter(custom -> custom.definition().components().has(PrismComponents.LIGHT))
                         .ifPresent(lights::update);
@@ -467,12 +501,216 @@ final class PrismBlockService implements BlockService, Listener {
         }
     }
 
+    // ---------------------------------------------------------------- carriers and looks
+
+    /** The entry at {@code block}; first checks, on the owning thread, that the world still holds its carrier. */
+    private Optional<BlockIndex.Entry> entry(Block block) {
+        Optional<BlockIndex.Entry> found = index.get(block);
+        if (found.isPresent() && !consistent(block, found.get())) {
+            return Optional.empty();
+        }
+        return found;
+    }
+
+    /**
+     * Whether the world still agrees with the index about {@code block}. The common case is one material comparison.
+     * Only checked on the thread that owns the block; elsewhere the index is trusted until the next check.
+     */
+    private boolean consistent(Block block, BlockIndex.Entry entry) {
+        Carrier carrier = entry.carrier();
+        if (carrier == null || !scheduler.isOwnedByCurrentThread(block.getLocation())) {
+            return true; // drawn by a display entity (nothing to compare), or not ours to read
+        }
+        return block.getType() == carrier.material() || reconcile(block, entry);
+    }
+
+    /**
+     * Slow path of {@link #consistent}: the block holds a carrier of an earlier version (it is converted; the index is
+     * the truth) or something else (it was replaced outside Prism: the world wins, the entry is removed).
+     *
+     * @return whether the entry is still valid
+     */
+    private boolean reconcile(Block block, BlockIndex.Entry entry) {
+        Material type = block.getType();
+        Carrier old = Carrier.legacy(type);
+        Carrier wanted = entry.carrier() != null ? entry.carrier() : old;
+        if (wanted == null) {
+            return true;
+        }
+        if (old == wanted) {
+            block.setType(wanted.material(), false);
+            if (entry.carrier() == null) {
+                index.setCarrier(block, wanted);
+            }
+            publishLook(block);
+            return true;
+        }
+        log.info("PRISM_CARRIER_LOST " + entry.key() + " at " + block.getX() + "," + block.getY() + "," + block.getZ()
+                + " now " + type + "; the world wins, removing the block");
+        remove(block, false, stack -> {}, true);
+        return false;
+    }
+
+    /** First access to a chunk: migrate old carriers, drop blocks whose carrier is gone, publish the looks. */
+    private void onMirrorLoaded(BlockIndex.Loaded mirror) {
+        Location center = center(mirror.world, mirror.chunkX, mirror.chunkZ);
+        if (!scheduler.isOwnedByCurrentThread(center)) {
+            return; // checked lazily by the first get or packet that notices
+        }
+        mirror.blocks.forEach((packed, entry) -> {
+            Block block = mirror.block(packed);
+            boolean valid = entry.carrier() == null
+                    ? Carrier.legacy(block.getType()) == null || reconcile(block, entry) // old note block or tripwire
+                    : consistent(block, entry);
+            if (valid) {
+                publishLook(block);
+            }
+        });
+    }
+
+    /** Computes what viewers see at {@code block} and publishes it for the packet rewriter. Owning thread only. */
+    void publishLook(Block block) {
+        BlockIndex.Loaded mirror = index.load(block.getChunk());
+        long packed = BlockIndex.packed(block);
+        BlockIndex.Entry entry = mirror.blocks.get(packed);
+        Carrier carrier = entry == null ? null : entry.carrier();
+        BlockData look = carrier == null ? null : lookData(carrier, entry);
+        if (look == null) {
+            mirror.clearLook(packed);
+            return;
+        }
+        mirror.setLook(packed, new BlockLook(ClientStates.id(carrier.material().createBlockData()),
+                ClientStates.id(look)));
+    }
+
+    /** The state viewers see for {@code entry}; allocated for a known block, only looked up for one of an absent mod. */
+    private BlockData lookData(Carrier carrier, BlockIndex.Entry entry) {
+        String drawn = Appearances.drawnVariant(entry.variant(), entry.connections());
+        Optional<BlockDefinition> definition = definitions.get(entry.key());
+        if (definition.isPresent()) {
+            return carrier == Carrier.SOLID ? noteBlocks.lookData(definition.get(), entry.facing(), drawn)
+                    : tripwires.lookData(definition.get(), entry.facing(), drawn);
+        }
+        return carrier == Carrier.SOLID ? noteBlocks.existingState(entry.key(), entry.facing(), drawn)
+                : tripwires.existingState(entry.key(), entry.facing(), drawn);
+    }
+
+    /**
+     * Shows every player who has the chunk the current look of {@code block}. The world does not change when only the
+     * look does, so the server sends nothing by itself.
+     */
+    void broadcastLook(Block block) {
+        BlockIndex.Loaded mirror = index.loaded(block.getWorld(), block.getX() >> 4, block.getZ() >> 4);
+        BlockLook look = mirror == null ? null : mirror.looks.get(BlockIndex.packed(block));
+        if (look == null) {
+            return;
+        }
+        World world = block.getWorld();
+        int x = block.getX();
+        int y = block.getY();
+        int z = block.getZ();
+        long chunkKey = Chunk.getChunkKey(x >> 4, z >> 4);
+        for (Player player : world.getPlayers()) {
+            scheduler.runOn(player, () -> {
+                if (player.getWorld() == world && player.isChunkSent(chunkKey)) {
+                    LookSender.send(player, x, y, z, look.look());
+                }
+            }, null);
+        }
+    }
+
+    /**
+     * Sends {@code player} the look of every custom block among the six neighbours of {@code at} and {@code at}
+     * itself, undoing what the client predicted locally. Reads only the index, so it is safe on any thread.
+     */
+    void resendLooks(Player player, Block at) {
+        World world = at.getWorld();
+        for (int i = 0; i < 7; i++) {
+            int x = at.getX() + (i < 6 ? SIDES[i].getModX() : 0);
+            int y = at.getY() + (i < 6 ? SIDES[i].getModY() : 0);
+            int z = at.getZ() + (i < 6 ? SIDES[i].getModZ() : 0);
+            BlockLook look = index.looks(world.getUID(), x >> 4, z >> 4).at(x & 15, y, z & 15);
+            if (look != null) {
+                LookSender.send(player, x, y, z, look.look());
+            }
+        }
+    }
+
+    /** What the packet rewriter would send at {@code block}, or null; for tests and diagnostics. */
+    @Nullable BlockLook lookOf(Block block) {
+        return index.looks(block.getWorld().getUID(), block.getX() >> 4, block.getZ() >> 4)
+                .at(block.getX() & 15, block.getY(), block.getZ() & 15);
+    }
+
+    /** The look snapshot of a chunk for the packet rewriter (network threads). */
+    ChunkLooks looks(UUID world, int chunkX, int chunkZ) {
+        return index.looks(world, chunkX, chunkZ);
+    }
+
+    /** Whether the world has any look to rewrite (network threads). */
+    boolean anyLooks(UUID world) {
+        return index.anyLooks(world);
+    }
+
+    // Hooks for ConsistencySelfTest: they read or simulate what the world and the packet layer would show.
+
+    /** Whether the index has an entry at {@code block}, without the carrier check that {@code get} does. */
+    boolean indexed(Block block) {
+        return index.get(block).isPresent();
+    }
+
+    /** The look id recomputed from the index entry alone, or -1: what {@link #lookOf} must agree with. */
+    int expectedLookId(Block block) {
+        Optional<BlockIndex.Entry> entry = index.get(block);
+        if (entry.isEmpty() || entry.get().carrier() == null) {
+            return -1;
+        }
+        BlockData look = lookData(entry.get().carrier(), entry.get());
+        return look == null ? -1 : ClientStates.id(look);
+    }
+
+    /** Makes the entry look like one an earlier version wrote (no carrier recorded). */
+    void forgetCarrier(Block block) {
+        index.setCarrier(block, null);
+        index.load(block.getChunk()).clearLook(BlockIndex.packed(block));
+    }
+
+    /** Drops the chunk's in-memory mirror and reads it from the chunk again, as a chunk load does. */
+    void reloadIndex(Chunk chunk) {
+        index.unload(chunk);
+        index.load(chunk);
+    }
+
+    private final Set<String> pendingChecks = ConcurrentHashMap.newKeySet();
+
+    /**
+     * Called from a network thread: an outgoing packet put something that is not the carrier at a custom block's
+     * position. Schedules a check on the owning region thread; world state is never touched from here.
+     */
+    void foreignChange(UUID worldId, int x, int y, int z) {
+        World world = Bukkit.getWorld(worldId);
+        if (world == null) {
+            return;
+        }
+        String pending = worldId + "/" + x + "/" + y + "/" + z;
+        if (!pendingChecks.add(pending)) {
+            return;
+        }
+        scheduler.runAt(new Location(world, x, y, z), () -> {
+            pendingChecks.remove(pending);
+            if (world.isChunkLoaded(x >> 4, z >> 4)) {
+                Block block = world.getBlockAt(x, y, z);
+                index.get(block).ifPresent(entry -> consistent(block, entry));
+            }
+        });
+    }
+
     // ---------------------------------------------------------------- chunk lifecycle
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onChunkLoad(ChunkLoadEvent event) {
         Chunk chunk = event.getChunk();
-        index.load(chunk);
+        index.load(chunk); // migrates and publishes the chunk's looks (see onMirrorLoaded)
         if (event.isNewChunk()) {
             ores.generate(chunk, this::placeGenerated);
         }
@@ -538,6 +776,9 @@ final class PrismBlockService implements BlockService, Listener {
                         startTicking(custom);
                         lights.update(custom); // a level or the lit variants may have changed
                     }
+                    // Definitions came or went: the looks of this chunk's blocks may have changed with them.
+                    mirror.blocks.forEach((packed, entry) -> publishLook(mirror.block(packed)));
+                    mirror.looks.forEach((packed, look) -> broadcastLook(mirror.block(packed)));
                 }
             });
         }
@@ -683,6 +924,10 @@ final class PrismBlockService implements BlockService, Listener {
     }
 
     private static Location center(Chunk chunk) {
-        return new Location(chunk.getWorld(), (chunk.getX() << 4) + 8, 64, (chunk.getZ() << 4) + 8);
+        return center(chunk.getWorld(), chunk.getX(), chunk.getZ());
+    }
+
+    private static Location center(World world, int chunkX, int chunkZ) {
+        return new Location(world, (chunkX << 4) + 8, 64, (chunkZ << 4) + 8);
     }
 }

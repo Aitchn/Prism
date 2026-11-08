@@ -4,6 +4,9 @@ import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.platform.MinecraftVersion;
 import com.aitchn.prism.api.platform.PlatformInfo;
 import com.aitchn.prism.api.platform.PlatformKind;
+import com.aitchn.prism.client.PacketRewriting;
+import com.aitchn.prism.client.LookSource;
+import com.aitchn.prism.core.block.ChunkLooks;
 import com.aitchn.prism.core.client.Profiles;
 import com.aitchn.prism.core.data.SqliteDataService;
 import com.aitchn.prism.core.PrismRuntime;
@@ -17,6 +20,7 @@ import com.aitchn.prism.platform.paper.PaperPlatformScheduler;
 import com.aitchn.prism.platform.spi.PlatformDetector;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import com.aitchn.prism.platform.spi.UnsupportedPlatformException;
+import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.NamespacedKey;
 import org.bukkit.plugin.ServicePriority;
@@ -28,6 +32,7 @@ public final class PrismPlugin extends JavaPlugin {
     private PrismRuntime runtime;
     private PackManager packManager;
     private SqliteDataService data;
+    private Runnable uninstallRewriter;
 
     @Override
     public void onEnable() {
@@ -99,6 +104,18 @@ public final class PrismPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BlockListener(items, blocks, mods.items(), dispatcher), this);
         getServer().getPluginManager().registerEvents(new DigListener(blocks, scheduler), this);
         getServer().getPluginManager().registerEvents(new NativeStateListener(blocks), this);
+        getServer().getPluginManager().registerEvents(new LookReconciler(blocks, scheduler), this);
+        uninstallRewriter = PacketRewriting.install(new LookSource() {
+            @Override
+            public ChunkLooks chunk(UUID world, int chunkX, int chunkZ) {
+                return blocks.looks(world, chunkX, chunkZ);
+            }
+
+            @Override
+            public boolean anyIn(UUID world) {
+                return blocks.anyLooks(world);
+            }
+        }, blocks::foreignChange);
         var command = getCommand("prism");
         if (command != null) {
             PrismCommand executor = new PrismCommand(mods.items(), items, menus, scheduler);
@@ -150,6 +167,11 @@ public final class PrismPlugin extends JavaPlugin {
             getServer().getPluginManager().registerEvents(new OreSelfTest(this,
                     com.aitchn.prism.api.PrismKey.parse(oreSelfTest), blocks, scheduler, getLogger()), this);
         }
+        String consistencySelfTest = System.getProperty("prism.selftest.consistency");
+        if (consistencySelfTest != null) {
+            getServer().getPluginManager().registerEvents(new ConsistencySelfTest(this, consistencySelfTest, blocks,
+                    scheduler, getLogger()), this);
+        }
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {
             getServer().getPluginManager().registerEvents(
@@ -167,6 +189,9 @@ public final class PrismPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (uninstallRewriter != null) {
+            uninstallRewriter.run();
+        }
         if (data != null) {
             data.close();
         }
