@@ -46,6 +46,14 @@ final class TextPrompts implements Listener {
 
     void open(Player player, String title, String initial, Consumer<String> onSubmit, Runnable onCancel) {
         scheduler.runOn(player, () -> {
+            Prompt previous = open.get(player.getUniqueId());
+            if (previous != null) {
+                // Close the old prompt while it is still tracked, so its paper is cleared and onCancel runs.
+                if (player.getOpenInventory() == previous.view()) {
+                    player.closeInventory();
+                }
+                open.remove(player.getUniqueId(), previous);
+            }
             Component name = MiniMessage.miniMessage().deserialize(title);
             InventoryView view = MenuType.ANVIL.create(player, name);
             ItemStack paper = new ItemStack(Material.PAPER);
