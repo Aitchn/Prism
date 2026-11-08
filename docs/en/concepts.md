@@ -49,6 +49,12 @@ controller's `StructureBehavior.onFormed` or `onBroken`. `BlockService.structure
 answer at any time. What a formed structure does is up to the mod. `examplemod:ruby_core` lights up on top of a 3x3
 ruby floor.
 
+**Light.** `prism:light` (`level` 1 to 15, optional `variants`) makes a block glow, always or only in the listed
+variants. A note block or barrier cannot give light itself, so Prism puts an invisible vanilla light block in a free
+cell next to it (above first, then the sides, then below) and removes it when the block goes dark or is removed.
+Geyser shows that light block to Bedrock players, so both editions are lit the same. If someone builds into the cell,
+the light moves to another free side. `examplemod:ruby_counter` glows while active.
+
 **Boxes of any size.** `prism:cuboid` makes a block the controller of a hollow box: `walls` (block keys the shell may
 be built from), `inside` (blocks allowed inside besides air, default none), `min` and `max` (outer side length, 3 to
 32). The controller sits in a wall, not on an edge or corner. Prism finds the box from the controller's open side,

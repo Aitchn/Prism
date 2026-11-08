@@ -72,6 +72,7 @@ final class PrismBlockService implements BlockService, Listener {
     private final Logger log;
     private final OreGenerator ores;
     private final StructureTracker structures;
+    private final BlockLights lights;
     /** Told after a block is placed, removed or changes variant, so per-player looks can follow; set once at startup. */
     private volatile java.util.function.Consumer<Block> lookChanged = block -> {};
 
@@ -94,6 +95,7 @@ final class PrismBlockService implements BlockService, Listener {
         this.log = log;
         this.ores = new OreGenerator(definitions, log);
         this.structures = new StructureTracker(this, definitions, index, dispatcher, scheduler);
+        this.lights = new BlockLights(index, scheduler);
     }
 
     /** A custom block handle. Cheap; created per lookup. */
@@ -132,6 +134,7 @@ final class PrismBlockService implements BlockService, Listener {
         // Again now the block is indexed and its place behaviors set up its data, which a connection behavior may read.
         refreshConnections(block);
         startTicking(handle);
+        lights.update(handle);
         notifyNeighbors(block);
         lookChanged.accept(block);
         return true;
@@ -207,6 +210,7 @@ final class PrismBlockService implements BlockService, Listener {
         definition.ifPresent(d -> {
             Handle handle = new Handle(block, key, d, entry.get().facing(), entry.get().variant(), index);
             structures.controllerRemoved(handle);
+            lights.removed(handle);
             // Drop behaviors first: they read the data that remove behaviors may clear.
             drop.ifPresent(stack -> dispatcher.dispatchBlock(key, block.getLocation(), BlockDropBehavior.class,
                     x -> BlockEventContext.of(handle, null), (b, c) -> b.onDrop(c, stack)));
@@ -233,6 +237,7 @@ final class PrismBlockService implements BlockService, Listener {
             appearanceOf(block).update(block, custom.get().definition(), custom.get().facing(),
                     Appearances.drawnVariant(variant, mask));
             index.setVariant(block, variant);
+            get(block).ifPresent(lights::update);
             lookChanged.accept(block);
         }
         return true;
@@ -443,6 +448,9 @@ final class PrismBlockService implements BlockService, Listener {
             Runnable notify = () -> {
                 refreshConnections(neighbor);
                 redrawPassable(neighbor);
+                // A lit block whose light cell was built into moves its light (update is a no-op otherwise).
+                get(neighbor).filter(custom -> custom.definition().components().has(PrismComponents.LIGHT))
+                        .ifPresent(lights::update);
                 get(neighbor).ifPresent(custom -> dispatcher.dispatchBlock(custom.key(),
                         neighbor.getLocation(), BlockNeighborBehavior.class, d -> BlockEventContext.of(custom, null),
                         (b, c) -> b.onNeighborChanged(c, face.getOppositeFace())));
@@ -528,6 +536,7 @@ final class PrismBlockService implements BlockService, Listener {
                     stopTicker(mirror);
                     for (CustomBlock custom : blocksIn(mirror.world.getChunkAt(mirror.chunkX, mirror.chunkZ))) {
                         startTicking(custom);
+                        lights.update(custom); // a level or the lit variants may have changed
                     }
                 }
             });

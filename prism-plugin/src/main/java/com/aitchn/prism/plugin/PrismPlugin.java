@@ -130,6 +130,11 @@ public final class PrismPlugin extends JavaPlugin {
             getServer().getPluginManager().registerEvents(new StructureSelfTest(structureSelfTest, blocks, scheduler,
                     getLogger()), this);
         }
+        String lightSelfTest = System.getProperty("prism.selftest.light");
+        if (lightSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new LightSelfTest(lightSelfTest, blocks, scheduler,
+                    getLogger()), this);
+        }
         String cuboidSelfTest = System.getProperty("prism.selftest.cuboid");
         if (cuboidSelfTest != null) {
             getServer().getPluginManager().registerEvents(new CuboidSelfTest(cuboidSelfTest, blocks, scheduler,
