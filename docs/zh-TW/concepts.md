@@ -38,6 +38,12 @@ Java 版玩家看到的是屏障方塊上的顯示實體，所以相鄰方塊的
 並呼叫控制器的 `StructureBehavior.onFormed` 或 `onBroken`。隨時可用 `BlockService.structure(controller)` 與
 `controllerOf(member)` 查詢。結構成形後要做什麼由 Mod 決定。範例 `examplemod:ruby_core` 放在 3x3 紅寶石地板中央上方時會亮起。
 
+**任意大小的長方體。** `prism:cuboid` 讓方塊成為中空長方體的控制器：`walls`（外殼可用的方塊 key）、`inside`（除空氣外允許放在內部的方塊，
+預設沒有）、`min` 與 `max`（外部邊長，3 到 32）。控制器要放在某一面牆上，不能在邊或角。Prism 從控制器朝向空氣的那一側找出長方體，
+呼叫同樣的 `StructureBehavior`，並以 `FormedStructure` 回報：`facing` 指向內部，`min` 與 `max` 是兩個角落，Mod 可據此算出容積。
+內部放進其他東西或打破牆面會拆散結構；改建成其他大小會重新成形。範例 `examplemod:ruby_tank` 在紅寶石方塊與玻璃蓋成、
+邊長 3 到 7 的長方體上會亮起。
+
 **礦石。** `prism:ore` 讓方塊以礦脈形式出現在新生成的區塊：`dimension`、`replace`（可取代的原版方塊）、`min_y`、`max_y`、
 `veins_per_chunk`、`rarity` 與 `size`，也可以寫成多組設定的清單。礦脈不會超出所在區塊。安裝模組之前就存在的區塊不會長出礦石。
 範例是 `examplemod:ruby_ore`；它使用音符盒狀態呈現，所以基岩版玩家也看得到。

@@ -25,3 +25,4 @@ the ADRs are the authoritative English form.
 | [0017](0017-passable-blocks.md) | Passable blocks | Accepted |
 | [0018](0018-multiblock-structures.md) | Multiblock structures | Accepted |
 | [0019](0019-menu-gauges.md) | Gauges in menus | Accepted |
+| [0020](0020-cuboid-structures.md) | Boxes of variable size | Accepted |

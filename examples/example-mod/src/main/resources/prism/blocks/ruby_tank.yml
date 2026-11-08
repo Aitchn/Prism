@@ -1,0 +1,13 @@
+# Key: examplemod:ruby_tank. The controller of a hollow box of any size from 3 to 7 blocks a side: build the walls out
+# of ruby blocks and glass, leave the inside empty, and put the tank in one wall (not on an edge). It lights up while
+# the box stands. Textures block/ruby_tank_idle.png and block/ruby_tank_formed.png.
+base: minecraft:barrier
+drop: examplemod:ruby_tank
+components:
+  prism:variants: [idle, formed]
+  prism:cuboid:
+    walls: [examplemod:ruby_block, minecraft:glass]
+    min: 3
+    max: 7
+behaviors:
+  - type: examplemod:core
