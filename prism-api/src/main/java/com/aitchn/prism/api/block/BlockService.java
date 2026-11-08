@@ -57,6 +57,14 @@ public interface BlockService {
     boolean remove(@NotNull Block block, boolean dropItem);
 
     /**
+     * Works out the sides a connected block ({@code prism:connections}) reaches again and redraws it if they changed.
+     * Prism already does this when the block or a neighbour is placed or removed; call it when a
+     * {@link BlockConnectionBehavior} would now answer differently (a side was switched off in a menu). Does nothing for
+     * other blocks.
+     */
+    void refreshConnections(@NotNull Block block);
+
+    /**
      * Switches the block to another of its {@code prism:variants} looks, for example from {@code idle} to
      * {@code active}. Shown to Java and Bedrock players at once. Returns false if the block is not custom or has no
      * such variant. Cheap when the variant does not change.

@@ -122,5 +122,7 @@ Truly free shapes (64 masks x 16 colours) stay Java-only display looks, and the 
    `runGlobalTimer`. Mekanism stage 1 needs 31 and 34 now.
 2. **World generation** (36). Mekanism stage 1 and AE2 stage 2 need ore.
 3. **Item handler capability** (35) and **text input** (37).
-4. **Connected looks and carriers** (38, 39), then the **structure service** (40).
+4. **Connected looks and carriers** (38, 39), then the **structure service** (40). Connected looks and generated
+   shapes are done in ADR-0016 (display entity on Java, per-player states on Bedrock); thin, no-collision carriers
+   (the rest of 38) are still open.
 5. Botania's rows, once reported.

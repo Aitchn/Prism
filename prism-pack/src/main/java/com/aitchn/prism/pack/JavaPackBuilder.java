@@ -5,6 +5,7 @@ import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.core.block.Appearances;
+import com.aitchn.prism.core.block.ConnectedShapes;
 import com.aitchn.prism.pack.json.JsonWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -109,6 +110,12 @@ public final class JavaPackBuilder {
             }
         }
         for (BlockDefinition block : input.blocks()) {
+            if (block.components().has(PrismComponents.CONNECTIONS)) {
+                if (connected(files, warnings, block)) {
+                    blocksOk.add(block.key());
+                }
+                continue;
+            }
             boolean all = true;
             for (String variant : Appearances.variants(block)) {
                 PrismKey model = Appearances.model(block, variant);
@@ -128,6 +135,43 @@ public final class JavaPackBuilder {
 
         files.put("pack.mcmeta", mcmeta(input).getBytes(StandardCharsets.UTF_8));
         return new Resolved(files, List.copyOf(warnings), Set.copyOf(itemsOk), Set.copyOf(blocksOk));
+    }
+
+    /**
+     * Generates a model and an item definition (shown by the display entity) for every variant and connection mask of a
+     * connected block, named by {@link Appearances#drawnVariant}. Files the mod shipped itself are kept.
+     */
+    private static boolean connected(Map<String, byte[]> files, List<String> warnings, BlockDefinition block) {
+        PrismComponents.Connections connections = block.components().get(PrismComponents.CONNECTIONS).orElseThrow();
+        boolean all = true;
+        for (String variant : Appearances.variants(block)) {
+            PrismKey texture = Appearances.connectionTexture(block, variant);
+            String texturePath = "assets/" + texture.namespace() + "/textures/" + texture.value() + ".png";
+            if (!files.containsKey(texturePath)) {
+                warnings.add("block " + block.key() + (variant.isEmpty() ? "" : " variant " + variant)
+                        + ": no texture " + texturePath + " for its connected shapes");
+                all = false;
+                continue;
+            }
+            for (int mask : connections.masks()) {
+                PrismKey model = Appearances.itemModel(block.key(), Appearances.drawnVariant(variant, mask));
+                String modelPath = "assets/" + model.namespace() + "/models/" + model.value() + ".json";
+                if (!files.containsKey(modelPath)) {
+                    files.put(modelPath, JsonWriter.write(ConnectedShapes.javaModel(
+                            ConnectedShapes.boxes(connections, mask), texture.toString()))
+                            .getBytes(StandardCharsets.UTF_8));
+                }
+                String definitionPath = "assets/" + model.namespace() + "/items/" + model.value() + ".json";
+                if (!files.containsKey(definitionPath)) {
+                    Map<String, Object> inner = new LinkedHashMap<>();
+                    inner.put("type", "minecraft:model");
+                    inner.put("model", model.toString());
+                    files.put(definitionPath,
+                            JsonWriter.write(Map.of("model", inner)).getBytes(StandardCharsets.UTF_8));
+                }
+            }
+        }
+        return all;
     }
 
     /**

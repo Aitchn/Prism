@@ -124,6 +124,7 @@ final class PackManager implements Listener {
             plugin.getLogger().info("PRISM_BEDROCK_PACK_READY sha1=" + bedrock.sha1() + " items="
                     + bedrock.itemsWithIcon().size() + " blocks=" + bedrock.blockLooks().size()
                     + " sounds=" + bedrock.soundEvents() + " flipbooks=" + bedrock.flipbooks()
+                    + " geometries=" + bedrock.geometries()
                     + " bytes=" + bedrock.mcpack().length);
             GeyserInstaller installer = geyser;
             if (installer != null) {
@@ -227,7 +228,7 @@ final class PackManager implements Listener {
             // Blocks that no longer get note block states for new placements (blocks.backend: display) keep the
             // looks they already own, so blocks placed earlier still draw correctly.
             boolean allocate = PrismBlockService.usesNoteBlocks(backend, block)
-                    || PrismBlockService.bedrockLookForModel(backend, block);
+                    || PrismBlockService.bedrockOnlyLooks(backend, block);
             for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
                 (allocate ? allocator.allocate(look.id()) : allocator.indexOf(look.id()))
                         .ifPresent(index -> looks.put(look.id(), index));
@@ -241,8 +242,9 @@ final class PackManager implements Listener {
         java.util.Map<String, Integer> looks = nativeLooks(blocks);
         java.util.Map<Integer, com.aitchn.prism.pack.NativeBlockstates.StateModel> models = new java.util.LinkedHashMap<>();
         for (BlockDefinition block : blocks) {
-            if (ModelAnchors.modelOf(block).isPresent()) {
-                continue; // a Bedrock-only look: Java players never get this state, they see the model
+            if (ModelAnchors.modelOf(block).isPresent()
+                    || block.components().has(com.aitchn.prism.api.content.PrismComponents.CONNECTIONS)) {
+                continue; // Bedrock-only looks: Java players never get these states, they see a display entity
             }
             for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
                 Integer index = looks.get(look.id());

@@ -43,9 +43,21 @@ public final class Appearances {
         };
     }
 
-    /** Every look of {@code block}, variants outer, facings inner. */
+    /**
+     * Every look of {@code block}, variants outer, facings inner. A connected block ({@code prism:connections}) has one
+     * look per variant and connection mask instead, named by {@link #drawnVariant}, all facing north.
+     */
     public static @NotNull List<Look> looks(@NotNull BlockDefinition block) {
         List<Look> looks = new ArrayList<>();
+        var connections = block.components().get(PrismComponents.CONNECTIONS);
+        if (connections.isPresent()) {
+            for (String variant : variants(block)) {
+                for (int mask : connections.get().masks()) {
+                    looks.add(new Look(block.key(), drawnVariant(variant, mask), "NORTH"));
+                }
+            }
+            return looks;
+        }
         for (String variant : variants(block)) {
             for (String facing : facings(block)) {
                 looks.add(new Look(block.key(), variant, facing));
@@ -78,5 +90,25 @@ public final class Appearances {
             case "DOWN" -> new int[] {90, 0};
             default -> new int[] {0, 0};
         };
+    }
+
+    /**
+     * The name a look of a connected block is drawn under: {@code c<mask>}, or {@code <variant>_c<mask>}. A negative
+     * mask (not a connected block) leaves the variant as it is.
+     */
+    public static @NotNull String drawnVariant(@NotNull String variant, int mask) {
+        if (mask < 0) {
+            return variant;
+        }
+        return (variant.isEmpty() ? "" : variant + "_") + "c" + mask;
+    }
+
+    /** The texture a connected block's variant is drawn with: {@code texture}, or {@code ns:block/value[_variant]}. */
+    public static @NotNull PrismKey connectionTexture(@NotNull BlockDefinition block, @NotNull String variant) {
+        return block.components().get(PrismComponents.CONNECTIONS).flatMap(PrismComponents.Connections::texture)
+                .map(texture -> variant.isEmpty() ? texture
+                        : new PrismKey(texture.namespace(), texture.value() + "_" + variant))
+                .orElseGet(() -> new PrismKey(block.key().namespace(),
+                        "block/" + block.key().value() + (variant.isEmpty() ? "" : "_" + variant)));
     }
 }

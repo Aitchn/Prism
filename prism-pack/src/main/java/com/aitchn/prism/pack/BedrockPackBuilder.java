@@ -5,6 +5,7 @@ import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.core.block.Appearances;
+import com.aitchn.prism.core.block.ConnectedShapes;
 import com.aitchn.prism.core.block.NoteBlockStates;
 import com.aitchn.prism.core.content.YamlFiles;
 import com.aitchn.prism.pack.json.JsonWriter;
@@ -50,6 +51,9 @@ public final class BedrockPackBuilder {
      * @param itemsWithIcon    items that got a Bedrock custom item; the others keep their vanilla Bedrock look
      * @param blockMappings    Geyser custom block mappings (format 1) for native-state blocks, JSON
      * @param blockLooks       looks ({@code Appearances.Look#id()}) that got a Bedrock custom block state
+     * @param soundEvents      sound events in {@code sound_definitions.json}
+     * @param flipbooks        animated block textures
+     * @param geometries       generated geometries of connected blocks
      */
     public record Result(
             byte @NotNull [] mcpack,
@@ -60,7 +64,8 @@ public final class BedrockPackBuilder {
             @NotNull String blockMappings,
             @NotNull Set<String> blockLooks,
             int soundEvents,
-            int flipbooks) {}
+            int flipbooks,
+            int geometries) {}
 
     private static final UUID HEADER = UUID.nameUUIDFromBytes("prism:bedrock:header".getBytes(StandardCharsets.UTF_8));
     private static final UUID MODULE = UUID.nameUUIDFromBytes("prism:bedrock:module".getBytes(StandardCharsets.UTF_8));
@@ -111,7 +116,44 @@ public final class BedrockPackBuilder {
         Map<String, Object> flipbooks = new TreeMap<>();
         Map<String, Object> stateOverrides = new TreeMap<>();
         Set<String> looksDone = new LinkedHashSet<>();
+        int geometries = 0;
         for (BlockDefinition block : input.blocks()) {
+            var connections = block.components().get(PrismComponents.CONNECTIONS);
+            if (connections.isPresent()) {
+                // Generated shapes: one geometry per variant and mask, built from the same boxes as the Java model.
+                for (String variant : Appearances.variants(block)) {
+                    PrismKey texture = Appearances.connectionTexture(block, variant);
+                    String texturePath = "assets/" + texture.namespace() + "/textures/" + texture.value() + ".png";
+                    for (int mask : connections.get().masks()) {
+                        Appearances.Look look = new Appearances.Look(block.key(),
+                                Appearances.drawnVariant(variant, mask), "NORTH");
+                        Integer state = input.nativeStates().get(look.id());
+                        if (state == null) {
+                            continue;
+                        }
+                        if (!sources.containsKey(texturePath)) {
+                            warnings.add("bedrock block " + look.id() + ": no texture " + texturePath
+                                    + "; Bedrock players see a plain note block");
+                            continue;
+                        }
+                        String name = "prismb_" + look.id().replace(':', '_').replace('#', '_').replace('/', '_');
+                        String geometry = "geometry.prism." + name;
+                        files.put("models/blocks/prism/" + name + ".geo.json", JsonWriter.write(
+                                ConnectedShapes.bedrockGeometry(geometry,
+                                        ConnectedShapes.boxes(connections.get(), mask)))
+                                .getBytes(StandardCharsets.UTF_8));
+                        geometries++;
+                        Map<String, Object> override = new LinkedHashMap<>();
+                        override.put("display_name", look.block().toString());
+                        override.put("geometry", geometry);
+                        override.put("material_instances", Map.of("*",
+                                material(terrainTexture(sources, files, terrainData, flipbooks, texturePath))));
+                        stateOverrides.put(NoteBlockStates.state(state).variant(), override);
+                        looksDone.add(look.id());
+                    }
+                }
+                continue;
+            }
             for (Appearances.Look look : Appearances.looks(block)) {
                 Integer state = input.nativeStates().get(look.id());
                 if (state == null) {
@@ -125,29 +167,8 @@ public final class BedrockPackBuilder {
                     continue;
                 }
                 Map<String, Object> materials = new LinkedHashMap<>();
-                faces.forEach((face, texturePath) -> {
-                    String name = "prismb_" + texturePath.substring("assets/".length(), texturePath.length() - 4)
-                            .replace("/textures/", "_").replace('/', '_');
-                    String packTexture = "textures/prism/blocks/" + name;
-                    files.put(packTexture + ".png", sources.get(texturePath));
-                    terrainData.put(name, Map.of("textures", packTexture));
-                    Animation animation = animation(sources, texturePath);
-                    if (animation != null) {
-                        // A Java animated texture (.png.mcmeta): the same vertical strip is a Bedrock flipbook.
-                        Map<String, Object> flipbook = new LinkedHashMap<>();
-                        flipbook.put("flipbook_texture", packTexture);
-                        flipbook.put("atlas_tile", name);
-                        flipbook.put("ticks_per_frame", animation.ticksPerFrame());
-                        if (animation.frames() != null) {
-                            flipbook.put("frames", animation.frames());
-                        }
-                        flipbooks.put(name, flipbook);
-                    }
-                    Map<String, Object> material = new LinkedHashMap<>();
-                    material.put("texture", name);
-                    material.put("render_method", "alpha_test");
-                    materials.put(face, material);
-                });
+                faces.forEach((face, texturePath) -> materials.put(face,
+                        material(terrainTexture(sources, files, terrainData, flipbooks, texturePath))));
                 Map<String, Object> override = new LinkedHashMap<>();
                 override.put("display_name", look.block().toString());
                 override.put("material_instances", materials);
@@ -210,7 +231,37 @@ public final class BedrockPackBuilder {
         byte[] zip = JavaPackBuilder.zip(files);
         return new Result(zip, JavaPackBuilder.sha1(zip), JsonWriter.write(mappings), List.copyOf(warnings),
                 Set.copyOf(done), JsonWriter.write(blockMappings), Set.copyOf(looksDone), soundDefinitions.size(),
-                flipbooks.size());
+                flipbooks.size(), geometries);
+    }
+
+    /** Registers a Java block texture in the Bedrock terrain atlas (and as a flipbook if animated); returns its name. */
+    private static String terrainTexture(Map<String, byte[]> sources, Map<String, byte[]> files,
+            Map<String, Object> terrainData, Map<String, Object> flipbooks, String texturePath) {
+        String name = "prismb_" + texturePath.substring("assets/".length(), texturePath.length() - 4)
+                .replace("/textures/", "_").replace('/', '_');
+        String packTexture = "textures/prism/blocks/" + name;
+        files.put(packTexture + ".png", sources.get(texturePath));
+        terrainData.put(name, Map.of("textures", packTexture));
+        Animation animation = animation(sources, texturePath);
+        if (animation != null) {
+            // A Java animated texture (.png.mcmeta): the same vertical strip is a Bedrock flipbook.
+            Map<String, Object> flipbook = new LinkedHashMap<>();
+            flipbook.put("flipbook_texture", packTexture);
+            flipbook.put("atlas_tile", name);
+            flipbook.put("ticks_per_frame", animation.ticksPerFrame());
+            if (animation.frames() != null) {
+                flipbook.put("frames", animation.frames());
+            }
+            flipbooks.put(name, flipbook);
+        }
+        return name;
+    }
+
+    private static Map<String, Object> material(String texture) {
+        Map<String, Object> material = new LinkedHashMap<>();
+        material.put("texture", texture);
+        material.put("render_method", "alpha_test");
+        return material;
     }
 
     /**

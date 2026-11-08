@@ -129,6 +129,27 @@ class BedrockPackBuilderTest {
     }
 
     @Test
+    void connectedBlocksGetAGeometryPerAllocatedMask() throws Exception {
+        var connections = new com.aitchn.prism.api.content.PrismComponents.Connections(
+                com.aitchn.prism.api.content.PrismComponents.Connections.SIDES, List.of("self"), 6, 4,
+                java.util.Optional.empty());
+        var cable = new com.aitchn.prism.api.content.BlockDefinition(PrismKey.parse("m:cable"), "mod",
+                PrismKey.parse("minecraft:barrier"), java.util.Optional.empty(), ComponentMap.builder()
+                        .put(com.aitchn.prism.api.content.PrismComponents.CONNECTIONS, connections).build(), List.of());
+        Map<String, byte[]> files = new LinkedHashMap<>();
+        files.put("assets/m/textures/block/cable.png", PNG);
+        var result = BedrockPackBuilder.build(new BedrockPackBuilder.Input(Map.of("mod", files), List.of(), "test",
+                List.of(cable), Map.of("m:cable#c0", 5, "m:cable#c3", 6)));
+        Map<String, byte[]> zip = entries(result.mcpack());
+        assertEquals(2, result.geometries());
+        assertEquals(java.util.Set.of("m:cable#c0", "m:cable#c3"), result.blockLooks());
+        String geometry = new String(zip.get("models/blocks/prism/prismb_m_cable_c3.geo.json"), StandardCharsets.UTF_8);
+        assertTrue(geometry.contains("\"identifier\": \"geometry.prism.prismb_m_cable_c3\""), geometry);
+        assertTrue(result.blockMappings().contains("\"geometry\": \"geometry.prism.prismb_m_cable_c3\""),
+                result.blockMappings());
+    }
+
+    @Test
     void javaSoundsBecomeBedrockSoundDefinitions() throws Exception {
         Map<String, byte[]> files = new LinkedHashMap<>();
         files.put("assets/m/sounds.json", ("{\"machine.hum\":{\"sounds\":[\"m:machine/hum\","

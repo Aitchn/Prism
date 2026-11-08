@@ -27,6 +27,15 @@ every `interval` ticks, only in the listed variants. It stops when the block goe
 (`<texture>.png.mcmeta` with `animation`) animates on Java and becomes a flipbook on Bedrock. The ruby counter hums
 and glows while active.
 
+**Connected blocks.** `prism:connections` makes a block reach towards its neighbours, like a cable or pipe: a core cube
+and an arm towards each connected side. `connects_to` lists `self`, block keys (custom or vanilla) and
+`capability:prism:item_handler` or `capability:prism:inventory`; `faces`, `core`, `arm` and `texture` shape it. Prism
+updates the arms when the block or a neighbour is placed or removed, and draws every combination itself from one
+texture. A `BlockConnectionBehavior` replaces the rules with code; call `Prism.blocks().refreshConnections(block)` when
+its answer changes. Java players see a display entity over a barrier, so the faces of neighbouring blocks stay drawn.
+Bedrock players see a generated shape, one note block state per variant and combination of sides (64 for six sides,
+16 for four). `examplemod:ruby_cable` is an example.
+
 **Ores.** `prism:ore` generates a block as veins in newly generated chunks: `dimension`, `replace` (vanilla blocks),
 `min_y`, `max_y`, `veins_per_chunk`, `rarity` and `size`, or a list of such specs. Veins stay inside their chunk.
 Chunks that existed before the mod was installed get none. `examplemod:ruby_ore` is an example; it is a note block

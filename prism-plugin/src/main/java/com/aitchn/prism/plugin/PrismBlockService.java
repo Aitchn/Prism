@@ -3,6 +3,7 @@ package com.aitchn.prism.plugin;
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockCapability;
 import com.aitchn.prism.api.block.BlockCapabilityProvider;
+import com.aitchn.prism.api.block.BlockConnectionBehavior;
 import com.aitchn.prism.api.block.BlockDropBehavior;
 import com.aitchn.prism.api.block.BlockLoadBehavior;
 import com.aitchn.prism.api.block.BlockNeighborBehavior;
@@ -111,17 +112,21 @@ final class PrismBlockService implements BlockService, Listener {
             return false;
         }
         BlockDefinition definition = found.get();
-        BlockFace actual = definition.components().get(PrismComponents.ROTATION)
+        boolean connected = definition.components().has(PrismComponents.CONNECTIONS);
+        BlockFace actual = !connected && definition.components().get(PrismComponents.ROTATION)
                 .filter(rotation -> rotation != PrismComponents.Rotation.NONE)
                 .isPresent() ? facing : BlockFace.NORTH;
         String variant = Appearances.variants(definition).getFirst();
-        if (!appearanceFor(definition).spawn(block, definition, actual, variant)) {
+        int mask = connected ? connections(new Handle(block, key, definition, actual, variant, index)) : -1;
+        if (!appearanceFor(definition).spawn(block, definition, actual, Appearances.drawnVariant(variant, mask))) {
             return false;
         }
-        index.put(block, new BlockIndex.Entry(key, actual, variant));
+        index.put(block, new BlockIndex.Entry(key, actual, variant, mask));
         Handle handle = new Handle(block, key, definition, actual, variant, index);
         dispatcher.dispatchBlock(key, block.getLocation(), BlockPlaceBehavior.class,
                 d -> BlockEventContext.of(handle, placer).placedFrom(from), (b, c) -> b.onPlace(c));
+        // Again now the block is indexed and its place behaviors set up its data, which a connection behavior may read.
+        refreshConnections(block);
         startTicking(handle);
         notifyNeighbors(block);
         lookChanged.accept(block);
@@ -147,10 +152,12 @@ final class PrismBlockService implements BlockService, Listener {
             return false;
         }
         String variant = Appearances.variants(definition).getFirst();
-        if (!appearanceFor(definition).spawn(block, definition, BlockFace.NORTH, variant)) {
+        // Neighbours are not looked at while the chunk generates: a connected block starts unconnected.
+        int mask = definition.components().has(PrismComponents.CONNECTIONS) ? 0 : -1;
+        if (!appearanceFor(definition).spawn(block, definition, BlockFace.NORTH, Appearances.drawnVariant(variant, mask))) {
             return false;
         }
-        index.put(block, new BlockIndex.Entry(definition.key(), BlockFace.NORTH, variant));
+        index.put(block, new BlockIndex.Entry(definition.key(), BlockFace.NORTH, variant, mask));
         return true;
     }
 
@@ -217,23 +224,109 @@ final class PrismBlockService implements BlockService, Listener {
             return false;
         }
         if (!custom.get().variant().equals(variant)) {
-            appearanceOf(block).update(block, custom.get().definition(), custom.get().facing(), variant);
+            int mask = index.get(block).map(BlockIndex.Entry::connections).orElse(-1);
+            appearanceOf(block).update(block, custom.get().definition(), custom.get().facing(),
+                    Appearances.drawnVariant(variant, mask));
             index.setVariant(block, variant);
             lookChanged.accept(block);
         }
         return true;
     }
 
+    @Override
+    public void refreshConnections(@NotNull Block block) {
+        Optional<BlockIndex.Entry> entry = index.get(block);
+        Optional<CustomBlock> custom = get(block);
+        if (entry.isEmpty() || custom.isEmpty() || entry.get().connections() < 0
+                || !custom.get().definition().components().has(PrismComponents.CONNECTIONS)) {
+            return;
+        }
+        int mask = connections(custom.get());
+        if (mask != entry.get().connections()) {
+            index.setConnections(block, mask);
+            appearanceOf(block).update(block, custom.get().definition(), custom.get().facing(),
+                    Appearances.drawnVariant(custom.get().variant(), mask));
+            lookChanged.accept(block);
+        }
+    }
+
+    /** The name the block's current look is drawn under: its variant, plus its connections if it is connected. */
+    String drawnVariant(CustomBlock custom) {
+        int mask = index.get(custom.block()).map(BlockIndex.Entry::connections).orElse(-1);
+        return Appearances.drawnVariant(custom.variant(), mask);
+    }
+
+    /** The sides {@code custom} connects to, as a {@link PrismComponents.Connections#bit} mask. */
+    private int connections(CustomBlock custom) {
+        PrismComponents.Connections spec = custom.definition().components().get(PrismComponents.CONNECTIONS)
+                .orElseThrow();
+        List<BlockConnectionBehavior> behaviors = custom.definition().behaviors(BlockConnectionBehavior.class);
+        Block block = custom.block();
+        int mask = 0;
+        for (String face : spec.faces()) {
+            BlockFace side = BlockFace.valueOf(face);
+            Block neighbor = block.getRelative(side);
+            // A neighbour in an unloaded chunk or another region's thread counts as not connected.
+            if (!neighbor.getWorld().isChunkLoaded(neighbor.getX() >> 4, neighbor.getZ() >> 4)
+                    || !scheduler.isOwnedByCurrentThread(neighbor.getLocation())) {
+                continue;
+            }
+            boolean connects;
+            if (!behaviors.isEmpty()) {
+                connects = false;
+                for (BlockConnectionBehavior behavior : behaviors) {
+                    try {
+                        connects |= behavior.connects(custom, side, neighbor);
+                    } catch (RuntimeException e) {
+                        log.log(Level.SEVERE, "Connection check of " + custom.key() + " failed", e);
+                    }
+                }
+            } else {
+                connects = matches(spec.connectsTo(), custom.key(), side, neighbor);
+            }
+            if (connects) {
+                mask |= PrismComponents.Connections.bit(face);
+            }
+        }
+        return mask;
+    }
+
+    private boolean matches(List<String> rules, PrismKey self, BlockFace side, Block neighbor) {
+        Optional<PrismKey> custom = index.get(neighbor).map(BlockIndex.Entry::key);
+        for (String rule : rules) {
+            if (rule.equals("self")) {
+                if (custom.isPresent() && custom.get().equals(self)) {
+                    return true;
+                }
+            } else if (rule.startsWith("capability:")) {
+                BlockCapability<?> capability = BUILT_IN_CAPABILITIES.get(rule.substring("capability:".length()));
+                if (capability != null && capability(neighbor, side.getOppositeFace(), capability).isPresent()) {
+                    return true;
+                }
+            } else if (custom.isPresent() ? custom.get().toString().equals(rule)
+                    : VanillaItems.blockMaterial(PrismKey.parse(rule)).filter(neighbor.getType()::equals).isPresent()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Capabilities {@code connects_to} can name; a mod's own capabilities go through a BlockConnectionBehavior. */
+    private static final java.util.Map<String, BlockCapability<?>> BUILT_IN_CAPABILITIES = java.util.Map.of(
+            PrismCapabilities.INVENTORY.key().toString(), PrismCapabilities.INVENTORY,
+            PrismCapabilities.ITEM_HANDLER.key().toString(), PrismCapabilities.ITEM_HANDLER);
+
     void onLookChanged(java.util.function.Consumer<Block> listener) {
         this.lookChanged = listener;
     }
 
     /**
-     * Whether blocks of {@code definition} drawn by a BetterModel model also get a note block look for Bedrock players
-     * (sent to them per player; Java players keep the model).
+     * Whether blocks of {@code definition} drawn by a display entity (a BetterModel model or a connected shape) also get
+     * note block looks for Bedrock players (sent to them per player; Java players keep the display entity).
      */
-    static boolean bedrockLookForModel(String backend, BlockDefinition definition) {
-        return !"display".equals(backend) && ModelAnchors.modelOf(definition).isPresent();
+    static boolean bedrockOnlyLooks(String backend, BlockDefinition definition) {
+        return !"display".equals(backend) && (ModelAnchors.modelOf(definition).isPresent()
+                || definition.components().has(PrismComponents.CONNECTIONS));
     }
 
     /** The appearance new blocks of {@code definition} get. */
@@ -243,8 +336,10 @@ final class PrismBlockService implements BlockService, Listener {
 
     /** Whether new blocks of {@code definition} are drawn as note block states under the {@code blocks.backend} setting. */
     static boolean usesNoteBlocks(String backend, BlockDefinition definition) {
-        // BetterModel models need an entity to animate, so they always use a display entity.
-        return !"display".equals(backend) && ModelAnchors.modelOf(definition).isEmpty();
+        // BetterModel models need an entity to animate, and a connected shape drawn by a note block would hide the faces
+        // of its neighbours on Java (the note block is opaque to the client), so both always use a display entity.
+        return !"display".equals(backend) && ModelAnchors.modelOf(definition).isEmpty()
+                && !definition.components().has(PrismComponents.CONNECTIONS);
     }
 
     /** The appearance an existing block was placed with (blocks keep theirs when the setting changes). */
@@ -304,13 +399,21 @@ final class PrismBlockService implements BlockService, Listener {
 
     // ---------------------------------------------------------------- neighbours
 
+    /** Like {@link #notifyNeighbors} one tick later, for a change that has not happened yet. */
+    void notifyNeighborsLater(Block changed) {
+        scheduler.runAt(changed.getLocation(), () -> notifyNeighbors(changed));
+    }
+
     /** Tells the custom blocks next to {@code changed} that it changed. */
     void notifyNeighbors(Block changed) {
         for (BlockFace face : SIDES) {
             Block neighbor = changed.getRelative(face);
-            Runnable notify = () -> get(neighbor).ifPresent(custom -> dispatcher.dispatchBlock(custom.key(),
-                    neighbor.getLocation(), BlockNeighborBehavior.class, d -> BlockEventContext.of(custom, null),
-                    (b, c) -> b.onNeighborChanged(c, face.getOppositeFace())));
+            Runnable notify = () -> {
+                refreshConnections(neighbor);
+                get(neighbor).ifPresent(custom -> dispatcher.dispatchBlock(custom.key(),
+                        neighbor.getLocation(), BlockNeighborBehavior.class, d -> BlockEventContext.of(custom, null),
+                        (b, c) -> b.onNeighborChanged(c, face.getOppositeFace())));
+            };
             Location at = neighbor.getLocation();
             if (!neighbor.getWorld().isChunkLoaded(neighbor.getX() >> 4, neighbor.getZ() >> 4)) {
                 continue;
@@ -410,6 +513,36 @@ final class PrismBlockService implements BlockService, Listener {
             dispatcher.dispatchBlock(custom.key(), custom.block().getLocation(), BlockLoadBehavior.class,
                     d -> BlockEventContext.of(custom, null), (b, c) -> b.onLoad(c));
             startTicking(custom);
+            // Neighbours in chunks that were unloaded when the mask was saved can be seen now.
+            refreshConnections(custom.block());
+        }
+        refreshBorders(chunk);
+    }
+
+    /** Connected blocks on the edges of the loaded chunks around {@code chunk} may now reach into it. */
+    private void refreshBorders(Chunk chunk) {
+        int[][] around = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+        for (int[] step : around) {
+            int x = chunk.getX() + step[0];
+            int z = chunk.getZ() + step[1];
+            BlockIndex.Loaded mirror = index.loaded(chunk.getWorld(), x, z);
+            if (mirror == null) {
+                continue;
+            }
+            mirror.blocks.forEach((packed, entry) -> {
+                if (entry.connections() < 0) {
+                    return;
+                }
+                Block block = mirror.block(packed);
+                int localX = block.getX() & 15;
+                int localZ = block.getZ() & 15;
+                // The edge that faces the newly loaded chunk.
+                boolean edge = step[0] == 1 ? localX == 0 : step[0] == -1 ? localX == 15
+                        : step[1] == 1 ? localZ == 0 : localZ == 15;
+                if (edge) {
+                    scheduler.runAt(block.getLocation(), () -> refreshConnections(block));
+                }
+            });
         }
     }
 

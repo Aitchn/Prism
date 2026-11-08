@@ -181,7 +181,8 @@ final class BlockListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onVanillaBreak(BlockBreakEvent event) {
         if (blocks.identify(event.getBlock()).isEmpty()) {
-            blocks.notifyNeighbors(event.getBlock());
+            // The block is still there while the event runs; neighbours look once it is gone.
+            blocks.notifyNeighborsLater(event.getBlock());
         }
     }
 

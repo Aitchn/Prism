@@ -52,6 +52,26 @@ class JavaPackBuilderTest {
     }
 
     @Test
+    void connectedBlocksGetAModelPerMask() throws Exception {
+        var connections = new PrismComponents.Connections(List.of("NORTH", "EAST", "SOUTH", "WEST"), List.of("self"),
+                6, 4, Optional.empty());
+        var cable = new BlockDefinition(PrismKey.parse("mod:cable"), "mod", PrismKey.parse("minecraft:barrier"),
+                Optional.empty(), ComponentMap.builder().put(PrismComponents.CONNECTIONS, connections).build(),
+                List.of());
+        var result = JavaPackBuilder.build(new JavaPackBuilder.Input(
+                Map.of("mod", Map.of("assets/mod/textures/block/cable.png", PNG)), List.of(), List.of(cable), 46,
+                "test"));
+        var files = entries(result.zip());
+        assertTrue(result.blocksWithAppearance().contains(PrismKey.parse("mod:cable")));
+        assertTrue(files.containsKey("assets/mod/items/block/cable_c0.json"));
+        assertTrue(files.containsKey("assets/mod/items/block/cable_c15.json"));
+        String model = text(files, "assets/mod/models/block/cable_c3.json");
+        assertTrue(model.contains("\"all\": \"mod:block/cable\""), model);
+        assertTrue(model.contains("[6, 6, 0]"), model);
+        assertTrue(!files.containsKey("assets/mod/models/block/cable.json"));
+    }
+
+    @Test
     void generatesItemDefinitionAndModelFromTexture() throws Exception {
         var result = JavaPackBuilder.build(new JavaPackBuilder.Input(
                 Map.of("mod", Map.of("assets/mod/textures/item/ruby.png", PNG)),

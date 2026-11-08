@@ -1,0 +1,10 @@
+# Key: examplemod:ruby_cable. A cable that reaches towards other cables and ruby counters. Prism draws the core and
+# arms itself from assets/examplemod/textures/block/ruby_cable.png: a display entity on Java (the barrier base keeps
+# neighbours drawn), a generated shape on Bedrock. Horizontal and vertical: 64 Bedrock looks.
+base: minecraft:barrier
+drop: examplemod:ruby_cable
+components:
+  prism:connections:
+    connects_to: [self, examplemod:ruby_counter]
+    core: 6
+    arm: 4

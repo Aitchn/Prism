@@ -192,6 +192,66 @@ public final class PrismComponents {
                         java.util.List.copyOf(section.getStringList("variants")));
             });
 
+    /**
+     * A block whose look follows its neighbours: a cable, pipe or post shows a core and an arm towards every side it
+     * connects to. Prism works out the connections when the block or a neighbour is placed or removed, and draws the
+     * shape itself from boxes, so a mod writes no model per combination. Java players see it drawn by a display entity
+     * over the block's carrier (use {@code base: minecraft:barrier}), so neighbouring blocks never show holes. Bedrock
+     * players get one note block state per variant and combination of sides, sent to them per player; list fewer
+     * {@code faces} to use fewer of the 799 states (six sides take 64 per variant, four take 16).
+     * <pre>{@code
+     * prism:connections:
+     *   connects_to: [self, examplemod:ruby_counter, minecraft:chest, capability:prism:item_handler]
+     *   faces: [north, east, south, west, up, down]   # default: all six
+     *   core: 6                                      # core cube edge in pixels, default 6
+     *   arm: 4                                       # arm thickness in pixels, default the core size
+     *   texture: examplemod:block/ruby_cable         # default ns:block/<name>, or <name>_<variant>
+     * }</pre>
+     * {@code self} is any block of the same kind; a key is a custom or vanilla block; {@code capability:<key>} is any
+     * block offering that built-in capability on the facing side. A {@code BlockConnectionBehavior} replaces these
+     * rules with code. Variant names of a connected block must not look like {@code c<number>}.
+     */
+    public static final ComponentType<Connections> CONNECTIONS = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "connections"),
+            Connections.class,
+            section -> {
+                section.rejectUnknownKeys(java.util.Set.of("connects_to", "faces", "core", "arm", "texture"));
+                java.util.List<String> faces = section.has("faces")
+                        ? section.getStringList("faces").stream()
+                                .map(face -> face.toUpperCase(java.util.Locale.ROOT)).toList()
+                        : Connections.SIDES;
+                for (String face : faces) {
+                    if (!Connections.SIDES.contains(face)) {
+                        throw section.error("unknown face " + face.toLowerCase(java.util.Locale.ROOT)
+                                + "; use north, east, south, west, up or down");
+                    }
+                }
+                if (faces.isEmpty() || new java.util.HashSet<>(faces).size() != faces.size()) {
+                    throw section.error("faces must list each side at most once, and at least one");
+                }
+                int core = section.getInt("core").orElse(6);
+                int arm = section.getInt("arm").orElse(core);
+                if (core < 1 || core > 16 || arm < 1 || arm > core) {
+                    throw section.error("core must be 1-16 pixels and arm 1-core, got core " + core + " arm " + arm);
+                }
+                java.util.Optional<PrismKey> texture = section.has("texture")
+                        ? java.util.Optional.of(section.requireKey("texture")) : java.util.Optional.empty();
+                java.util.List<String> rules = java.util.List.copyOf(section.getStringList("connects_to"));
+                for (String rule : rules) {
+                    String key = rule.startsWith("capability:") ? rule.substring("capability:".length()) : rule;
+                    if (!rule.equals("self")) {
+                        try {
+                            PrismKey.parse(key);
+                        } catch (IllegalArgumentException e) {
+                            throw section.error("connects_to entry " + rule
+                                    + " is not self, a block key or capability:<key>");
+                        }
+                    }
+                }
+                java.util.List<String> ordered = Connections.SIDES.stream().filter(faces::contains).toList();
+                return new Connections(ordered, rules, core, arm, texture);
+            });
+
     /** @see #VARIANTS */
     public record Variants(java.util.List<String> names) {}
 
@@ -254,6 +314,35 @@ public final class PrismComponents {
                 return new Vein(dimension, java.util.List.copyOf(replace.isEmpty() ? defaultReplace(dimension) : replace),
                         minY, maxY, perChunk, rarity, size);
             }
+        }
+    }
+
+    /** @see #CONNECTIONS */
+    public record Connections(java.util.List<String> faces, java.util.List<String> connectsTo, int core, int arm,
+            java.util.Optional<PrismKey> texture) {
+
+        /** Every side in mask bit order: bit 0 is north, then east, south, west, up and down. */
+        public static final java.util.List<String> SIDES = java.util.List.of("NORTH", "EAST", "SOUTH", "WEST", "UP",
+                "DOWN");
+
+        /** The mask bit of {@code face} (a {@code BlockFace} name). */
+        public static int bit(String face) {
+            return 1 << SIDES.indexOf(face);
+        }
+
+        /** Every mask these faces can form, from 0 (no connection) upwards. */
+        public java.util.List<Integer> masks() {
+            int all = 0;
+            for (String face : faces) {
+                all |= bit(face);
+            }
+            java.util.List<Integer> masks = new java.util.ArrayList<>();
+            for (int mask = 0; mask <= all; mask++) {
+                if ((mask & ~all) == 0) {
+                    masks.add(mask);
+                }
+            }
+            return java.util.List.copyOf(masks);
         }
     }
 

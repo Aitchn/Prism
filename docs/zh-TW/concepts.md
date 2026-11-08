@@ -21,6 +21,13 @@
 `prism:ambient_sound` 讓方塊每隔 `interval` 刻自己播放音效，可以限定只在列出的變體播放，方塊消失就停止。
 動畫材質（`<texture>.png.mcmeta` 含 `animation`）在 Java 版會動，在基岩版則轉成 flipbook。紅寶石計數器啟動時會發出嗡嗡聲並閃爍。
 
+**連接方塊。** `prism:connections` 讓方塊像線纜或管線一樣伸向鄰居：中央一個核心方塊，每個相連的面再伸出一支臂。
+`connects_to` 可列出 `self`、方塊 key（自訂或原版），以及 `capability:prism:item_handler` 或 `capability:prism:inventory`；
+`faces`、`core`、`arm` 與 `texture` 決定形狀。方塊本身或鄰居被放置、移除時，Prism 會更新臂，並用同一張貼圖自動產生所有組合。
+`BlockConnectionBehavior` 可以用程式取代這些規則；答案改變時呼叫 `Prism.blocks().refreshConnections(block)`。
+Java 版玩家看到的是屏障方塊上的顯示實體，所以相鄰方塊的面不會破洞。基岩版玩家看到的是自動產生的形狀，
+每個變體與連接組合各佔一個音符盒狀態（六面為 64 個，四面為 16 個）。範例是 `examplemod:ruby_cable`。
+
 **礦石。** `prism:ore` 讓方塊以礦脈形式出現在新生成的區塊：`dimension`、`replace`（可取代的原版方塊）、`min_y`、`max_y`、
 `veins_per_chunk`、`rarity` 與 `size`，也可以寫成多組設定的清單。礦脈不會超出所在區塊。安裝模組之前就存在的區塊不會長出礦石。
 範例是 `examplemod:ruby_ore`；它使用音符盒狀態呈現，所以基岩版玩家也看得到。
