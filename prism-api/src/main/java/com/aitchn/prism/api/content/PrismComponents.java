@@ -413,6 +413,61 @@ public final class PrismComponents {
                 return new Gauge(style, Integer.parseInt(color.substring(1), 16), steps);
             });
 
+    /**
+     * Where the look of a block is drawn from, for blocks drawn as a client-side look (no BetterModel model, no
+     * connections). {@code auto} (default) uses a borrowed vanilla block state when one with the block's collision,
+     * occlusion and sound exists, and an invisible shell plus packet-only display entities otherwise. {@code state}
+     * asks for a borrowed state (the block still falls back to a display if none is left, and the log says so);
+     * {@code display} always uses the display layer, which has no limit on the number of looks. Scalar form:
+     * {@code prism:render: display}.
+     */
+    public static final ComponentType<Render> RENDER = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "render"),
+            Render.class,
+            section -> {
+                String mode = section.requireString("value");
+                return switch (mode) {
+                    case "auto" -> Render.AUTO;
+                    case "state" -> Render.STATE;
+                    case "display" -> Render.DISPLAY;
+                    default -> throw section.error("render must be auto, state or display, got " + mode);
+                };
+            });
+
+    /**
+     * What a Java client does with the block besides drawing it: whether it hides the faces of neighbouring blocks
+     * ({@code occludes}, default true for solid blocks and false for {@code prism:passable} ones) and which vanilla
+     * sound group it steps, places and breaks with ({@code sound}, default {@code wood}, {@code stone} for passable
+     * blocks). A look is only drawn with a borrowed state that matches its collision (full, or none for passable
+     * blocks), occlusion and sound group; without a match it is drawn by the display layer.
+     * <pre>{@code
+     * prism:surface:
+     *   sound: stone      # wood, stone, gravel, grass, sand, snow, wool, metal, glass, bone, slime, netherrack, deepslate, copper
+     *   occludes: true
+     * }</pre>
+     */
+    public static final ComponentType<Surface> SURFACE = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "surface"),
+            Surface.class,
+            section -> {
+                section.rejectUnknownKeys(java.util.Set.of("sound", "occludes"));
+                String sound = section.getString("sound").orElse("");
+                if (!sound.isEmpty() && !Surface.SOUNDS.contains(sound)) {
+                    throw section.error("sound must be one of " + Surface.SOUNDS + ", got " + sound);
+                }
+                return new Surface(sound, section.has("occludes")
+                        ? java.util.Optional.of(section.getBoolean("occludes", true)) : java.util.Optional.empty());
+            });
+
+    /** @see #RENDER */
+    public enum Render { AUTO, STATE, DISPLAY }
+
+    /** @see #SURFACE; an empty {@code sound} and an empty {@code occludes} mean the default for the block's kind. */
+    public record Surface(String sound, java.util.Optional<Boolean> occludes) {
+        public static final java.util.List<String> SOUNDS = java.util.List.of("wood", "stone", "gravel", "grass", "sand",
+                "snow", "wool", "metal", "glass", "bone", "slime", "netherrack", "deepslate", "copper");
+    }
+
     /** @see #LIGHT; an empty {@code variants} means every variant. */
     public record Light(int level, java.util.List<String> variants) {}
 

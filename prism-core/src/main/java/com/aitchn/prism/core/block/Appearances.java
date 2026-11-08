@@ -3,6 +3,9 @@ package com.aitchn.prism.core.block;
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
+import com.aitchn.prism.core.look.Collision;
+import com.aitchn.prism.core.look.PhysicsClass;
+import com.aitchn.prism.core.look.SoundGroup;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -130,5 +133,27 @@ public final class Appearances {
         return block.components().get(PrismComponents.PASSABLE).map(PrismComponents.Passable::value).orElse(false)
                 && !block.components().has(PrismComponents.CONNECTIONS)
                 && !block.components().has(PrismComponents.MODEL_REF);
+    }
+
+    /**
+     * The collision, occlusion and sound a client must predict for {@code block}: full, opaque and wood unless the
+     * block is passable (then none, clear and stone, like the tripwire its look has always been), changed by
+     * {@code prism:surface}.
+     */
+    public static @NotNull PhysicsClass physics(@NotNull BlockDefinition block) {
+        boolean passable = passable(block);
+        var surface = block.components().get(PrismComponents.SURFACE);
+        SoundGroup sound = surface.map(PrismComponents.Surface::sound).map(SoundGroup::parse)
+                .orElse(passable ? SoundGroup.STONE : SoundGroup.WOOD);
+        if (sound == null) {
+            sound = passable ? SoundGroup.STONE : SoundGroup.WOOD;
+        }
+        boolean occludes = surface.flatMap(PrismComponents.Surface::occludes).orElse(!passable);
+        return new PhysicsClass(passable ? Collision.NONE : Collision.FULL, occludes, sound);
+    }
+
+    /** The block's {@code prism:render} preference. */
+    public static PrismComponents.@NotNull Render render(@NotNull BlockDefinition block) {
+        return block.components().get(PrismComponents.RENDER).orElse(PrismComponents.Render.AUTO);
     }
 }

@@ -4,6 +4,7 @@ import com.aitchn.prism.api.Prism;
 import com.aitchn.prism.api.platform.MinecraftVersion;
 import com.aitchn.prism.api.platform.PlatformInfo;
 import com.aitchn.prism.api.platform.PlatformKind;
+import com.aitchn.prism.client.ClientCanon;
 import com.aitchn.prism.client.PacketRewriting;
 import com.aitchn.prism.client.LookSource;
 import com.aitchn.prism.core.block.ChunkLooks;
@@ -11,7 +12,6 @@ import com.aitchn.prism.core.client.Profiles;
 import com.aitchn.prism.core.data.SqliteDataService;
 import com.aitchn.prism.core.PrismRuntime;
 import com.aitchn.prism.core.StartupReport;
-import com.aitchn.prism.core.block.StateAllocator;
 import com.aitchn.prism.core.recipe.RegistryRecipes;
 import com.aitchn.prism.core.mod.BehaviorDispatcher;
 import com.aitchn.prism.core.mod.ModManager;
@@ -71,27 +71,31 @@ public final class PrismPlugin extends JavaPlugin {
             throw new IllegalStateException("cannot open Prism's data store", e);
         }
         String backend = getConfig().getString("blocks.backend", "auto");
-        StateAllocator allocator = new StateAllocator(data.store("prism"));
-        NoteBlockAppearance noteBlocks = new NoteBlockAppearance(allocator, getLogger());
-        StateAllocator tripwireAllocator = StateAllocator.tripwire(data.store("prism"));
-        TripwireAppearance tripwires = new TripwireAppearance(tripwireAllocator, getLogger());
-        packManager.useNativeStates(allocator, tripwireAllocator, backend);
+        packManager.configure(backend, getConfig().getBoolean("blocks.display.solid-shells", false));
         packManager.installInto(new GeyserInstaller(getLogger(), getDataFolder().toPath().resolve("geyser")));
         PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, new BlockIndex(this), display,
-                noteBlocks, tripwires, backend, dispatcher, scheduler, getLogger());
+                packManager::looks, backend, dispatcher, scheduler, getLogger());
         RegistryRecipes recipes = new RegistryRecipes(mods.recipeTypes(), mods.recipes());
         VanillaRecipes vanillaRecipes = new VanillaRecipes(recipes, items, scheduler, getLogger());
-        ModLifecycle lifecycle = new ModLifecycle(this, mods, () -> {
+        Runnable contentChanged = () -> {
             vanillaRecipes.sync();
             packManager.contentChanged();
             modelSync.contentChanged();
             blocks.contentChanged();
-        });
+        };
+        ModLifecycle lifecycle = new ModLifecycle(this, mods, contentChanged);
         ChestMenus menus = new ChestMenus(items, scheduler, getLogger());
         BedrockDetector bedrockPlayers = BedrockDetector.create(getLogger());
-        BedrockModelLooks modelLooks = new BedrockModelLooks(blocks, noteBlocks, bedrockPlayers, scheduler);
+        BedrockModelLooks modelLooks = new BedrockModelLooks(blocks, packManager::looks, bedrockPlayers, scheduler);
         blocks.onLookChanged(modelLooks::changed);
         getServer().getPluginManager().registerEvents(modelLooks, this);
+        DisplayLayer displayLayer = new DisplayLayer(blocks, packManager::looks, scheduler, bedrockPlayers,
+                Math.max(0, getConfig().getInt("blocks.display.view-distance", 8)),
+                (float) getConfig().getDouble("blocks.display.view-range", 1.0));
+        blocks.onLookChanged(displayLayer::changed);
+        blocks.onChunkRelooked(displayLayer::relooked);
+        getServer().getPluginManager().registerEvents(displayLayer, this);
+        getServer().getPluginManager().registerEvents(new BreakFeel(this, blocks, packManager::looks), this);
         Prism.install(lifecycle, items, blocks, new Profiles(bedrockPlayers), menus, data,
                 new SchedulerAdapter(scheduler), recipes);
         getServer().getPluginManager().registerEvents(menus, this);
@@ -114,6 +118,11 @@ public final class PrismPlugin extends JavaPlugin {
             @Override
             public boolean anyIn(UUID world) {
                 return blocks.anyLooks(world);
+            }
+
+            @Override
+            public ClientCanon canon() {
+                return packManager.looks().canon();
             }
         }, blocks::foreignChange);
         var command = getCommand("prism");
@@ -171,6 +180,11 @@ public final class PrismPlugin extends JavaPlugin {
         if (consistencySelfTest != null) {
             getServer().getPluginManager().registerEvents(new ConsistencySelfTest(this, consistencySelfTest, blocks,
                     scheduler, getLogger()), this);
+        }
+        String syntheticSelfTest = System.getProperty("prism.selftest.synthetic");
+        if (syntheticSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new SyntheticSelfTest(Integer.parseInt(syntheticSelfTest),
+                    mods, contentChanged, packManager, blocks, scheduler, getLogger()), this);
         }
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {

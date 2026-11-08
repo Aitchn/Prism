@@ -11,6 +11,7 @@ Bedrock players join through Geyser. Prism detects them (Floodgate, then Geyser)
 | Blocks with a BetterModel model | animated model (display entity) | static block textured with `textures/block/<name>.png` (a plain note block if there is none), sent to each Bedrock player |
 | Connected blocks (`prism:connections`) | display entity over a barrier | generated shape per combination of sides, sent to each Bedrock player |
 | Passable blocks (`prism:passable`) | tripwire state + resource pack | tripwire state + Geyser mapping without collision |
+| Any block drawn by the display layer (beyond the borrowed states) | packet-only display entities | **not visible** (Geyser cannot draw display entities) |
 | Any block with `blocks.backend: display` | display entity | **not visible** (Geyser cannot draw display entities) |
 | Block variants (`prism:variants`, `setVariant`) | yes | yes |
 | Block light (`prism:light`) | vanilla light block next to it | the same light block, through Geyser |
@@ -33,9 +34,9 @@ into the proxy's Geyser folder and restart the proxy.
 
 ## Limits
 
-- 799 block looks (variant x facing, or variant x combination of sides) across all mods, plus 64 passable looks.
-- Custom blocks drawn as note blocks break like note blocks (axe, quick); `prism:mining` applies only to display blocks.
-- A vanilla note block tuned to a state owned by a custom look shows that look.
+- Bedrock sees at most 799 block looks (variant x facing, or variant x combination of sides) across all mods, plus 64 passable looks. Looks beyond the borrowed states are drawn by the display layer on Java only and are invisible on Bedrock (see `block-looks.md`).
+- On Java, `prism:mining` sets the break time of every custom block (ADR-0023). Bedrock players break custom blocks drawn as note blocks like note blocks (axe, quick); that has not been checked against a client.
+- A vanilla note block always shows as its plain state, never as a custom look (ADR-0023).
 - The server stores an inert carrier (a brown mushroom block or structure void) for these blocks; Geyser is shown the look through the same packet rewriting as Java players (ADR-0022).
 
 Nothing on this page is checked by CI with a real client; see ADR-0008 for the hand test list.

@@ -28,6 +28,10 @@ neighbours again, because the Java client predicts shape updates on its own. If 
 the carrier, the block counts as gone. Plugins that read the world see the carrier, so use
 `Prism.blocks().identify(block)` or `get(block)` to find out what a block is. See ADR-0022.
 
+How many looks a mod can have is not limited to the note block's 799 states: each boot Prism gives every look a borrowed
+vanilla state while some are left, then draws it with packet-only display entities over an invisible shell. `prism:render`
+and `prism:surface` steer that, and `block-looks.md` explains it. See ADR-0023.
+
 **Sounds and animated textures.** Put sounds in your jar as on a Java resource pack (`assets/<ns>/sounds.json` plus
 `.ogg` files) and play them with Bukkit's `playSound(location, "<ns>:<event>", ...)`. Prism also copies them into the
 Bedrock pack, so Bedrock players hear them through Geyser. `prism:ambient_sound` makes a block play a sound by itself

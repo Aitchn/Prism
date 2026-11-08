@@ -41,6 +41,12 @@ public final class TripwireStates {
                 (bits & 32) != 0);
     }
 
+    /** The id of the allocatable state with these properties; the inverse of {@link #state}. */
+    public static int id(boolean attached, boolean east, boolean north, boolean powered, boolean south, boolean west) {
+        return OFFSET + ((attached ? 1 : 0) | (powered ? 2 : 0) | (east ? 4 : 0) | (north ? 8 : 0) | (south ? 16 : 0)
+                | (west ? 32 : 0));
+    }
+
     public static @NotNull String variant(boolean attached, boolean disarmed, boolean east, boolean north,
             boolean powered, boolean south, boolean west) {
         return "attached=" + attached + ",disarmed=" + disarmed + ",east=" + east + ",north=" + north + ",powered="

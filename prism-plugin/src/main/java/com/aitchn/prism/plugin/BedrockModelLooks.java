@@ -28,16 +28,16 @@ import org.bukkit.event.Listener;
 final class BedrockModelLooks implements Listener {
 
     private final PrismBlockService blocks;
-    private final NoteBlockAppearance noteBlocks;
+    private final java.util.function.Supplier<ClientLooks> clientLooks;
     private final Predicate<UUID> bedrock;
     private final PlatformScheduler scheduler;
     /** The look each known displayed block should show; a queued send is dropped once its entry changed or went. */
     private final Map<Location, BlockData> current = new ConcurrentHashMap<>();
 
-    BedrockModelLooks(PrismBlockService blocks, NoteBlockAppearance noteBlocks, Predicate<UUID> bedrock,
+    BedrockModelLooks(PrismBlockService blocks, java.util.function.Supplier<ClientLooks> clientLooks, Predicate<UUID> bedrock,
             PlatformScheduler scheduler) {
         this.blocks = blocks;
-        this.noteBlocks = noteBlocks;
+        this.clientLooks = clientLooks;
         this.bedrock = bedrock;
         this.scheduler = scheduler;
     }
@@ -49,7 +49,8 @@ final class BedrockModelLooks implements Listener {
         if (!displayed || blocks.drawnAsLook(custom.block())) {
             return null;
         }
-        return noteBlocks.existingState(custom.definition(), custom.facing(), blocks.drawnVariant(custom));
+        return clientLooks.get().bedrockData(new com.aitchn.prism.core.block.Appearances.Look(custom.key(), blocks.drawnVariant(custom),
+                custom.facing().name()).id());
     }
 
     /** A chunk was sent: once it is there, overwrite the displayed blocks in it for a Bedrock player. */

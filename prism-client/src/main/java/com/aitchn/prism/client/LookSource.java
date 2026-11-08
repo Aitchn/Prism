@@ -14,4 +14,12 @@ public interface LookSource {
 
     /** Whether the world has any chunk with custom blocks. A cheap pre-check that lets chunk packets pass undecoded. */
     boolean anyIn(UUID world);
+
+    /**
+     * What real blocks of a borrowed family are shown as. Chunk and block packets are rewritten with it even in a world
+     * without custom blocks, since a vanilla note block there would otherwise show a custom look.
+     */
+    default ClientCanon canon() {
+        return ClientCanon.none();
+    }
 }

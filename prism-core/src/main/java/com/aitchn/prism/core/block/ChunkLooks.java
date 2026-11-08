@@ -18,7 +18,7 @@ import org.jetbrains.annotations.Nullable;
 public final class ChunkLooks {
 
     /** The snapshot of a chunk without custom blocks. */
-    public static final ChunkLooks EMPTY = new ChunkLooks(new long[0], new int[0], new int[0]);
+    public static final ChunkLooks EMPTY = new ChunkLooks(new long[0], new int[0], new int[0], new int[0]);
 
     /** Told about a position whose state is neither the carrier nor a legacy carrier: something else replaced it. */
     @FunctionalInterface
@@ -29,11 +29,13 @@ public final class ChunkLooks {
     private final long[] packed;
     private final int[] carrier;
     private final int[] look;
+    private final int[] display;
 
-    private ChunkLooks(long[] packed, int[] carrier, int[] look) {
+    private ChunkLooks(long[] packed, int[] carrier, int[] look, int[] display) {
         this.packed = packed;
         this.carrier = carrier;
         this.look = look;
+        this.display = display;
     }
 
     /** Builds a snapshot from {@code packed position -> look}. The map is copied. */
@@ -45,14 +47,16 @@ public final class ChunkLooks {
         long[] packed = new long[sorted.size()];
         int[] carrier = new int[packed.length];
         int[] look = new int[packed.length];
+        int[] display = new int[packed.length];
         int i = 0;
         for (Map.Entry<Long, BlockLook> entry : sorted.entrySet()) {
             packed[i] = entry.getKey();
             carrier[i] = entry.getValue().carrier();
             look[i] = entry.getValue().look();
+            display[i] = entry.getValue().display();
             i++;
         }
-        return new ChunkLooks(packed, carrier, look);
+        return new ChunkLooks(packed, carrier, look, display);
     }
 
     public int size() {
@@ -66,7 +70,37 @@ public final class ChunkLooks {
     /** The look at chunk-local {@code x}, {@code z} and block {@code y}, or null if there is no custom block. */
     public @Nullable BlockLook at(int x, int y, int z) {
         int i = Arrays.binarySearch(packed, BlockPositions.pack(x, y, z));
-        return i < 0 ? null : new BlockLook(carrier[i], look[i]);
+        return i < 0 ? null : new BlockLook(carrier[i], look[i], display[i]);
+    }
+
+    /** Whether there is a custom block at chunk-local {@code x}, {@code z} and block {@code y}. */
+    public boolean has(int x, int y, int z) {
+        return Arrays.binarySearch(packed, BlockPositions.pack(x, y, z)) >= 0;
+    }
+
+    /** Told about a position drawn by the display layer: chunk-local x and z, block y and the display look id. */
+    @FunctionalInterface
+    public interface DisplaySink {
+        void display(int localX, int y, int localZ, int displayId);
+    }
+
+    /** Visits every position of this chunk that is drawn by the display layer. */
+    public void forEachDisplay(@NotNull DisplaySink sink) {
+        for (int i = 0; i < packed.length; i++) {
+            if (display[i] != BlockLook.NO_DISPLAY) {
+                sink.display((int) ((packed[i] >> 4) & 15), y(packed[i]), (int) (packed[i] & 15), display[i]);
+            }
+        }
+    }
+
+    /** Whether any position of this chunk is drawn by the display layer. */
+    public boolean hasDisplays() {
+        for (int d : display) {
+            if (d != BlockLook.NO_DISPLAY) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Whether any custom block is in section {@code sectionY} (block y divided by 16, rounded down). */

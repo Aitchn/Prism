@@ -23,3 +23,15 @@ blocks:
   #   display - always as an item display entity on a barrier (Java only; Geyser cannot draw these).
   # Changing this needs a restart.
   backend: auto
+  # Looks beyond the borrowed vanilla states (Java: note block, tripwire, target, dispenser, dropper, leaves, sugar
+  # cane) are drawn by the display layer: the server keeps an invisible shell block and each viewer is sent packet-only
+  # item display entities per visible face. See ADR-0023.
+  display:
+    # How far from the viewer (in chunks, Chebyshev distance) display entities are sent. 0 means every chunk the
+    # client has, bounded by the server's view distance. Lower it on servers with many display-drawn blocks.
+    view-distance: 8
+    # The entities' view range multiplier (1.0 = the client default, which scales with its entity distance setting).
+    view-range: 1.0
+    # Also use the opaque shell of the note block family for opaque display blocks. Exact, but only invisible if the
+    # client's solid render layer ignores transparent texels, which no known client does; leave off unless tested.
+    solid-shells: false

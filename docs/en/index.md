@@ -7,6 +7,7 @@ and on Bedrock (through Geyser).
 - [Getting started](getting-started.md): your first item in about 30 minutes
 - [Concepts](concepts.md): content model, lifecycle, blocks, models
 - [Bedrock](bedrock.md): what Bedrock players see and how to adapt
+- [Block looks at scale](block-looks.md): borrowed states, the display layer, `prism:render`
 - [Known gaps](https://github.com/Aitchn/Prism/blob/main/docs/gaps.md) and [ADRs](https://github.com/Aitchn/Prism/blob/main/docs/adr/README.md)
 
 > Preview status: Prism is `0.1.0-SNAPSHOT`. The API is not frozen and nothing has been verified on a real Bedrock
