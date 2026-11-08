@@ -126,7 +126,8 @@ class ExampleModTest {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());
         var cuboid = harness.block("examplemod:ruby_tank").components().get(PrismComponents.CUBOID).orElseThrow();
-        assertEquals(java.util.List.of("examplemod:ruby_block", "minecraft:glass"), cuboid.walls());
+        assertEquals(java.util.List.of("examplemod:ruby_block", "minecraft:glass", "examplemod:ruby_tank"),
+                cuboid.walls());
         assertEquals(3, cuboid.min());
         assertEquals(7, cuboid.max());
         assertEquals(6, com.aitchn.prism.core.structure.StructureShape.of(harness.block("examplemod:ruby_tank"))
