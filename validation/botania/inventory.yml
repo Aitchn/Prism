@@ -1,0 +1,314 @@
+# Botania rebuild inventory: what the real mod has and how much of it the Prism rebuild covers.
+# Status per entry: done | partial (counts half) | missing. InventoryTest computes the percentage, checks that every
+# "done" or "partial" content entry exists in src/main/resources, and fails the build below the target of the current stage.
+# Score = 50% content (items, blocks, flowers, tools, armor) + 50% mechanics. A mechanic only counts as done with a
+# chain test (see src/test .../ChainTest). A colour family (16 dyes) is ONE entry: an id ending in "_@" stands for
+# <id with @ replaced by each dye>, and all 16 files must exist. Runes, rods, lenses, rings and flowers count one each.
+# Nothing is excluded to make the number look better: Corporea, red string, cosmetics and bosses are listed as missing.
+#
+items:  # materials and loose items
+  manasteel_ingot: done
+  manasteel_nugget: missing
+  terrasteel_ingot: missing
+  terrasteel_nugget: missing
+  elementium_ingot: missing
+  elementium_nugget: missing
+  mana_pearl: done
+  mana_diamond: done
+  dragonstone: missing
+  pixie_dust: missing
+  life_essence: missing
+  gaia_spirit: missing
+  mana_powder: missing
+  mana_string: missing
+  manaweave_cloth: missing
+  dreamwood_twig: missing
+  petal_@: done
+  pestle_and_mortar: missing
+  lexicon: missing
+  vial: missing
+  flask: missing
+  brew: missing
+  ender_air_bottle: missing
+  rune_water: missing
+  rune_fire: missing
+  rune_earth: missing
+  rune_air: missing
+  rune_spring: missing
+  rune_summer: missing
+  rune_autumn: missing
+  rune_winter: missing
+  rune_mana: missing
+  rune_lust: missing
+  rune_gluttony: missing
+  rune_greed: missing
+  rune_sloth: missing
+  rune_wrath: missing
+  rune_envy: missing
+  rune_pride: missing
+  mana_tablet: done
+  mana_mirror: missing
+  mana_ring: missing
+  greater_mana_ring: missing
+  mana_blaster: missing
+  mana_vial: missing
+  spark: missing
+  spark_upgrade_dispersive: missing
+  spark_upgrade_dominant: missing
+  spark_upgrade_recessive: missing
+  spark_upgrade_isolated: missing
+  spark_changer: missing
+  tiny_planet: missing
+  wand_of_the_forest: done
+  twig_wand: missing
+  hourglass: missing
+  teru_teru_bozu: missing
+  black_hole_talisman: missing
+  ring_of_the_mystic: missing
+  cosmetic_bauble_set: missing
+
+blocks:  # building blocks, mana blocks and decoration
+  manasteel_block: missing
+  terrasteel_block: missing
+  elementium_block: missing
+  mana_diamond_block: missing
+  dragonstone_block: missing
+  livingrock: done
+  livingwood: done
+  livingrock_variants: missing    # bricks, mossy, chiseled, slab, stairs, wall
+  livingwood_variants: missing    # planks, framed, patterned, glimmering, slab, stairs, wall, fence, door
+  dreamwood: missing
+  dreamwood_variants: missing
+  shimmerrock: missing
+  shimmerwood_planks: missing
+  bifrost: missing
+  bifrost_perm: missing
+  elf_glass: missing
+  mana_glass: missing
+  metamorphic_forest_stone: missing
+  metamorphic_plains_stone: missing
+  metamorphic_mountain_stone: missing
+  metamorphic_fungal_stone: missing
+  metamorphic_swamp_stone: missing
+  metamorphic_desert_stone: missing
+  metamorphic_taiga_stone: missing
+  metamorphic_mesa_stone: missing
+  azulejo_@: missing
+  mystical_flower_@: missing      # the 16 coloured flowers (petal source)
+  shiny_flower_@: missing         # the 16 double flowers
+  mushroom_@: missing
+  petal_block_@: missing
+  floating_flower_@: missing
+  cell_block: missing
+  teru_alfheim_portal: missing
+  mana_detector: missing
+  mana_fluxfield: missing
+
+mana_blocks:  # mana infrastructure blocks
+  mana_pool: done
+  mana_pool_diluted: missing
+  mana_pool_fabulous: missing
+  mana_pool_creative: missing
+  mana_spreader: done
+  mana_spreader_redstone: missing
+  mana_spreader_elven: missing
+  mana_spreader_gaia: missing
+  mana_pylon: missing
+  natura_pylon: missing
+  gaia_pylon: missing
+  runic_altar: missing
+  petal_apothecary: done
+  terrestrial_agglomeration_plate: missing
+  mana_enchanter: missing
+  botanical_brewery: missing
+  alfheim_portal: missing
+  elven_gate: missing
+  spark_aug_station: missing
+  bellows: missing
+  open_crate: missing
+  crafty_crate: missing
+  spawner_claw: missing
+  turntable: missing
+  platform_abstruse: missing
+  platform_spectral: missing
+  platform_camouflage: missing
+  distributor: missing
+  incense_plate: missing
+  hovering_hourglass: missing
+  avatar: missing
+  corporea_index: missing
+  corporea_funnel: missing
+  corporea_interceptor: missing
+  corporea_crystal_cube: missing
+  corporea_spark: missing
+  corporea_retainer: missing
+  red_string: missing
+  red_string_container: missing
+  red_string_dispenser: missing
+  red_string_fertilizer: missing
+  red_string_comparator: missing
+  red_string_relay: missing
+  red_string_interceptor: missing
+
+lenses:  # one entry per lens
+  lens_normal: missing
+  lens_velocity: missing
+  lens_potency: missing
+  lens_resistance: missing
+  lens_efficiency: missing
+  lens_bounce: missing
+  lens_gravity: missing
+  lens_bore: missing
+  lens_damage: missing
+  lens_phantom: missing
+  lens_magnet: missing
+  lens_polarize: missing
+  lens_paint: missing
+  lens_ignite: missing
+  lens_warp: missing
+  lens_redirect: missing
+  lens_firework: missing
+  lens_flare: missing
+  lens_messenger: missing
+  lens_tripwire: missing
+  lens_storm: missing
+
+flowers:  # generating and functional flowers (floating variants are one mechanic)
+  daybloom: done
+  nightshade: missing
+  endoflame: done
+  hydroangeas: missing
+  thermalily: missing
+  rosa_arcana: missing
+  munchdew: missing
+  entropinnyum: missing
+  kekimurus: missing
+  gourmaryllis: missing
+  narslimmus: missing
+  spectrolus: missing
+  rafflowsia: missing
+  dandelifeon: missing
+  shulk_me_not: missing
+  pure_daisy: done
+  manastar: missing
+  hopperhock: missing
+  tangleberrie: missing
+  jiyuulia: missing
+  rannuncarpus: missing
+  hyacidus: missing
+  pollidisiac: missing
+  clayconia: missing
+  loonium: missing
+  daffomill: missing
+  vinculotus: missing
+  spectranthemum: missing
+  medumone: missing
+  marimorphosis: missing
+  bubbell: missing
+  solegnolia: missing
+  bellethorn: missing
+  dreadthorn: missing
+  heisei_dream: missing
+  tigerseye: missing
+  orechid: missing
+  orechid_ignem: missing
+  fallen_kanade: missing
+  exoflame: missing
+  agricarnation: missing
+  jaded_amaranthus: missing
+  bergamute: missing
+  labellia: missing
+
+tools:  # tools, rods, weapons
+  manasteel_pickaxe: missing
+  manasteel_axe: missing
+  manasteel_shovel: missing
+  manasteel_hoe: missing
+  manasteel_sword: missing
+  manasteel_shears: missing
+  elementium_pickaxe: missing
+  elementium_axe: missing
+  elementium_shovel: missing
+  elementium_hoe: missing
+  elementium_sword: missing
+  elementium_shears: missing
+  terrasteel_pickaxe: missing     # none exists in the real mod; the Terra Shatterer is the pick
+  terra_shatterer: missing
+  terra_blade: missing
+  terra_axe: missing
+  rod_of_the_lands: missing
+  rod_of_the_depths: missing
+  rod_of_the_hells: missing
+  rod_of_the_skies: missing
+  rod_of_the_shaded_mesa: missing
+  rod_of_the_bifrost: missing
+  rod_of_the_seas: missing
+  rod_of_divining: missing
+  rod_of_the_unstable_reservoir: missing
+  rod_of_the_arcane_order: missing
+  grass_seeds: missing
+  fertilizer: missing
+  enchanted_soil: missing
+  sextant: missing
+  astrolabe: missing
+  mana_gun: missing
+  thorn_chakram: missing
+  flare_chakram: missing
+  glass_pickaxe: missing
+  star_sword: missing
+  thunder_sword: missing
+  crimson_pendant_set: missing
+  vial_of_mana: missing
+
+armor:  # armor sets (4 pieces each count as one entry per piece)
+  manasteel_helmet: missing
+  manasteel_chestplate: missing
+  manasteel_leggings: missing
+  manasteel_boots: missing
+  elementium_helmet: missing
+  elementium_chestplate: missing
+  elementium_leggings: missing
+  elementium_boots: missing
+  manaweave_helmet: missing
+  manaweave_chestplate: missing
+  manaweave_leggings: missing
+  manaweave_boots: missing
+  terrasteel_helmet: missing
+  terrasteel_chestplate: missing
+  terrasteel_leggings: missing
+  terrasteel_boots: missing
+
+mechanics:  # systems that must work together; each needs a chain test (stage that proves it in brackets)
+  mana_burst_transfer: done           # spreader -> burst -> pool, region hand-over (0)
+  wand_binding: done                  # wand selects a flower, binds it to a pool or spreader (0)
+  petal_apothecary: done              # water, petals, seeds, flower item (0)
+  mana_infusion: partial              # pool + item; no alchemy or conjuration catalysts (0)
+  pure_daisy_conversion: partial      # stone and oak log only (0)
+  generating_flowers: partial         # daybloom and endoflame only (0)
+  mana_tablet: partial                # charge at a pool; no mana-item charging in the pool, no tool repair (0)
+  block_persistence: done             # state in per-block data, chunk unload and restart (0)
+  survival_recipes: done              # every item has a survival recipe, tested (0)
+  spreader_variants_and_lenses: missing
+  lens_effects: missing               # lens modifies burst: bore, bounce, damage, gravity, potency ... (1)
+  mana_sparks: missing                # sparks move mana between pools (1)
+  redstone_mana_detection: missing    # detector and redstone spreader (1)
+  mana_items_and_tools: missing       # tools repair and consume mana, mana rings and mirror (1)
+  mana_pool_variants: missing         # diluted, fabulous, creative; fuel (1)
+  functional_flowers: missing         # the 28 functional flowers each with their world effect (2)
+  floating_flowers: missing           # floating variants (2)
+  mystical_flower_worldgen: missing   # flowers appear in the world (2)
+  orechid_ore_generation: missing     # mana + stone -> ore by weight table (2)
+  runic_altar: missing                # live grass plate: mana + items + rune (3)
+  terrestrial_agglomeration: missing  # multiblock plate making terrasteel (3)
+  alfheim_portal_and_elven_trade: missing  # multiblock portal and trades (3)
+  mana_enchanter: missing             # multiblock enchanting with mana (3)
+  botanical_brewery: missing          # brews with vial and flask (3)
+  mana_pylons_and_gaia_boss: missing  # pylons ring, Gaia Guardian fight, drops (5)
+  armor_effects: missing              # set bonuses, mana regen and repair (4)
+  rods_and_special_tools: missing     # rod abilities (4)
+  bauble_rings: missing               # ring effects without a bauble slot (4)
+  lexicon: missing                    # guide book (5)
+  corporea: missing                   # network index, funnels, crystal cubes (6)
+  red_string: missing                 # string network (6)
+  multiblock_structures: missing      # structure matching for portal, plate, enchanter (3)
+  tiny_planet_and_cosmetics: missing  # (6)
