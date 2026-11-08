@@ -32,6 +32,12 @@ Java 版玩家看到的是屏障方塊上的顯示實體，所以相鄰方塊的
 （而不是音符盒狀態）呈現它，所以兩個版本都沒有碰撞、不會遮住周圍方塊，而且一碰就破。沒有自己的模型時，貼圖會畫成像花一樣的十字形。
 範例是 `examplemod:ruby_flower`。
 
+**多方塊結構。** `prism:structure` 讓方塊成為結構的控制器。寫法如下：
+`layers`（由下往上，每層以 `/` 分隔由北到南的列）、`key`（單一字元對應方塊 key）、`@` 代表控制器本身、空白代表任何方塊、
+`.` 代表空氣，以及是否允許旋轉（`rotate`，預設 true）。控制器或附近方塊被放置、移除時，以及區塊載入時，Prism 會比對圖樣，
+並呼叫控制器的 `StructureBehavior.onFormed` 或 `onBroken`。隨時可用 `BlockService.structure(controller)` 與
+`controllerOf(member)` 查詢。結構成形後要做什麼由 Mod 決定。範例 `examplemod:ruby_core` 放在 3x3 紅寶石地板中央上方時會亮起。
+
 **礦石。** `prism:ore` 讓方塊以礦脈形式出現在新生成的區塊：`dimension`、`replace`（可取代的原版方塊）、`min_y`、`max_y`、
 `veins_per_chunk`、`rarity` 與 `size`，也可以寫成多組設定的清單。礦脈不會超出所在區塊。安裝模組之前就存在的區塊不會長出礦石。
 範例是 `examplemod:ruby_ore`；它使用音符盒狀態呈現，所以基岩版玩家也看得到。

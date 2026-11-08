@@ -56,6 +56,12 @@ public interface BlockService {
      */
     boolean remove(@NotNull Block block, boolean dropItem);
 
+    /** The structure {@code controller} stands for, if it is a {@code prism:structure} controller and formed. */
+    @NotNull Optional<FormedStructure> structure(@NotNull Block controller);
+
+    /** The controller of the formed structure {@code member} belongs to, if any. */
+    @NotNull Optional<Block> controllerOf(@NotNull Block member);
+
     /**
      * Works out the sides a connected block ({@code prism:connections}) reaches again and redraws it if they changed.
      * Prism already does this when the block or a neighbour is placed or removed; call it when a

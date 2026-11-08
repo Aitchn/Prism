@@ -82,6 +82,7 @@ final class BlockIndex {
     private final NamespacedKey dataKey;
     private final NamespacedKey variantKey;
     private final NamespacedKey connectionsKey;
+    private final NamespacedKey structureKey;
     private final Map<ChunkId, Loaded> loaded = new ConcurrentHashMap<>();
 
     BlockIndex(Plugin prism) {
@@ -92,6 +93,7 @@ final class BlockIndex {
         this.dataKey = new NamespacedKey(prism, "data");
         this.variantKey = new NamespacedKey(prism, "variant");
         this.connectionsKey = new NamespacedKey(prism, "connections");
+        this.structureKey = new NamespacedKey(prism, "structure");
     }
 
     /** Reads the chunk's entries into memory (idempotent) and returns the mirror. */
@@ -195,6 +197,30 @@ final class BlockIndex {
             pdc.set(entryKey(block), PersistentDataType.TAG_CONTAINER, stored);
         }
         mirror.blocks.put(packed(block), change.apply(old));
+    }
+
+    /** The facing a structure controller was last formed with, or empty if it was not formed. */
+    Optional<String> structure(Block block) {
+        PersistentDataContainer stored = block.getChunk().getPersistentDataContainer()
+                .get(entryKey(block), PersistentDataType.TAG_CONTAINER);
+        return stored == null ? Optional.empty()
+                : Optional.ofNullable(stored.get(structureKey, PersistentDataType.STRING));
+    }
+
+    /** Records that a structure controller is formed facing {@code facing}, or no longer formed (null). */
+    void setStructure(Block block, @Nullable String facing) {
+        Chunk chunk = block.getChunk();
+        PersistentDataContainer pdc = chunk.getPersistentDataContainer();
+        PersistentDataContainer stored = pdc.get(entryKey(block), PersistentDataType.TAG_CONTAINER);
+        if (stored == null) {
+            return;
+        }
+        if (facing == null) {
+            stored.remove(structureKey);
+        } else {
+            stored.set(structureKey, PersistentDataType.STRING, facing);
+        }
+        pdc.set(entryKey(block), PersistentDataType.TAG_CONTAINER, stored);
     }
 
     void remove(Block block) {

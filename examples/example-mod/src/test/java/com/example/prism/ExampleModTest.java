@@ -108,6 +108,19 @@ class ExampleModTest {
     }
 
     @Test
+    void coreControlsAThreeByThreeStructure() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var core = harness.block("examplemod:ruby_core");
+        var pattern = com.aitchn.prism.core.structure.StructurePattern.compile(
+                core.components().get(PrismComponents.STRUCTURE).orElseThrow());
+        assertEquals(9, pattern.cells(0).size());
+        assertTrue(pattern.cells(0).stream().allMatch(cell -> cell.dy() == -1
+                && cell.expect().equals("examplemod:ruby_block")));
+        assertEquals(1, core.behaviors(com.aitchn.prism.api.block.StructureBehavior.class).size());
+    }
+
+    @Test
     void recipesLoadForPrismAndModTypes() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());

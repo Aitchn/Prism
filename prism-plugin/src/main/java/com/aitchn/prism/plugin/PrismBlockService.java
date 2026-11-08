@@ -71,6 +71,7 @@ final class PrismBlockService implements BlockService, Listener {
     private final PlatformScheduler scheduler;
     private final Logger log;
     private final OreGenerator ores;
+    private final StructureTracker structures;
     /** Told after a block is placed, removed or changes variant, so per-player looks can follow; set once at startup. */
     private volatile java.util.function.Consumer<Block> lookChanged = block -> {};
 
@@ -92,6 +93,7 @@ final class PrismBlockService implements BlockService, Listener {
         this.scheduler = scheduler;
         this.log = log;
         this.ores = new OreGenerator(definitions, log);
+        this.structures = new StructureTracker(this, definitions, index, dispatcher, scheduler);
     }
 
     /** A custom block handle. Cheap; created per lookup. */
@@ -204,6 +206,7 @@ final class PrismBlockService implements BlockService, Listener {
                 : Optional.empty();
         definition.ifPresent(d -> {
             Handle handle = new Handle(block, key, d, entry.get().facing(), entry.get().variant(), index);
+            structures.controllerRemoved(handle);
             // Drop behaviors first: they read the data that remove behaviors may clear.
             drop.ifPresent(stack -> dispatcher.dispatchBlock(key, block.getLocation(), BlockDropBehavior.class,
                     x -> BlockEventContext.of(handle, null), (b, c) -> b.onDrop(c, stack)));
@@ -233,6 +236,16 @@ final class PrismBlockService implements BlockService, Listener {
             lookChanged.accept(block);
         }
         return true;
+    }
+
+    @Override
+    public @NotNull Optional<com.aitchn.prism.api.block.FormedStructure> structure(@NotNull Block controller) {
+        return structures.structure(controller);
+    }
+
+    @Override
+    public @NotNull Optional<Block> controllerOf(@NotNull Block member) {
+        return structures.controllerOf(member);
     }
 
     @Override
@@ -424,6 +437,7 @@ final class PrismBlockService implements BlockService, Listener {
 
     /** Tells the custom blocks next to {@code changed} that it changed. */
     void notifyNeighbors(Block changed) {
+        structures.changed(changed);
         for (BlockFace face : SIDES) {
             Block neighbor = changed.getRelative(face);
             Runnable notify = () -> {
@@ -466,6 +480,7 @@ final class PrismBlockService implements BlockService, Listener {
             return;
         }
         stopTicker(mirror);
+        structures.unload(chunk);
         for (CustomBlock custom : blocksIn(chunk)) {
             dispatcher.dispatchBlock(custom.key(), custom.block().getLocation(), BlockLoadBehavior.class,
                     d -> BlockEventContext.of(custom, null), (b, c) -> b.onUnload(c));
@@ -506,6 +521,7 @@ final class PrismBlockService implements BlockService, Listener {
      */
     void contentChanged() {
         ores.contentChanged();
+        structures.contentChanged();
         for (BlockIndex.Loaded mirror : index.allLoaded()) {
             scheduler.runAt(new Location(mirror.world, (mirror.chunkX << 4) + 8, 64, (mirror.chunkZ << 4) + 8), () -> {
                 if (mirror.world.isChunkLoaded(mirror.chunkX, mirror.chunkZ)) {
@@ -534,6 +550,7 @@ final class PrismBlockService implements BlockService, Listener {
             startTicking(custom);
             // Neighbours in chunks that were unloaded when the mask was saved can be seen now.
             refreshConnections(custom.block());
+            structures.load(custom);
         }
         refreshBorders(chunk);
     }
