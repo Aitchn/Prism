@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
  * Layer index is y (bottom up), row is z (north to south), column is x (west to east). Rotation 0 is the pattern as
  * written (facing north); 1, 2 and 3 turn it clockwise to face east, south and west.
  */
-public final class StructurePattern {
+public final class StructurePattern implements StructureShape {
 
     /** One cell to check: an offset from the controller and what must be there. {@code expect} is a block key or "air". */
     public record Cell(int dx, int dy, int dz, @NotNull String expect) {}
@@ -87,9 +87,60 @@ public final class StructurePattern {
         return rotations.size();
     }
 
-    /** The largest distance on any axis from the controller to a cell: members are never farther. */
+    @Override
     public int reach() {
         return reach;
+    }
+
+    /**
+     * The first rotation that stands. Uncertain when none does and some cell of some rotation could not be looked at.
+     */
+    @Override
+    public @NotNull Result find(@NotNull Probe probe) {
+        boolean uncertain = false;
+        for (int turn = 0; turn < rotations.size(); turn++) {
+            boolean stands = true;
+            for (Cell cell : rotations.get(turn)) {
+                Boolean is = probe.is(cell.dx(), cell.dy(), cell.dz(), cell.expect());
+                if (is == null) {
+                    uncertain = true;
+                }
+                if (!Boolean.TRUE.equals(is)) {
+                    stands = false;
+                }
+            }
+            if (stands) {
+                List<Offset> members = new ArrayList<>();
+                List<Offset> watched = new ArrayList<>();
+                for (Cell cell : rotations.get(turn)) {
+                    Offset offset = new Offset(cell.dx(), cell.dy(), cell.dz());
+                    watched.add(offset);
+                    if (!cell.expect().equals("air")) {
+                        members.add(offset);
+                    }
+                }
+                String facing = FACINGS.get(turn);
+                return new Result(new Match(facing, facing, List.copyOf(members), List.copyOf(watched)), false);
+            }
+        }
+        return uncertain ? Result.UNKNOWN : Result.NONE;
+    }
+
+    @Override
+    public @NotNull Result verify(@NotNull Probe probe, @NotNull String signature) {
+        int turn = FACINGS.indexOf(signature);
+        if (turn < 0 || turn >= rotations.size()) {
+            return Result.NONE;
+        }
+        boolean uncertain = false;
+        for (Cell cell : rotations.get(turn)) {
+            Boolean is = probe.is(cell.dx(), cell.dy(), cell.dz(), cell.expect());
+            if (Boolean.FALSE.equals(is)) {
+                return Result.NONE;
+            }
+            uncertain |= is == null;
+        }
+        return uncertain ? Result.UNKNOWN : find(probe);
     }
 
     /** The first rotation whose every cell passes {@code matches}, or -1. */

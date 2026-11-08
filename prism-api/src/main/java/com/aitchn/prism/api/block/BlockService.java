@@ -56,7 +56,10 @@ public interface BlockService {
      */
     boolean remove(@NotNull Block block, boolean dropItem);
 
-    /** The structure {@code controller} stands for, if it is a {@code prism:structure} controller and formed. */
+    /**
+     * The structure {@code controller} stands for, if it controls one ({@code prism:structure} or
+     * {@code prism:cuboid}) and it is formed.
+     */
     @NotNull Optional<FormedStructure> structure(@NotNull Block controller);
 
     /** The controller of the formed structure {@code member} belongs to, if any. */

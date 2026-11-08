@@ -5,10 +5,9 @@ import com.aitchn.prism.api.block.CustomBlock;
 import com.aitchn.prism.api.block.FormedStructure;
 import com.aitchn.prism.api.block.StructureBehavior;
 import com.aitchn.prism.api.content.BlockDefinition;
-import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.api.registry.Registry;
 import com.aitchn.prism.core.mod.BehaviorDispatcher;
-import com.aitchn.prism.core.structure.StructurePattern;
+import com.aitchn.prism.core.structure.StructureShape;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,22 +21,23 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 
 /**
- * Multiblock structures ({@code prism:structure}): matches patterns around controllers when blocks change, keeps the
- * formed ones in memory (member to controller) and their facing in the chunk index, and calls
- * {@link StructureBehavior}. All work for one controller runs on the thread that owns it; a pattern reaching into an
- * unloaded chunk or another Folia region does not match.
+ * Multiblock structures ({@code prism:structure} patterns and {@code prism:cuboid} boxes): looks for them around
+ * controllers when blocks change, keeps the formed ones in memory (member to controller) and their signature in the
+ * chunk index, and calls {@link StructureBehavior}. All work for one controller runs on the thread that owns it; a
+ * structure reaching into an unloaded chunk or another Folia region does not form.
  */
 final class StructureTracker {
 
     /** {@code watched} is every checked cell, members plus the cells that must stay air. */
-    private record Formed(BlockFace facing, List<Location> members, List<Location> watched) {}
+    private record Formed(BlockFace facing, String signature, List<Location> members, List<Location> watched,
+            Location min, Location max) {}
 
     private final PrismBlockService blocks;
     private final Registry<BlockDefinition> definitions;
     private final BlockIndex index;
     private final BehaviorDispatcher dispatcher;
     private final PlatformScheduler scheduler;
-    private final Map<PrismKey, StructurePattern> patterns = new ConcurrentHashMap<>();
+    private final Map<PrismKey, StructureShape> shapes = new ConcurrentHashMap<>();
     private final Map<Location, Formed> formed = new ConcurrentHashMap<>();
     private final Map<Location, Location> controllerOf = new ConcurrentHashMap<>();
     private volatile int reach = -1;
@@ -52,12 +52,12 @@ final class StructureTracker {
     }
 
     /**
-     * Content changed (a mod enabled, disabled or reloaded): drop the compiled patterns, then re-check every loaded
+     * Content changed (a mod enabled, disabled or reloaded): drop the compiled shapes, then re-check every loaded
      * custom block on its own thread, so structures whose pattern changed or went are released and controllers that
      * gained one can form.
      */
     void contentChanged() {
-        patterns.clear();
+        shapes.clear();
         reach = -1;
         for (BlockIndex.Loaded mirror : index.allLoaded()) {
             Location center = new Location(mirror.world, (mirror.chunkX << 4) + 8, 64, (mirror.chunkZ << 4) + 8);
@@ -73,7 +73,8 @@ final class StructureTracker {
     Optional<FormedStructure> structure(Block controller) {
         Formed found = formed.get(controller.getLocation());
         return found == null ? Optional.empty() : Optional.of(new FormedStructure(controller, found.facing(),
-                found.members().stream().map(Location::getBlock).toList()));
+                found.members().stream().map(Location::getBlock).toList(), found.min().getBlock(),
+                found.max().getBlock()));
     }
 
     Optional<Block> controllerOf(Block member) {
@@ -125,15 +126,15 @@ final class StructureTracker {
                     continue;
                 }
                 mirror.blocks.forEach((packed, entry) -> {
-                    StructurePattern pattern = pattern(entry.key());
-                    if (pattern == null) {
+                    StructureShape shape = shape(entry.key());
+                    if (shape == null) {
                         return;
                     }
                     Block controller = mirror.block(packed);
                     if (controller.equals(skip) || formed.containsKey(controller.getLocation())
-                            || outside(controller.getX(), minX, maxX, pattern.reach())
-                            || outside(controller.getY(), minY, maxY, pattern.reach())
-                            || outside(controller.getZ(), minZ, maxZ, pattern.reach())) {
+                            || outside(controller.getX(), minX, maxX, shape.reach())
+                            || outside(controller.getY(), minY, maxY, shape.reach())
+                            || outside(controller.getZ(), minZ, maxZ, shape.reach())) {
                         return;
                     }
                     Location location = controller.getLocation();
@@ -187,8 +188,8 @@ final class StructureTracker {
     }
 
     /**
-     * Matches the pattern around {@code custom} and reports the difference to what was formed, in memory or saved in
-     * the chunk. A structure that no longer matches because part of it is in an unloaded chunk (or another region)
+     * Looks for the structure around {@code custom} and reports the difference to what was formed, in memory or saved
+     * in the chunk. A structure that no longer stands because part of it is in an unloaded chunk (or another region)
      * stays formed; {@link #chunkLoaded} checks it again once that part is there.
      */
     private void check(CustomBlock custom) {
@@ -197,8 +198,8 @@ final class StructureTracker {
         Formed before = formed.get(at);
         Optional<String> saved = index.structure(block);
         boolean was = before != null || saved.isPresent();
-        StructurePattern pattern = pattern(custom.key());
-        if (pattern == null) {
+        StructureShape shape = shape(custom.key());
+        if (shape == null) {
             if (was) { // the definition lost its structure
                 forget(at);
                 index.setStructure(block, null);
@@ -206,35 +207,24 @@ final class StructureTracker {
             }
             return;
         }
-        int turn = match(custom);
-        if (turn >= 0) {
-            String facing = StructurePattern.FACINGS.get(turn);
-            boolean same = before != null ? before.facing().name().equals(facing)
-                    : saved.filter(facing::equals).isPresent();
+        StructureShape.Probe probe = (dx, dy, dz, expect) -> is(block.getRelative(dx, dy, dz), expect);
+        StructureShape.Result result = shape.find(probe);
+        StructureShape.Match match = result.match();
+        if (match != null) {
+            boolean same = before != null ? before.signature().equals(match.signature())
+                    : saved.filter(match.signature()::equals).isPresent();
             if (was && !same) {
                 forget(at);
                 broken(custom);
             }
-            register(custom, turn, !same);
-        } else if (was && !reachesUnavailable(custom, pattern)) {
+            register(custom, match, !same);
+        } else if (was && !(result.uncertain()
+                && shape.verify(probe, before != null ? before.signature() : saved.orElseThrow()).uncertain())) {
+            // Gone, unless the part of the earlier structure that cannot be seen now might still hold it up.
             forget(at);
             index.setStructure(block, null);
             broken(custom);
         }
-    }
-
-    /** Whether some cell of {@code pattern}, in any rotation, is in an unloaded chunk or not on this thread. */
-    private boolean reachesUnavailable(CustomBlock custom, StructurePattern pattern) {
-        Block origin = custom.block();
-        for (int turn = 0; turn < pattern.rotations(); turn++) {
-            for (StructurePattern.Cell cell : pattern.cells(turn)) {
-                Block block = origin.getRelative(cell.dx(), cell.dy(), cell.dz());
-                if (!available(block)) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
     private boolean available(Block block) {
@@ -242,44 +232,44 @@ final class StructureTracker {
                 && scheduler.isOwnedByCurrentThread(block.getLocation());
     }
 
-    private int match(CustomBlock custom) {
-        StructurePattern pattern = pattern(custom.key());
-        Block origin = custom.block();
-        return pattern.match(cell -> {
-            Block block = origin.getRelative(cell.dx(), cell.dy(), cell.dz());
-            if (!available(block)) {
-                return false;
-            }
-            Optional<PrismKey> key = index.get(block).map(BlockIndex.Entry::key);
-            if (cell.expect().equals("air")) {
-                return key.isEmpty() && block.getType().isAir();
-            }
-            if (key.isPresent()) {
-                return key.get().toString().equals(cell.expect());
-            }
-            return VanillaItems.blockMaterial(PrismKey.parse(cell.expect())).filter(block.getType()::equals)
-                    .isPresent();
-        });
+    /** Whether {@code block} is {@code expect} (a block key or "air"); null if it cannot be looked at here. */
+    private Boolean is(Block block, String expect) {
+        if (!available(block)) {
+            return null;
+        }
+        Optional<PrismKey> key = index.get(block).map(BlockIndex.Entry::key);
+        if (expect.equals("air")) {
+            return key.isEmpty() && block.getType().isAir();
+        }
+        if (key.isPresent()) {
+            return key.get().toString().equals(expect);
+        }
+        return VanillaItems.blockMaterial(PrismKey.parse(expect)).filter(block.getType()::equals).isPresent();
     }
 
-    private void register(CustomBlock custom, int turn, boolean announce) {
-        StructurePattern pattern = pattern(custom.key());
+    private void register(CustomBlock custom, StructureShape.Match match, boolean announce) {
         Block origin = custom.block();
         List<Location> members = new ArrayList<>();
         List<Location> watched = new ArrayList<>();
-        for (StructurePattern.Cell cell : pattern.cells(turn)) {
-            Location location = origin.getRelative(cell.dx(), cell.dy(), cell.dz()).getLocation();
-            watched.add(location);
-            if (!cell.expect().equals("air")) {
-                members.add(location);
-            }
+        match.members().forEach(o -> members.add(origin.getRelative(o.dx(), o.dy(), o.dz()).getLocation()));
+        int[] min = {0, 0, 0};
+        int[] max = {0, 0, 0};
+        for (StructureShape.Offset o : match.watched()) {
+            watched.add(origin.getRelative(o.dx(), o.dy(), o.dz()).getLocation());
+            min[0] = Math.min(min[0], o.dx());
+            min[1] = Math.min(min[1], o.dy());
+            min[2] = Math.min(min[2], o.dz());
+            max[0] = Math.max(max[0], o.dx());
+            max[1] = Math.max(max[1], o.dy());
+            max[2] = Math.max(max[2], o.dz());
         }
-        BlockFace facing = BlockFace.valueOf(StructurePattern.FACINGS.get(turn));
         Location at = origin.getLocation();
         forget(at);
-        formed.put(at, new Formed(facing, List.copyOf(members), List.copyOf(watched)));
+        formed.put(at, new Formed(BlockFace.valueOf(match.facing()), match.signature(), List.copyOf(members),
+                List.copyOf(watched), origin.getRelative(min[0], min[1], min[2]).getLocation(),
+                origin.getRelative(max[0], max[1], max[2]).getLocation()));
         watched.forEach(cell -> controllerOf.put(cell, at));
-        index.setStructure(origin, facing.name());
+        index.setStructure(origin, match.signature());
         if (announce) {
             FormedStructure structure = structure(origin).orElseThrow();
             dispatcher.dispatchBlock(custom.key(), at, StructureBehavior.class, d -> BlockEventContext.of(custom, null),
@@ -299,18 +289,15 @@ final class StructureTracker {
         }
     }
 
-    private StructurePattern pattern(PrismKey key) {
-        StructurePattern cached = patterns.get(key);
+    private StructureShape shape(PrismKey key) {
+        StructureShape cached = shapes.get(key);
         if (cached != null) {
             return cached;
         }
-        Optional<PrismComponents.Structure> spec = definitions.get(key)
-                .flatMap(definition -> definition.components().get(PrismComponents.STRUCTURE));
-        if (spec.isEmpty()) {
-            return null;
+        StructureShape compiled = definitions.get(key).map(StructureShape::of).orElse(null);
+        if (compiled != null) {
+            shapes.put(key, compiled);
         }
-        StructurePattern compiled = StructurePattern.compile(spec.get());
-        patterns.put(key, compiled);
         return compiled;
     }
 
@@ -319,9 +306,9 @@ final class StructureTracker {
         if (known == -1) {
             known = -2;
             for (PrismKey key : definitions.keys()) {
-                StructurePattern pattern = pattern(key);
-                if (pattern != null) {
-                    known = Math.max(known, pattern.reach());
+                StructureShape shape = shape(key);
+                if (shape != null) {
+                    known = Math.max(known, shape.reach());
                 }
             }
             reach = known;

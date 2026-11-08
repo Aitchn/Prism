@@ -49,6 +49,14 @@ controller's `StructureBehavior.onFormed` or `onBroken`. `BlockService.structure
 answer at any time. What a formed structure does is up to the mod. `examplemod:ruby_core` lights up on top of a 3x3
 ruby floor.
 
+**Boxes of any size.** `prism:cuboid` makes a block the controller of a hollow box: `walls` (block keys the shell may
+be built from), `inside` (blocks allowed inside besides air, default none), `min` and `max` (outer side length, 3 to
+32). The controller sits in a wall, not on an edge or corner. Prism finds the box from the controller's open side,
+calls the same `StructureBehavior`, and reports the box as `FormedStructure` with `facing` pointing inside and `min`
+and `max` corners, so the mod can work out its volume. Filling the inside with anything else, or breaking a wall,
+breaks it; rebuilding it at another size forms it again. `examplemod:ruby_tank` lights up in a box of ruby blocks and
+glass from 3 to 7 blocks a side.
+
 **Ores.** `prism:ore` generates a block as veins in newly generated chunks: `dimension`, `replace` (vanilla blocks),
 `min_y`, `max_y`, `veins_per_chunk`, `rarity` and `size`, or a list of such specs. Veins stay inside their chunk.
 Chunks that existed before the mod was installed get none. `examplemod:ruby_ore` is an example; it is a note block

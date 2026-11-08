@@ -321,6 +321,47 @@ public final class PrismComponents {
             });
 
     /**
+     * Makes this block the controller of a hollow box of variable size: a shell of wall blocks around an inside of air
+     * (or of the listed inside blocks), with this block on one face of the shell (not an edge or corner). Formed and
+     * broken like {@link #STRUCTURE}; {@code FormedStructure.facing} points from the controller into the inside.
+     * <pre>{@code
+     * prism:cuboid:
+     *   walls: [examplemod:ruby_block, minecraft:glass]   # custom or vanilla block keys; the controller counts too
+     *   inside: []          # blocks allowed inside besides air (default none)
+     *   min: 3              # smallest outer side, 3 or more (default 3)
+     *   max: 9              # largest outer side, up to 32 (default 9)
+     * }</pre>
+     */
+    public static final ComponentType<Cuboid> CUBOID = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "cuboid"),
+            Cuboid.class,
+            section -> {
+                section.rejectUnknownKeys(java.util.Set.of("walls", "inside", "min", "max"));
+                java.util.List<String> walls = keys(section, "walls");
+                if (walls.isEmpty()) {
+                    throw section.error("walls must list at least one block");
+                }
+                int min = section.getInt("min").orElse(3);
+                int max = section.getInt("max").orElse(9);
+                if (min < 3 || max > 32 || min > max) {
+                    throw section.error("need 3 <= min <= max <= 32, got min " + min + " and max " + max);
+                }
+                return new Cuboid(walls, keys(section, "inside"), min, max);
+            });
+
+    private static java.util.List<String> keys(ConfigSection section, String key) throws ContentException {
+        java.util.List<String> keys = new java.util.ArrayList<>();
+        for (String value : section.getStringList(key)) {
+            try {
+                keys.add(PrismKey.parse(value).toString());
+            } catch (IllegalArgumentException e) {
+                throw section.error(key + ": not a block key: " + value);
+            }
+        }
+        return java.util.List.copyOf(keys);
+    }
+
+    /**
      * An item drawn as a stepped gauge in menus ({@code MenuView.setGauge}): a fill bar or a progress arrow. Prism
      * draws the {@code steps + 1} icons (empty to full) itself, for the Java and the Bedrock pack; a mod can replace
      * any of them by shipping {@code textures/item/<name>/gauge_<n>.png}. The item itself looks full.
@@ -350,6 +391,9 @@ public final class PrismComponents {
                 }
                 return new Gauge(style, Integer.parseInt(color.substring(1), 16), steps);
             });
+
+    /** @see #CUBOID; block keys as strings. */
+    public record Cuboid(java.util.List<String> walls, java.util.List<String> inside, int min, int max) {}
 
     /** @see #GAUGE; {@code color} is 0xRRGGBB. */
     public record Gauge(String style, int color, int steps) {
