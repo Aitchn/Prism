@@ -1,0 +1,3 @@
+# Key: mekanism:refined_obsidian_block. Storage block of nine ingots.
+base: minecraft:barrier
+drop: mekanism:refined_obsidian_block

@@ -1,0 +1,9 @@
+type: prism:shaped
+pattern:
+  - "CCC"
+  - "CAC"
+  - "CCC"
+key:
+  C: mekanism:advanced_pressurized_tube
+  A: mekanism:alloy_reinforced
+result: {item: mekanism:elite_pressurized_tube, count: 8}

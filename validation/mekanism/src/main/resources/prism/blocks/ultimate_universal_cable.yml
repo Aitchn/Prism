@@ -1,0 +1,6 @@
+# Key: mekanism:ultimate_universal_cable. Ultimate tier universal cable: limit scales with the tier.
+base: minecraft:barrier
+drop: mekanism:ultimate_universal_cable
+behaviors:
+  - type: mekanism:cable
+    tier: 3

@@ -1,0 +1,9 @@
+# Key: mekanism:ultimate_energy_cube. A battery: 128,000,000 J, takes and gives 524,288 J per tick through cables.
+base: minecraft:barrier
+drop: mekanism:ultimate_energy_cube
+behaviors:
+  - type: mekanism:machine
+    machine: ultimate_energy_cube
+    energy_capacity: 128000000
+    max_receive: 524288
+    max_extract: 524288

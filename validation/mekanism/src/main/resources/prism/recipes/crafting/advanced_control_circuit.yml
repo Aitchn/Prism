@@ -1,0 +1,10 @@
+type: prism:shaped
+pattern:
+  - " A "
+  - "CRC"
+  - " A "
+key:
+  A: mekanism:alloy_infused
+  C: mekanism:basic_control_circuit
+  R: minecraft:redstone
+result: mekanism:advanced_control_circuit

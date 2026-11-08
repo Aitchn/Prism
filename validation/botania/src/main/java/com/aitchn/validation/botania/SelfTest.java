@@ -68,7 +68,10 @@ final class SelfTest {
                     Prism.blocks().remove(flowerBlock, false);
                 } else if (polls[0] >= POLLS) {
                     handle[0].cancel();
-                    fail("pool stayed empty: spreader=" + spreader.mana() + " flower=" + flower.buffer());
+                    fail("pool stayed empty: spreader=" + spreader.mana() + " flower=" + flower.buffer() + " bound="
+                            + flower.bound().isPresent() + " time=" + world.getTime() + " sky="
+                            + flowerBlock.getRelative(BlockFace.UP).getLightFromSky() + " entities="
+                            + runtime.network().size());
                 }
             }, 20L, 20L);
         } catch (RuntimeException e) {

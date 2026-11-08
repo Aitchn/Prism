@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: metallurgic_infuser
+input: mekanism:iron_dust
+input2: mekanism:coal_dust
+output: mekanism:enriched_iron
+ticks: 200
+energy: 50

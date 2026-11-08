@@ -32,7 +32,16 @@ because BetterModel only reads from its own folder).
 if `accepts` says so) or an `OUTPUT` (take only). Prism enforces the roles for every click, shift-click, number key,
 drop, double-click and drag. `refreshTicks` and `onRefresh` update live values in place without reopening. It is a
 chest container, which Geyser shows to Bedrock players. Keep the items in your own model, such as per-block data.
-`examplemod:ruby_counter` is a complete example.
+`examplemod:ruby_counter` is a complete example. `allowChange` refuses a slot change synchronously, while the click
+is handled; `onSlotChanged` reports it one tick later, and `MenuView.isChangePending(slot)` is true in between, so a
+machine ticking meanwhile leaves that slot alone.
+
+**Picking blocks up with their data.** A `BlockDropBehavior` writes the block's data into the dropped item
+(`Prism.items().editData(drop, ...)`) before remove behaviors run. A `BlockPlaceBehavior` reads it back from
+`context.placedFrom()`. The counter keeps its count this way.
+
+**Letting a click through.** An interact behavior that calls `context.pass()` does not use the click, so the held item
+is used or placed against the block as with a vanilla block. The counter passes clicks made with a block in hand.
 
 **Item data and lore.** `Prism.items().editData(stack, data -> ...)` writes the stack's own persistent data and
 re-renders its lore. `prism:lore` holds static lines, and an `ItemLoreBehavior` adds lines computed from the stack.
@@ -52,4 +61,5 @@ and `Prism.items().matches(...)` handle custom and vanilla items alike. See `exa
 
 **Folia.** Behaviors run on the thread that owns the player or location. Use `Prism.scheduler()`, not the Bukkit
 scheduler, for anything you defer. Touch a block only on the thread that owns it (`runAt`); work that spans regions
-keeps its own state thread-safe and hops to each block's thread.
+keeps its own state thread-safe and hops to each block's thread. `runGlobalTimer` is a server-wide clock (a network
+tick); it owns no region, so it hops with `runAt` too.

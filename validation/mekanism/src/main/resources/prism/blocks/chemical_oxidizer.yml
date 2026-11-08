@@ -1,0 +1,11 @@
+# Key: mekanism:chemical_oxidizer. Two looks (block/chemical_oxidizer_idle.png and block/chemical_oxidizer_active.png); recipes: prism/recipes/machine/chemical_oxidizer/.
+base: minecraft:barrier
+drop: mekanism:chemical_oxidizer
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: chemical_oxidizer
+    energy_capacity: 20000
+    max_receive: 2000
+    tank_capacity: 10000

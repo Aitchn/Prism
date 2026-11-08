@@ -1,0 +1,9 @@
+type: prism:shaped
+pattern:
+  - "CCC"
+  - "CAC"
+  - "CCC"
+key:
+  C: mekanism:elite_logistical_transporter
+  A: mekanism:alloy_atomic
+result: {item: mekanism:ultimate_logistical_transporter, count: 8}

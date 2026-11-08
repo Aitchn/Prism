@@ -1,0 +1,11 @@
+# Key: mekanism:energized_smelter. Two looks (block/energized_smelter_idle.png and block/energized_smelter_active.png); recipes: prism/recipes/machine/energized_smelter/.
+base: minecraft:barrier
+drop: mekanism:energized_smelter
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: energized_smelter
+    energy_capacity: 20000
+    max_receive: 2000
+    tank_capacity: 0

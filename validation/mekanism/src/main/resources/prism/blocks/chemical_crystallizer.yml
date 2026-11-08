@@ -1,0 +1,11 @@
+# Key: mekanism:chemical_crystallizer. Two looks (block/chemical_crystallizer_idle.png and block/chemical_crystallizer_active.png); recipes: prism/recipes/machine/chemical_crystallizer/.
+base: minecraft:barrier
+drop: mekanism:chemical_crystallizer
+components:
+  prism:variants: [idle, active]
+behaviors:
+  - type: mekanism:machine
+    machine: chemical_crystallizer
+    energy_capacity: 20000
+    max_receive: 2000
+    tank_capacity: 10000

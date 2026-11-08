@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: metallurgic_infuser
+input: minecraft:iron_ingot
+input2: minecraft:redstone
+output: mekanism:alloy_infused
+ticks: 300
+energy: 50

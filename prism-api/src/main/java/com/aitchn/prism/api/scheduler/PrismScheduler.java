@@ -21,6 +21,12 @@ public interface PrismScheduler {
     /** Runs on the global tick thread (Folia: global region; Paper: main thread). No region's world state. */
     void runGlobal(@NotNull Runnable task);
 
+    /**
+     * Runs {@code task} repeatedly on the global tick thread until cancelled. Use it for server-wide clocks (a network
+     * tick, a periodic save); it owns no region, so hop to {@link #runAt} for every block it touches.
+     */
+    @NotNull PrismTask runGlobalTimer(@NotNull Runnable task, long delayTicks, long periodTicks);
+
     /** Runs on the thread that owns the region containing {@code location}. */
     void runAt(@NotNull Location location, @NotNull Runnable task);
 

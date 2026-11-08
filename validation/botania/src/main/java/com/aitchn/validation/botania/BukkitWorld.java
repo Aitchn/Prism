@@ -80,7 +80,9 @@ final class BukkitWorld implements WorldView {
     @Override
     public boolean isDaylight(Pos pos) {
         Block block = block(pos);
-        return block != null && block.getWorld().isDayTime() && block.getLightFromSky() >= 12;
+        // The block itself is a solid barrier carrier, so read the light of the block above it.
+        return block != null && block.getWorld().getTime() < 12_000
+                && block.getRelative(org.bukkit.block.BlockFace.UP).getLightFromSky() >= 12;
     }
 
     @Override

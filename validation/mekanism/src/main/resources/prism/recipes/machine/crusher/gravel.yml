@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: crusher
+input: minecraft:gravel
+output: minecraft:sand
+ticks: 200
+energy: 50

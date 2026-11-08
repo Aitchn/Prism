@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Ultimate Energy Cube"
+  prism:places_block: mekanism:ultimate_energy_cube

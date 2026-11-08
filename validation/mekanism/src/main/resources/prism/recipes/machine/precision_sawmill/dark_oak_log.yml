@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: precision_sawmill
+input: minecraft:dark_oak_log
+output: {item: minecraft:dark_oak_planks, count: 6}
+ticks: 100
+energy: 50

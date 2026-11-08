@@ -1,0 +1,11 @@
+type: prism:shaped
+pattern:
+  - "AGA"
+  - "ECE"
+  - "AGA"
+key:
+  A: mekanism:alloy_infused
+  G: minecraft:gold_ingot
+  E: mekanism:energy_cube
+  C: mekanism:basic_control_circuit
+result: mekanism:advanced_energy_cube

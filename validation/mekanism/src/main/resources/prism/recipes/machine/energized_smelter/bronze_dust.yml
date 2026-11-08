@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: energized_smelter
+input: mekanism:bronze_dust
+output: mekanism:bronze_ingot
+ticks: 160
+energy: 40

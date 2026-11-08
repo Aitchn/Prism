@@ -3,6 +3,7 @@ package com.aitchn.prism.plugin;
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockCapability;
 import com.aitchn.prism.api.block.BlockCapabilityProvider;
+import com.aitchn.prism.api.block.BlockDropBehavior;
 import com.aitchn.prism.api.block.BlockLoadBehavior;
 import com.aitchn.prism.api.block.BlockNeighborBehavior;
 import com.aitchn.prism.api.block.BlockPlaceBehavior;
@@ -23,6 +24,7 @@ import com.aitchn.prism.platform.spi.ScheduledTask;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.bukkit.Bukkit;
@@ -42,6 +44,7 @@ import org.bukkit.event.server.ServerLoadEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -97,7 +100,7 @@ final class PrismBlockService implements BlockService, Listener {
 
     @Override
     public boolean place(@NotNull PrismKey key, @NotNull Location location, @Nullable Player placer,
-            @NotNull BlockFace facing) {
+            @NotNull BlockFace facing, @Nullable ItemStack from) {
         Optional<BlockDefinition> found = definitions.get(key);
         Block block = location.getBlock();
         if (found.isEmpty() || !(block.isEmpty() || block.isReplaceable()) || index.get(block).isPresent()) {
@@ -114,7 +117,7 @@ final class PrismBlockService implements BlockService, Listener {
         index.put(block, new BlockIndex.Entry(key, actual, variant));
         Handle handle = new Handle(block, key, definition, actual, variant, index);
         dispatcher.dispatchBlock(key, block.getLocation(), BlockPlaceBehavior.class,
-                d -> BlockEventContext.of(handle, placer), (b, c) -> b.onPlace(c));
+                d -> BlockEventContext.of(handle, placer).placedFrom(from), (b, c) -> b.onPlace(c));
         startTicking(handle);
         notifyNeighbors(block);
         return true;
@@ -144,26 +147,33 @@ final class PrismBlockService implements BlockService, Listener {
 
     @Override
     public boolean remove(@NotNull Block block, boolean dropItem) {
+        return remove(block, dropItem,
+                stack -> block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5), stack));
+    }
+
+    /** Removes like {@code remove(block, true)} but hands the filled drop to {@code sink} instead of the world. */
+    boolean remove(Block block, boolean dropItem, Consumer<ItemStack> sink) {
         Optional<BlockIndex.Entry> entry = index.get(block);
         if (entry.isEmpty()) {
             return false;
         }
         PrismKey key = entry.get().key();
         Optional<BlockDefinition> definition = definitions.get(key);
+        Optional<ItemStack> drop = dropItem
+                ? definition.flatMap(BlockDefinition::drop).flatMap(item -> items.create(item, 1))
+                : Optional.empty();
         definition.ifPresent(d -> {
             Handle handle = new Handle(block, key, d, entry.get().facing(), entry.get().variant(), index);
+            // Drop behaviors first: they read the data that remove behaviors may clear.
+            drop.ifPresent(stack -> dispatcher.dispatchBlock(key, block.getLocation(), BlockDropBehavior.class,
+                    x -> BlockEventContext.of(handle, null), (b, c) -> b.onDrop(c, stack)));
             dispatcher.dispatchBlock(key, block.getLocation(), BlockRemoveBehavior.class,
                     x -> BlockEventContext.of(handle, null), (b, c) -> b.onRemove(c));
         });
         stopTicking(block);
         appearanceOf(block).despawn(block);
         index.remove(block);
-        if (dropItem) {
-            Location center = block.getLocation().add(0.5, 0.5, 0.5);
-            definition.flatMap(BlockDefinition::drop)
-                    .flatMap(drop -> items.create(drop, 1))
-                    .ifPresent(stack -> block.getWorld().dropItemNaturally(center, stack));
-        }
+        drop.ifPresent(sink);
         notifyNeighbors(block);
         return true;
     }

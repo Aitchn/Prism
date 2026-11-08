@@ -35,8 +35,24 @@ public interface BlockContext {
     /** The stack in {@link #hand()}; null when no player is involved, an empty stack when the hand is empty. */
     @Nullable ItemStack heldItem();
 
+    /**
+     * For {@link BlockPlaceBehavior}: a copy (amount 1) of the stack the block was placed from, with its per-stack
+     * data, so a block can take back what {@link BlockDropBehavior} stored. Null when the block was placed by code or
+     * outside of placement.
+     */
+    default @Nullable ItemStack placedFrom() {
+        return null;
+    }
+
     /** Stops the default outcome (opening nothing, breaking nothing, ...). Ignored where nothing can be stopped. */
     void cancel();
 
     boolean isCancelled();
+
+    /**
+     * For {@link BlockInteractBehavior}: this behavior did not use the click, so the vanilla outcome goes ahead (the
+     * held item is used or placed against the block). A click counts as handled when any interact behavior runs
+     * without calling this, or when {@link #cancel()} is called.
+     */
+    default void pass() {}
 }

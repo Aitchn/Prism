@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: precision_sawmill
+input: minecraft:oak_planks
+output: {item: minecraft:stick, count: 6}
+ticks: 60
+energy: 50

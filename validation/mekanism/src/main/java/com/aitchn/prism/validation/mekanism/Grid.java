@@ -11,12 +11,12 @@ import com.aitchn.prism.validation.mekanism.logic.EnergyBuffer;
 import com.aitchn.prism.validation.mekanism.logic.Machine;
 import com.aitchn.prism.validation.mekanism.logic.MachineType;
 import com.aitchn.prism.validation.mekanism.logic.Networks;
+import com.aitchn.prism.validation.mekanism.logic.Plant;
 import com.aitchn.prism.validation.mekanism.logic.Pos;
+import com.aitchn.prism.validation.mekanism.logic.Side;
 import com.aitchn.prism.validation.mekanism.logic.SolarGenerator;
 import com.aitchn.prism.validation.mekanism.logic.Stack;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,22 +53,15 @@ final class Grid {
     private static final Grid INSTANCE = new Grid();
     private static final Logger LOG = Logger.getLogger("Mekanism");
     private static final int SAVE_EVERY = 100;
-    private static final long CABLE_LIMIT = 4_096;
-    private static final long PIPE_LIMIT = 256;
-
     private final ReentrantLock lock = new ReentrantLock();
     private final RecipeBook recipes = new RecipeBook();
-    private final Map<Pos, Machine> machines = new HashMap<>();
-    private final Map<Pos, SolarGenerator> solars = new HashMap<>();
-    private final Set<Pos> cables = new HashSet<>();
-    private final Set<Pos> pipes = new HashSet<>();
+    private final Plant plant = new Plant();
+    private final Map<Pos, Machine> machines = plant.machines();
+    private final Map<Pos, SolarGenerator> solars = plant.solars();
+    private final Set<Pos> cables = plant.cables();
+    private final Set<Pos> pipes = plant.pipes();
     private final Map<Pos, String> saved = new HashMap<>();
     private final Map<Pos, MachineMenu> viewers = new ConcurrentHashMap<>();
-    private List<Networks.Network> cableNets = List.of();
-    private List<Networks.Network> pipeNets = List.of();
-    private boolean topologyChanged = true;
-    private long energyMoved;
-    private long chemicalMoved;
     private volatile io.papermc.paper.threadedregions.scheduler.ScheduledTask loop;
 
     static Grid get() {
@@ -126,24 +119,7 @@ final class Grid {
     }
 
     private void tickNetworks() {
-        underLock(() -> {
-            rebuildIfNeeded();
-            energyMoved = Networks.distributeEnergy(cableNets,
-                    p -> solars.containsKey(p) ? solars.get(p).energy() : null,
-                    p -> machines.containsKey(p) ? machines.get(p).energy() : null, CABLE_LIMIT);
-            chemicalMoved = Networks.distributeChemical(pipeNets,
-                    p -> machines.containsKey(p) ? machines.get(p).ports().outputs() : null,
-                    p -> machines.containsKey(p) ? machines.get(p).ports().inputs() : null, PIPE_LIMIT);
-        });
-    }
-
-    /** Lock held. Networks change only when a conduit or an endpoint appears or goes. */
-    private void rebuildIfNeeded() {
-        if (topologyChanged) {
-            cableNets = Networks.build(cables);
-            pipeNets = Networks.build(pipes);
-            topologyChanged = false;
-        }
+        underLock(plant::tickNetworks);
     }
 
     // ---------------------------------------------------------------- machines
@@ -157,7 +133,8 @@ final class Grid {
                 return existing;
             }
             MachineType type = new MachineType(spec.machine(), () -> recipes.forMachine(spec.machine()),
-                    spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity());
+                    spec.energyCapacity(), spec.maxReceive(), spec.tankCapacity(), spec.maxExtract(),
+                    spec.bufferFilter());
             Machine machine = new Machine(type);
             String state = block.data().get(STATE, PersistentDataType.STRING);
             if (state != null) {
@@ -165,7 +142,7 @@ final class Grid {
                 saved.put(pos, state);
             }
             machines.put(pos, machine);
-            topologyChanged = true;
+            plant.markDirty();
             return machine;
         });
     }
@@ -176,6 +153,7 @@ final class Grid {
         boolean[] state = new boolean[2]; // worked, idle
         underLock(() -> {
             Machine machine = machine(custom, spec);
+            machine.setPowered(custom.block().isBlockIndirectlyPowered());
             state[0] = machine.tick();
             state[1] = machine.idleTicks() >= Machine.IDLE_AFTER;
             if (Math.floorMod(machine.ticks() + pos.hashCode(), SAVE_EVERY) == 0) {
@@ -199,6 +177,24 @@ final class Grid {
         }
     }
 
+    /** The item a machine drops carries its energy, upgrades and tank contents (not the item slots, which drop as items). */
+    void storeSettings(Machine machine, ItemStack drop) {
+        String settings = locked(machine::saveSettings);
+        Prism.items().editData(drop, data -> data.set(STATE, PersistentDataType.STRING, settings));
+    }
+
+    /** A block placed from an item that carries settings starts with them. */
+    static void restoreFromItem(BlockContext context) {
+        ItemStack from = context.placedFrom();
+        if (from == null || !from.hasItemMeta()) {
+            return;
+        }
+        String state = from.getItemMeta().getPersistentDataContainer().get(STATE, PersistentDataType.STRING);
+        if (state != null) {
+            context.custom().data().set(STATE, PersistentDataType.STRING, state);
+        }
+    }
+
     /** The chunk unloads: keep the state in the block's data and stop tracking it. */
     void unloadMachine(CustomBlock block, MachineBehavior spec) {
         Pos pos = pos(block.block());
@@ -212,12 +208,13 @@ final class Grid {
                     // hold the same items again.
                     machine.markDead();
                     machine.setInput(null);
+                    machine.setExtra(null);
                     machine.setOutput(null);
                 }
                 saveMachine(block, pos, machine);
             }
             saved.remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
         });
     }
 
@@ -229,7 +226,7 @@ final class Grid {
         Machine machine = locked(() -> {
             Machine removed = machines.remove(pos);
             saved.remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
             if (removed != null) {
                 removed.markDead();
             }
@@ -237,7 +234,7 @@ final class Grid {
         });
         if (machine != null && !viewed) {
             Location at = block.block().getLocation().add(0.5, 0.5, 0.5);
-            for (Stack stack : locked(() -> new Stack[] {machine.input(), machine.output()})) {
+            for (Stack stack : locked(() -> new Stack[] {machine.input(), machine.extra(), machine.output()})) {
                 if (stack != null) {
                     create(stack).ifPresent(item -> block.block().getWorld().dropItemNaturally(at, item));
                 }
@@ -263,12 +260,16 @@ final class Grid {
         }
         MachineMenu menu = new MachineMenu(this, pos, machine, id);
         viewers.put(pos, menu);
+        underLock(() -> machine.setMenuOpen(true));
         Prism.menus().open(player, menu);
         return true;
     }
 
     void menuClosed(Pos pos, MachineMenu menu) {
         viewers.remove(pos, menu);
+        if (!viewers.containsKey(pos)) {
+            menu.releaseMachine();
+        }
     }
 
     // ---------------------------------------------------------------- hands
@@ -277,7 +278,7 @@ final class Grid {
     boolean useBucket(BlockContext context, ChemicalTank tank) {
         ItemStack held = context.heldItem();
         Player player = context.player();
-        if (held == null || held.getType() != Material.WATER_BUCKET || player == null) {
+        if (tank == null || held == null || held.getType() != Material.WATER_BUCKET || player == null) {
             return false;
         }
         boolean filled = locked(() -> {
@@ -298,6 +299,100 @@ final class Grid {
                 player.sendActionBar(Component.text("The water tank is full"));
             }
         }, null);
+        return true;
+    }
+
+    /** Face number as in {@code Pos.neighbors()}: east, west, up, down, south, north; -1 for other directions. */
+    static int faceIndex(org.bukkit.block.BlockFace face) {
+        return face == null ? -1 : switch (face) {
+            case EAST -> 0;
+            case WEST -> 1;
+            case UP -> 2;
+            case DOWN -> 3;
+            case SOUTH -> 4;
+            case NORTH -> 5;
+            default -> -1;
+        };
+    }
+
+    /**
+     * Right click on a machine with a setting tool. Configurator: the clicked face takes the next chemical side mode;
+     * Item Configurator: the next item access for transporters instead. Redstone dust: next redstone mode. Hopper: auto-eject on or off.
+     */
+    boolean configure(BlockContext context, Machine machine) {
+        ItemStack held = context.heldItem();
+        Player player = context.player();
+        if (held == null || player == null) {
+            return false;
+        }
+        String id = itemId(held);
+        int face = faceIndex(context.face());
+        String text;
+        if (id.equals("mekanism:configurator") && face >= 0) {
+            text = locked(() -> {
+                machine.setFace(face, machine.face(face).next());
+                return Text.title(Side.FACE_NAMES[face]) + " face: " + machine.face(face).label();
+            });
+        } else if (id.equals("mekanism:item_configurator") && face >= 0) {
+            text = locked(() -> {
+                machine.setItemFace(face, machine.itemFace(face).next());
+                return Text.title(Side.FACE_NAMES[face]) + " face (items): " + machine.itemFace(face).label();
+            });
+        } else if (id.equals("minecraft:redstone")) {
+            text = locked(() -> {
+                machine.setRedstone(machine.redstone().next());
+                return machine.redstone().label();
+            });
+        } else if (id.equals("minecraft:hopper")) {
+            text = locked(() -> {
+                machine.setAutoEject(!machine.autoEject());
+                return "Auto-eject " + (machine.autoEject() ? "on" : "off");
+            });
+        } else {
+            return false;
+        }
+        Prism.scheduler().runOn(player, () -> player.sendActionBar(Component.text(text)), null);
+        return true;
+    }
+
+    /** Right click on a machine holding a speed or energy upgrade: installs one (up to 8 of each kind). */
+    boolean installUpgrade(BlockContext context, Machine machine) {
+        ItemStack held = context.heldItem();
+        Player player = context.player();
+        if (held == null || player == null) {
+            return false;
+        }
+        String id = itemId(held);
+        boolean speed = id.equals("mekanism:speed_upgrade");
+        if (!speed && !id.equals("mekanism:energy_upgrade")) {
+            return false;
+        }
+        EquipmentSlot hand = context.hand();
+        String wanted = id;
+        // One transaction on the player's thread: check the hand still holds the upgrade, install, then take one.
+        Runnable transaction = () -> {
+            ItemStack now = hand == null ? null : player.getInventory().getItem(hand);
+            boolean creative = player.getGameMode() == org.bukkit.GameMode.CREATIVE;
+            if (!creative && (now == null || !itemId(now).equals(wanted))) {
+                return;
+            }
+            int taken = locked(() -> machine.addUpgrades(speed, 1));
+            if (taken > 0) {
+                if (!creative) {
+                    now.setAmount(now.getAmount() - 1);
+                    player.getInventory().setItem(hand, now.getAmount() > 0 ? now : null);
+                }
+                player.sendActionBar(Component.text(locked(() -> (speed ? "Speed upgrades " : "Energy upgrades ")
+                        + (speed ? machine.speedUpgrades() : machine.energyUpgrades()) + " / " + Machine.MAX_UPGRADES)));
+            } else {
+                player.sendActionBar(Component.text("This machine cannot take more of those"));
+            }
+        };
+        if (Prism.scheduler().isOwnedByCurrentThread(player)) {
+            transaction.run();
+        } else {
+            Prism.scheduler().runOn(player, transaction, null);
+        }
         return true;
     }
 
@@ -335,7 +430,7 @@ final class Grid {
                 saved.put(pos, Long.toString(stored));
             }
             solars.put(pos, solar);
-            topologyChanged = true;
+            plant.markDirty();
             return solar;
         });
     }
@@ -371,7 +466,7 @@ final class Grid {
                 saveSolar(block, pos, solar);
             }
             saved.remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
         });
     }
 
@@ -380,7 +475,7 @@ final class Grid {
         underLock(() -> {
             solars.remove(pos);
             saved.remove(pos);
-            topologyChanged = true;
+            plant.markDirty();
         });
     }
 
@@ -393,19 +488,30 @@ final class Grid {
 
     // ---------------------------------------------------------------- conduits
 
-    void addConduit(Block block, boolean cable) {
+    enum Kind { CABLE, PIPE, ITEM }
+
+    private Set<Pos> conduits(Kind kind) {
+        return switch (kind) {
+            case CABLE -> cables;
+            case PIPE -> pipes;
+            case ITEM -> plant.transporters();
+        };
+    }
+
+    void addConduit(Block block, Kind kind, int tier) {
         Pos pos = pos(block);
         underLock(() -> {
-            (cable ? cables : pipes).add(pos);
-            topologyChanged = true;
+            conduits(kind).add(pos);
+            plant.setTier(pos, tier);
+            plant.markDirty();
         });
     }
 
-    void removeConduit(Block block, boolean cable) {
+    void removeConduit(Block block, Kind kind) {
         Pos pos = pos(block);
         underLock(() -> {
-            (cable ? cables : pipes).remove(pos);
-            topologyChanged = true;
+            conduits(kind).remove(pos);
+            plant.forgetConduit(pos);
         });
     }
 
@@ -413,8 +519,8 @@ final class Grid {
     String describeConduit(Block block) {
         Pos pos = pos(block);
         return locked(() -> {
-            rebuildIfNeeded();
-            Networks.Network cable = Networks.containing(cableNets, pos);
+            plant.rebuildIfNeeded();
+            Networks.Network cable = Networks.containing(plant.cableNets(), pos);
             if (cable != null) {
                 int generators = 0;
                 int consumers = 0;
@@ -431,13 +537,19 @@ final class Grid {
                 }
                 return "Cable network: " + cable.conduits().size() + " cables, " + generators + " generators, "
                         + consumers + " machines, " + Text.number(stored) + " J stored, moving "
-                        + Text.number(energyMoved) + " J/t (all networks)";
+                        + Text.number(plant.energyMoved()) + " J/t (all networks)";
             }
-            Networks.Network pipe = Networks.containing(pipeNets, pos);
+            Networks.Network pipe = Networks.containing(plant.pipeNets(), pos);
             if (pipe != null) {
                 int connected = (int) pipe.endpoints().stream().filter(machines::containsKey).count();
                 return "Pipe network: " + pipe.conduits().size() + " pipes, " + connected + " machines, moving "
-                        + Text.number(chemicalMoved) + " mB/t (all networks)";
+                        + Text.number(plant.chemicalMoved()) + " mB/t (all networks)";
+            }
+            Networks.Network items = Networks.containing(plant.itemNets(), pos);
+            if (items != null) {
+                int connected = (int) items.touches().stream().filter(e -> machines.containsKey(e.pos())).count();
+                return "Transporter network: " + items.conduits().size() + " transporters, " + connected
+                        + " machine faces, moving " + plant.itemsMoved() + " items/t (all networks)";
             }
             return null;
         });

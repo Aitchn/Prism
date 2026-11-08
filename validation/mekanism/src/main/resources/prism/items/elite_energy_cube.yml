@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Elite Energy Cube"
+  prism:places_block: mekanism:elite_energy_cube

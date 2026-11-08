@@ -1,0 +1,7 @@
+type: mekanism:machine
+machine: purification_chamber
+input: minecraft:raw_copper
+output: {item: mekanism:copper_clump, count: 3}
+chemical_in: {chemical: oxygen, amount: 1}
+ticks: 300
+energy: 50

@@ -1,0 +1,6 @@
+type: mekanism:machine
+machine: chemical_crystallizer
+output: mekanism:lead_crystal
+chemical_in: {chemical: clean_lead_slurry, amount: 200}
+ticks: 200
+energy: 50
