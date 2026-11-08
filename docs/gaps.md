@@ -215,3 +215,25 @@ CI cannot join a client. Run each on a Java client and on a Bedrock client (afte
 29. Teleporter: place two, tune both with a name tag called "home" (anvil rename), power both. Right click one: you
     arrive on the other; the clicked one loses 2,000 J plus 20 J per block. With no power the action bar says how much
     it needs.
+
+## Effects and visuals of the Mekanism rebuild (what is done, what Prism cannot present yet)
+
+Done in the plugin with plain world calls (no Prism addition needed; Java and Bedrock both play vanilla sounds and particles):
+working machines hum and spark, the miner shows a spark on every ore it takes, teleporters play portal particles and the
+enderman sound at both ends. Idle and active textures, progress arrow, energy bar and tank icons are menu and variant
+content that already exist.
+
+Generic gaps found (a mod with another theme needs the same; none is Mekanism specific):
+
+| # | Gap | Why it matters beyond Mekanism |
+|---|-----|--------------------------------|
+| E1 | Block light level per variant (machines glow while active) | any lit machine, lamp, furnace |
+| E2 | Animated block and item textures (frame strips) in the pack, Java `.mcmeta` and Bedrock flipbook | any animated panel, fluid, glow |
+| E3 | Non-full block shapes and hitboxes (already rows 13/14): thin cables with visible arms, glass tanks | pipes, rails, wires, fences of any mod |
+| E4 | Appearance from neighbours (cable arms follow connections; already row 14) | connected blocks of any kind |
+| E5 | Armor and held item models with custom rendering (jetpack, scuba gear, atomic disassembler) | any armor or tool mod |
+| E6 | A looping sound bound to a block (stops when it goes), instead of the plugin repeating one on a timer | machines, jukebox style blocks |
+| E7 | Persistent particle emitters or beams between two points (miner laser, teleporter column) | lasers, portals, rituals |
+| E8 | Entities as block parts (rotating or moving parts such as the robit) | any moving machine |
+
+Plugin side, not Prism: choosing which sound or particle a machine plays, and when.
