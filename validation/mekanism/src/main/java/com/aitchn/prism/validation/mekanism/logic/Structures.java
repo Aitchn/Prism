@@ -32,6 +32,7 @@ public final class Structures {
     private final Map<Box, Formed> formed = new HashMap<>();
     private final Map<Pos, String> restored = new HashMap<>();
     private final Map<Pos, String> kept = new HashMap<>();
+    private final Map<Pos, Box> lastBox = new HashMap<>();
 
     /** The tank of the box the valve at {@code valve} belongs to, or null while Prism reports none. */
     public Formed at(Pos valve) {
@@ -59,43 +60,49 @@ public final class Structures {
         if (before != null) {
             detach(valve, false);
         }
+        String own = restored.remove(valve); // used once: later content comes from the tank itself
         attached.put(valve, box);
-        Formed existing = formed.get(box);
-        if (existing != null) {
+        lastBox.put(valve, box);
+        if (formed.containsKey(box)) {
             return;
         }
         ChemicalTank tank = new ChemicalTank((long) box.interior() * PER_BLOCK).asBuffer();
         String text = kept.remove(box.min());
-        if (text == null) {
-            text = restored.get(valve);
-        }
-        apply(tank, text);
+        apply(tank, text == null ? own : text);
         formed.put(box, new Formed(box, tank));
     }
 
     /**
-     * The valve is no longer part of a box: it was broken, or its chunk unloads. With {@code unloading} the valve's own
-     * block data holds the content; otherwise it is kept for the minimum corner while the box is rebuilt.
+     * The valve is no longer part of a box: it was broken, or its chunk unloads. While the box is broken its content
+     * is kept for the minimum corner, so rebuilding it brings the content back and the valves can still save it.
+     * With {@code unloading} the valve's own block data holds the content from now on.
      */
     public void detach(Pos valve, boolean unloading) {
         Box box = attached.remove(valve);
-        if (box == null || attached.containsValue(box)) {
-            return;
-        }
-        Formed f = formed.remove(box);
-        if (!unloading && f != null && f.tank().type() != null) {
-            kept.put(box.min(), text(f.tank()));
+        if (box != null && !attached.containsValue(box)) {
+            Formed f = formed.remove(box);
+            if (f != null && f.tank().type() != null) {
+                kept.put(box.min(), text(f.tank()));
+            }
         }
         if (unloading) {
+            Box last = lastBox.remove(valve);
             restored.remove(valve);
+            if (last != null && !lastBox.containsValue(last) && !formed.containsKey(last)) {
+                kept.remove(last.min());
+            }
         }
     }
 
-    /** The content to save in the valve's data: what its box holds, or what was kept for it. */
+    /** The content to save in the valve's data: what its box holds, or what was kept while the box is broken. */
     public String contentOf(Pos valve) {
         Formed f = at(valve);
         if (f != null) {
             return f.tank().type() == null ? null : text(f.tank());
+        }
+        Box last = lastBox.get(valve);
+        if (last != null) {
+            return kept.get(last.min());
         }
         return restored.get(valve);
     }

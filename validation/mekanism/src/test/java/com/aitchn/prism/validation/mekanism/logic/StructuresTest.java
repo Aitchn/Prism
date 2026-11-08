@@ -77,6 +77,30 @@ class StructuresTest {
     }
 
     @Test
+    void a_loaded_snapshot_is_used_once_so_a_drained_tank_stays_empty() {
+        Plant plant = new Plant();
+        plant.structures().restore(VALVE, "hydrogen,5000");
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        assertEquals(5_000, plant.structures().at(VALVE).tank().amount());
+        plant.structures().at(VALVE).tank().set(null, 0);
+        plant.structures().detach(VALVE, false);
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        assertEquals(0, plant.structures().at(VALVE).tank().amount());
+        assertNull(plant.structures().contentOf(VALVE));
+    }
+
+    @Test
+    void a_broken_box_still_lets_its_valves_save_what_it_held() {
+        Plant plant = new Plant();
+        plant.structures().attach(VALVE, box(3, 3, 3));
+        plant.structures().at(VALVE).tank().set(Chemical.HYDROGEN, 2_500);
+        plant.structures().detach(VALVE, false);
+        assertEquals("hydrogen,2500", plant.structures().contentOf(VALVE));
+        plant.structures().detach(VALVE, true);
+        assertNull(plant.structures().contentOf(VALVE), "an unloaded valve leaves nothing behind in memory");
+    }
+
+    @Test
     void pipes_fill_the_tank_through_a_valve_and_drain_it_into_another_machine() {
         MachineType store = new MachineType("chemical_tank", List::of, 1, 1, 64_000, 0, c -> true);
         TestWorld w = new TestWorld();
