@@ -135,6 +135,13 @@ class MekanismContentTest {
     }
 
     @Test
+    void dynamicTankCasingsAreCasingBehaviorsAndOnlyTheValveIsAValve() {
+        var harness = load();
+        assertFalse(harness.block("mekanism:dynamic_tank").behaviors(CasingBehavior.class).getFirst().valve());
+        assertTrue(harness.block("mekanism:dynamic_valve").behaviors(CasingBehavior.class).getFirst().valve());
+    }
+
+    @Test
     void everyFactoryRunsTheRecipesOfItsMachineWithMoreLanesPerTier() {
         var harness = load();
         for (var kind : FACTORIES.entrySet()) {

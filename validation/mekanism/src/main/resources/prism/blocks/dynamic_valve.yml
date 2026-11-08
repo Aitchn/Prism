@@ -1,0 +1,6 @@
+# Key: mekanism:dynamic_valve. A casing block of the dynamic tank that also lets pipes fill and drain it.
+base: minecraft:barrier
+drop: mekanism:dynamic_valve
+behaviors:
+  - type: mekanism:casing
+    valve: true

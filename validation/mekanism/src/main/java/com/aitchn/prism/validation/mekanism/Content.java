@@ -20,6 +20,7 @@ final class Content {
         context.registerBehavior("cable", CableBehavior.class, CableBehavior::fromYaml);
         context.registerBehavior("pipe", PipeBehavior.class, PipeBehavior::fromYaml);
         context.registerBehavior("transporter", TransporterBehavior.class, TransporterBehavior::fromYaml);
+        context.registerBehavior("casing", CasingBehavior.class, CasingBehavior::fromYaml);
         context.registerBehavior("tablet", TabletBehavior.class, TabletBehavior::fromYaml);
         machineRecipes = context.registerRecipeType("machine", MachineRecipe.class, MachineRecipe::decode);
     }

@@ -592,6 +592,27 @@ def gen4():
             prev = name
 
 
+# ---------------------------------------------------------------------------------------------- stage 5
+
+def gen5():
+    # multiblock dynamic tank: casings build a hollow cuboid; valves are the casings that connect pipes
+    specs = {
+        "dynamic_tank": ("Dynamic Tank", "false", (120, 130, 150),
+                         "A casing block of the dynamic tank: a closed hollow cuboid of these stores chemicals."),
+        "dynamic_valve": ("Dynamic Valve", "true", (90, 170, 200),
+                          "A casing block of the dynamic tank that also lets pipes fill and drain it."),
+    }
+    for name, (label, valve, col, doc) in specs.items():
+        put(PRISM / f"blocks/{name}.yml",
+            f"# Key: mekanism:{name}. {doc}\nbase: minecraft:barrier\ndrop: mekanism:{name}\nbehaviors:\n"
+            f"  - type: mekanism:casing\n    valve: {valve}\n")
+        block_item(name, label)
+        tex_cube(name, col)
+    shaped("dynamic_tank", ["ISI", "SCS", "ISI"], {"I": "minecraft:iron_ingot", "S": "mekanism:steel_casing",
+                                                    "C": "minecraft:cauldron"}, "mekanism:dynamic_tank", 4)
+    shapeless("dynamic_valve", ["mekanism:dynamic_tank", "minecraft:hopper"], "mekanism:dynamic_valve")
+
+
 if __name__ == "__main__":
     if Image is None:
         print("Pillow is missing: textures were not generated")
@@ -599,4 +620,5 @@ if __name__ == "__main__":
     gen2()
     gen3()
     gen4()
+    gen5()
     print(f"wrote {len(written)} files")

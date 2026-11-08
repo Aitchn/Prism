@@ -17,6 +17,7 @@ import com.aitchn.prism.validation.mekanism.logic.Pos;
 import com.aitchn.prism.validation.mekanism.logic.Side;
 import com.aitchn.prism.validation.mekanism.logic.SolarGenerator;
 import com.aitchn.prism.validation.mekanism.logic.Stack;
+import com.aitchn.prism.validation.mekanism.logic.Structures;
 import com.aitchn.prism.validation.mekanism.logic.Teleport;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -695,6 +696,84 @@ final class Grid {
                         player.getLocation().getYaw(), player.getLocation().getPitch()));
             }
         }, null);
+    }
+
+
+    // ---------------------------------------------------------------- dynamic tanks
+
+    void addMember(CustomBlock block, boolean valve) {
+        Pos pos = pos(block.block());
+        String text = block.data().get(STATE, PersistentDataType.STRING);
+        underLock(() -> {
+            plant.structures().members().add(pos);
+            if (valve) {
+                plant.structures().valves().add(pos);
+            }
+            if (text != null) {
+                plant.structures().restore(pos, text);
+                saved.put(pos, text); // so that emptying the tank later overwrites the loaded text
+            }
+            plant.markDirty();
+        });
+    }
+
+    /** {@code unloading}: the chunk goes away, so the anchor writes what the structure holds first. */
+    void removeMember(CustomBlock block, boolean unloading) {
+        Pos pos = pos(block.block());
+        underLock(() -> {
+            if (unloading) {
+                writeContent(block, pos);
+            }
+            plant.structures().members().remove(pos);
+            plant.structures().valves().remove(pos);
+            plant.markDirty();
+            plant.rebuildIfNeeded();
+            if (unloading) {
+                plant.structures().forget(pos);
+            }
+        });
+    }
+
+    void tickMember(CustomBlock block) {
+        Pos pos = pos(block.block());
+        underLock(() -> writeContent(block, pos));
+    }
+
+    /** Lock held. Writes the content to the block's data when it is the structure's anchor and the text changed. */
+    private void writeContent(CustomBlock block, Pos pos) {
+        Structures.Formed formed = plant.structures().at(pos);
+        String content = (formed != null && !formed.anchor().equals(pos)) ? null : plant.structures().contentOf(pos);
+        if (formed != null && !formed.anchor().equals(pos)) {
+            return;
+        }
+        String key = content == null ? "" : content;
+        if (!key.equals(saved.getOrDefault(pos, ""))) {
+            if (content == null) {
+                block.data().remove(STATE);
+            } else {
+                block.data().set(STATE, PersistentDataType.STRING, content);
+            }
+            saved.put(pos, key);
+        }
+    }
+
+    /** What the Energy Tablet shows for a dynamic tank block, or null when {@code block} is none. */
+    String describeStructure(Block block) {
+        Pos pos = pos(block);
+        return locked(() -> {
+            plant.rebuildIfNeeded();
+            if (!plant.structures().members().contains(pos)) {
+                return null;
+            }
+            Structures.Formed formed = plant.structures().at(pos);
+            if (formed == null) {
+                return "Dynamic tank: not a complete box (hollow, "
+                        + Structures.MIN + " to " + Structures.MAX + " blocks a side, no extra casing)";
+            }
+            ChemicalTank tank = formed.tank();
+            return "Dynamic tank " + formed.size() + ": " + Text.number(tank.amount()) + " / " + Text.number(tank.capacity())
+                    + " mB " + (tank.type() == null ? "empty" : tank.type().id());
+        });
     }
 
     // ---------------------------------------------------------------- conduits

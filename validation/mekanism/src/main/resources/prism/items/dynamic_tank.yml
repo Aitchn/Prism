@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Dynamic Tank"
+  prism:places_block: mekanism:dynamic_tank

@@ -24,6 +24,7 @@ public final class Plant {
     private final Map<Pos, SolarGenerator> solars = new HashMap<>();
     private final Set<Pos> cables = new HashSet<>();
     private final Set<Pos> pipes = new HashSet<>();
+    private final Structures structures = new Structures();
     private final Set<Pos> transporters = new HashSet<>();
     private final Map<Pos, Integer> tiers = new HashMap<>();
     private final Map<Pos, Integer> colours = new HashMap<>();
@@ -50,6 +51,10 @@ public final class Plant {
 
     public Set<Pos> pipes() {
         return pipes;
+    }
+
+    public Structures structures() {
+        return structures;
     }
 
     public Set<Pos> transporters() {
@@ -118,6 +123,8 @@ public final class Plant {
             cableNets = Networks.build(cables);
             pipeNets = Networks.build(pipes);
             itemNets = Networks.build(transporters, (a, b) -> colour(a) == colour(b));
+            structures.rebuild(p -> machines.containsKey(p) || solars.containsKey(p) || cables.contains(p)
+                    || pipes.contains(p) || transporters.contains(p));
             topologyChanged = false;
         }
     }
@@ -131,8 +138,8 @@ public final class Plant {
                                 ? machines.get(p).energy() : null,
                 p -> machines.containsKey(p) ? machines.get(p).energy() : null, n -> budget(n, CABLE_LIMIT));
         chemicalMoved = Networks.distributeChemicalByFace(pipeNets,
-                e -> machines.containsKey(e.pos()) ? machines.get(e.pos()).giveTanks(e.face()) : null,
-                e -> machines.containsKey(e.pos()) ? machines.get(e.pos()).takeTanks(e.face()) : null,
+                e -> machines.containsKey(e.pos()) ? machines.get(e.pos()).giveTanks(e.face()) : valveTanks(e.pos()),
+                e -> machines.containsKey(e.pos()) ? machines.get(e.pos()).takeTanks(e.face()) : valveTanks(e.pos()),
                 n -> budget(n, PIPE_LIMIT), rounds);
         itemsMoved = ItemNetworks.distribute(itemNets,
                 e -> machines.containsKey(e.pos()) ? machines.get(e.pos()).itemPort(e.face()) : null,
@@ -142,5 +149,10 @@ public final class Plant {
 
     private long budget(Networks.Network network, long base) {
         return network.conduits().stream().mapToLong(p -> base * TIER_FACTORS[tier(p)]).sum();
+    }
+
+    private List<ChemicalTank> valveTanks(Pos pos) {
+        ChemicalTank tank = structures.valveTank(pos);
+        return tank == null ? null : List.of(tank);
     }
 }

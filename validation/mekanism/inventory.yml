@@ -160,8 +160,8 @@ blocks:  # non-machine blocks and transmitter kinds (tiers count under mechanics
   thermodynamic_conductor: missing
   energy_cube: done
   bin: missing
-  dynamic_tank: missing
-  dynamic_valve: missing
+  dynamic_tank: done
+  dynamic_valve: done
   structural_glass: missing
   induction_casing: missing
   induction_port: missing
@@ -258,7 +258,7 @@ mechanics:  # systems that must work together; each needs a chain test in src/te
   redstone_control: done          # redstone dust cycles ignore / with signal / without signal
   security: missing               # owner and access levels (6)
   radiation: missing              # radiation sources and exposure (6)
-  multiblock_dynamic_tank: missing   # needs the Prism structure service (5)
+  multiblock_dynamic_tank: partial   # plugin-side validation (3..18 cube, valves, chemicals only); no GUI, no fluids
   multiblock_induction_matrix: missing  # needs the Prism structure service (5)
   digital_miner: partial          # scans a radius, mines ores into the output; no custom filters, no silk touch, spills extra stacks
   teleporter_system: partial      # name-tag frequencies, energy by distance, click to travel; no portal frame, no GUI

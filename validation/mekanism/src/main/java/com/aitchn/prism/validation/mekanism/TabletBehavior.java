@@ -60,6 +60,9 @@ public record TabletBehavior(int capacity) implements ItemUseBehavior, ItemLoreB
                 return;
             }
             String conduit = Grid.get().describeConduit(clicked);
+            if (conduit == null) {
+                conduit = Grid.get().describeStructure(clicked);
+            }
             if (conduit != null) {
                 Tablets.say(player, conduit);
                 return;

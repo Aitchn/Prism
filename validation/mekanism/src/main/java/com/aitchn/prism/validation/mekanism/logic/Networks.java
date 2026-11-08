@@ -243,7 +243,8 @@ public final class Networks {
         java.util.IdentityHashMap<ChemicalTank, Integer> acceptors = new java.util.IdentityHashMap<>();
         java.util.IdentityHashMap<ChemicalTank, Long> offered = new java.util.IdentityHashMap<>();
         for (Move move : moves) {
-            if (move.src().type() != null && move.dst().fill(move.src().type(), 1, true) > 0) {
+            if (move.src().type() != null && move.dst().fill(move.src().type(), 1, true) > 0
+                    && balanceLimit(move.src(), move.dst()) > 0) {
                 acceptors.merge(move.src(), 1, Integer::sum);
             }
             offered.putIfAbsent(move.src(), move.src().drain(null, Long.MAX_VALUE, true));
@@ -255,7 +256,7 @@ public final class Networks {
             Chemical type = move.src().type();
             int count = acceptors.getOrDefault(move.src(), 0);
             if (type == null || count == 0 || budget[move.network()] <= 0
-                    || move.dst().fill(type, 1, true) == 0) {
+                    || move.dst().fill(type, 1, true) == 0 || balanceLimit(move.src(), move.dst()) == 0) {
                 continue;
             }
             int index = seen.merge(move.src(), 1, Integer::sum) - 1;
@@ -265,6 +266,7 @@ public final class Networks {
                 continue;
             }
             long possible = Math.min(Math.min(share, budget[move.network()]), move.src().drain(null, share, true));
+            possible = Math.min(possible, balanceLimit(move.src(), move.dst()));
             long accepted = move.dst().fill(type, possible, false);
             move.src().drain(null, accepted, false);
             budget[move.network()] -= accepted;
@@ -281,6 +283,7 @@ public final class Networks {
             // only the part of the source's own offer that found no taker: never what it received this tick
             long left = unsent.getOrDefault(move.src(), 0L);
             long possible = Math.min(Math.min(budget[move.network()], left), move.src().drain(null, left, true));
+            possible = Math.min(possible, balanceLimit(move.src(), move.dst()));
             long accepted = possible <= 0 ? 0 : move.dst().fill(type, possible, false);
             if (accepted > 0) {
                 unsent.merge(move.src(), -accepted, Long::sum);
@@ -290,6 +293,18 @@ public final class Networks {
             }
         }
         return moved;
+    }
+
+    /**
+     * How much may move from {@code src} to {@code dst}. Between two storage tanks only enough to even out their fill
+     * levels (so they never swap their content back and forth); otherwise no limit.
+     */
+    static long balanceLimit(ChemicalTank src, ChemicalTank dst) {
+        if (!src.isBuffer() || !dst.isBuffer()) {
+            return Long.MAX_VALUE;
+        }
+        long surplus = src.amount() * dst.capacity() - dst.amount() * src.capacity();
+        return Math.max(0, surplus / (src.capacity() + dst.capacity()));
     }
 
     /** Convenience for tests: a map-backed lookup. */

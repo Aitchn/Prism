@@ -8,6 +8,7 @@ public final class ChemicalTank {
 
     private final long capacity;
     private final Predicate<Chemical> accepts;
+    private boolean buffer;
     private Chemical type;
     private long amount;
 
@@ -18,6 +19,16 @@ public final class ChemicalTank {
     public ChemicalTank(long capacity, Predicate<Chemical> accepts) {
         this.capacity = capacity;
         this.accepts = accepts;
+    }
+
+    /** Marks a storage tank: between two of these pipes balance the fill levels instead of emptying one into the other. */
+    public ChemicalTank asBuffer() {
+        buffer = true;
+        return this;
+    }
+
+    public boolean isBuffer() {
+        return buffer;
     }
 
     public Chemical type() {

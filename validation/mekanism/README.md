@@ -83,7 +83,11 @@ Prism**: joules, chemicals, machine recipes and the energy tablet are all in thi
    1,000 J per mined block. Positions are looked at on the thread that owns them (Folia safe).
 13. **Teleporter.** Right click travels to the next teleporter with the same frequency; a name tag with a name tunes
    it (empty name = public). The clicked teleporter pays 2,000 J plus 20 J per block (50,000 J for another world).
-14. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
+14. **Dynamic tank.** Build a closed hollow box (3 to 18 blocks a side) of Dynamic Tank blocks; replace some with Dynamic
+   Valves (Dynamic Tank + hopper) and connect pipes to them. The interior stores 16,000 mB per block, chemicals only,
+   and its content is kept when chunks unload or the server restarts. Extra casing touching the box breaks it. The
+   Energy Tablet reads it. Checked inside the plugin because Prism has no structure service yet.
+15. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
    Right click a cable or tube: read the network. The charge is in the item's lore.
 
 Differences from the real mod that are on purpose for now: factories have one input and output slot instead of one per lane, infusion types are items in a second slot (no infusion

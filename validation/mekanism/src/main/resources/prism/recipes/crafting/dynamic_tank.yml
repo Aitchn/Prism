@@ -1,0 +1,10 @@
+type: prism:shaped
+pattern:
+  - "ISI"
+  - "SCS"
+  - "ISI"
+key:
+  I: minecraft:iron_ingot
+  S: mekanism:steel_casing
+  C: minecraft:cauldron
+result: {item: mekanism:dynamic_tank, count: 4}

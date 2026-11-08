@@ -1,0 +1,4 @@
+base: minecraft:paper
+components:
+  prism:display_name: "Dynamic Valve"
+  prism:places_block: mekanism:dynamic_valve
