@@ -1,0 +1,5 @@
+# The item form of ae2:terminal.
+base: minecraft:paper
+components:
+  prism:display_name: "<aqua>Terminal"
+  prism:places_block: ae2:terminal

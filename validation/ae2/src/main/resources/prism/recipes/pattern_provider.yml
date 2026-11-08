@@ -1,0 +1,11 @@
+# pattern_provider
+type: prism:shaped
+pattern:
+  - "ICI"
+  - "LEL"
+key:
+  I: minecraft:iron_ingot
+  C: ae2:cable
+  L: ae2:logic_processor
+  E: ae2:engineering_processor
+result: ae2:pattern_provider

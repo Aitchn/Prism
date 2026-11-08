@@ -1,0 +1,5 @@
+# The item form of ae2:pattern_provider.
+base: minecraft:paper
+components:
+  prism:display_name: "<aqua>Pattern Provider"
+  prism:places_block: ae2:pattern_provider

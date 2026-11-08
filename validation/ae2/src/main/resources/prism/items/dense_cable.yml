@@ -1,0 +1,5 @@
+# The item form of ae2:dense_cable.
+base: minecraft:paper
+components:
+  prism:display_name: "<aqua>Dense Cable"
+  prism:places_block: ae2:dense_cable

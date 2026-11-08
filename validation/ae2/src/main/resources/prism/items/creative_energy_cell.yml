@@ -1,0 +1,5 @@
+# The item form of ae2:creative_energy_cell.
+base: minecraft:paper
+components:
+  prism:display_name: "<aqua>Creative Energy Cell"
+  prism:places_block: ae2:creative_energy_cell
