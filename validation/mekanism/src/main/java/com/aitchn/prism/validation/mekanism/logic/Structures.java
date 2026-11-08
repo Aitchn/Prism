@@ -28,6 +28,8 @@ public final class Structures {
     private final Map<Pos, String> kept = new HashMap<>();
     private final Map<Pos, Formed> byPos = new HashMap<>();
     private List<Formed> formed = List.of();
+    private final Map<Pos, Set<Pos>> foreign = new HashMap<>();
+    private Map<Pos, Cuboid.Result> boxes = Map.of();
 
     public Set<Pos> members() {
         return members;
@@ -75,6 +77,27 @@ public final class Structures {
         rebuild(p -> false);
     }
 
+    /**
+     * Whole boxes of casing, formed or not, by minimum corner. The adapter looks inside them in the world, because
+     * stone or a vanilla block in the middle is not hollow, and reports it with {@link #setInteriorBlocked}.
+     */
+    public Map<Pos, Cuboid.Result> boxes() {
+        return boxes;
+    }
+
+    /** Records which interior positions of the box at {@code anchor} hold a non-air block. True when that changed. */
+    public boolean setInteriorBlocked(Pos anchor, Set<Pos> blocked) {
+        Set<Pos> before = foreign.get(anchor);
+        if (blocked.isEmpty()) {
+            return foreign.remove(anchor) != null;
+        }
+        if (blocked.equals(before)) {
+            return false;
+        }
+        foreign.put(anchor, Set.copyOf(blocked));
+        return true;
+    }
+
     /** As {@link #rebuild()}; {@code occupied} says which other positions hold a known block, which spoils a hollow. */
     public void rebuild(java.util.function.Predicate<Pos> occupied) {
         Map<Pos, String> contents = new HashMap<>(kept);
@@ -84,11 +107,23 @@ public final class Structures {
             }
         }
         List<Formed> next = new java.util.ArrayList<>();
+        Map<Pos, Cuboid.Result> seen = new HashMap<>();
         byPos.clear();
         for (Set<Pos> component : Networks.components(members)) {
             Pos seed = component.iterator().next();
-            Cuboid.Result result = Cuboid.validate(seed, members::contains, p -> !members.contains(p) && !occupied.test(p), MIN, MAX);
+            Cuboid.Result result = Cuboid.validate(seed, members::contains,
+                    p -> !members.contains(p) && !occupied.test(p), MIN, MAX);
             if (!result.valid() || component.size() != shellSize(result)) {
+                continue;
+            }
+            seen.put(result.min(), result);
+            boolean blocked = false;
+            Set<Pos> stuck = foreign.getOrDefault(result.min(), Set.of());
+            for (Pos p : stuck) {
+                blocked |= p.x() > result.min().x() && p.x() < result.max().x() && p.y() > result.min().y()
+                        && p.y() < result.max().y() && p.z() > result.min().z() && p.z() < result.max().z();
+            }
+            if (blocked) {
                 continue;
             }
             ChemicalTank tank = new ChemicalTank((long) result.interiorVolume() * PER_BLOCK).asBuffer();
@@ -107,6 +142,8 @@ public final class Structures {
                 byPos.put(p, f);
             }
         }
+        boxes = Map.copyOf(seen);
+        foreign.keySet().retainAll(seen.keySet());
         kept.clear();
         kept.putAll(contents);
         formed = List.copyOf(next);

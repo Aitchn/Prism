@@ -82,6 +82,23 @@ class StructuresTest {
     }
 
     @Test
+    void a_vanilla_block_reported_inside_the_box_spoils_it_until_it_is_gone() {
+        Plant plant = new Plant();
+        box(plant, 3, 3, 3);
+        assertNotNull(plant.structures().at(ORIGIN));
+        assertTrue(plant.structures().boxes().containsKey(ORIGIN));
+        assertTrue(plant.structures().setInteriorBlocked(ORIGIN, java.util.Set.of(ORIGIN.offset(1, 1, 1))));
+        plant.markDirty();
+        plant.rebuildIfNeeded();
+        assertNull(plant.structures().at(ORIGIN), "stone in the middle");
+        assertTrue(plant.structures().boxes().containsKey(ORIGIN), "still looked at, so it can recover");
+        assertTrue(plant.structures().setInteriorBlocked(ORIGIN, java.util.Set.of()));
+        plant.markDirty();
+        plant.rebuildIfNeeded();
+        assertNotNull(plant.structures().at(ORIGIN), "emptied again");
+    }
+
+    @Test
     void content_survives_the_box_being_opened_and_closed_again() {
         Plant plant = new Plant();
         box(plant, 3, 3, 3);

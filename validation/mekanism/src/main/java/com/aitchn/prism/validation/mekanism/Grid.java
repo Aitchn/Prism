@@ -7,6 +7,7 @@ import com.aitchn.prism.api.block.CustomBlock;
 import com.aitchn.prism.api.recipe.ItemResult;
 import com.aitchn.prism.validation.mekanism.logic.ChemicalPorts;
 import com.aitchn.prism.validation.mekanism.logic.ChemicalTank;
+import com.aitchn.prism.validation.mekanism.logic.Cuboid;
 import com.aitchn.prism.validation.mekanism.logic.EnergyBuffer;
 import com.aitchn.prism.validation.mekanism.logic.Machine;
 import com.aitchn.prism.validation.mekanism.logic.MachineType;
@@ -21,6 +22,7 @@ import com.aitchn.prism.validation.mekanism.logic.Structures;
 import com.aitchn.prism.validation.mekanism.logic.Teleport;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -737,6 +739,45 @@ final class Grid {
     void tickMember(CustomBlock block) {
         Pos pos = pos(block.block());
         underLock(() -> writeContent(block, pos));
+        scanInterior(block, pos);
+    }
+
+    /**
+     * Looks inside the box whose minimum corner is {@code pos}: a vanilla block in the middle (stone, water, a chest)
+     * is not hollow. Only chunks this thread owns and that are loaded are read, so on Folia a box across two regions
+     * is judged by the part its anchor owns; the rest is looked at when their own casings tick.
+     */
+    private void scanInterior(CustomBlock block, Pos pos) {
+        org.bukkit.Location origin = block.block().getLocation();
+        Cuboid.Result box = locked(() -> plant.structures().boxes().get(pos));
+        if (box == null) {
+            return;
+        }
+        Set<Pos> blocked = new HashSet<>();
+        Map<Long, Boolean> readable = new HashMap<>();
+        org.bukkit.World world = origin.getWorld();
+        for (int x = box.min().x() + 1; x < box.max().x(); x++) {
+            for (int z = box.min().z() + 1; z < box.max().z(); z++) {
+                long chunk = ((long) (x >> 4) << 32) ^ (z >> 4 & 0xffffffffL);
+                final int cx = x;
+                final int cz = z;
+                boolean ok = readable.computeIfAbsent(chunk, c -> world.isChunkLoaded(cx >> 4, cz >> 4)
+                        && Prism.scheduler().isOwnedByCurrentThread(new Location(world, cx, origin.getBlockY(), cz)));
+                if (!ok) {
+                    continue;
+                }
+                for (int y = box.min().y() + 1; y < box.max().y(); y++) {
+                    if (!world.getBlockAt(x, y, z).getType().isAir()) {
+                        blocked.add(new Pos(box.min().world(), x, y, z));
+                    }
+                }
+            }
+        }
+        underLock(() -> {
+            if (plant.structures().setInteriorBlocked(pos, blocked)) {
+                plant.markDirty();
+            }
+        });
     }
 
     /** Lock held. Writes the content to the block's data when it is the structure's anchor and the text changed. */

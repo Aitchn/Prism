@@ -85,7 +85,7 @@ Prism**: joules, chemicals, machine recipes and the energy tablet are all in thi
    it (empty name = public). The clicked teleporter pays 2,000 J plus 20 J per block (50,000 J for another world).
 14. **Dynamic tank.** Build a closed hollow box (3 to 18 blocks a side) of Dynamic Tank blocks; replace some with Dynamic
    Valves (Dynamic Tank + hopper) and connect pipes to them. The interior stores 16,000 mB per block, chemicals only,
-   and its content is kept when chunks unload or the server restarts. Extra casing touching the box breaks it. The
+   and its content is kept when chunks unload or the server restarts. Extra casing touching the box breaks it, and so does a non-air block inside (looked at every 5 seconds by the box's corner casing, only in chunks its region owns; Prism's structure service matches fixed patterns, not boxes of any size). The
    Energy Tablet reads it. Checked inside the plugin because Prism has no structure service yet.
 15. **Energy Tablet.** Right click a machine or generator: push 10,000 J into it. Sneak + right click: draw 10,000 J out.
    Right click a cable or tube: read the network. The charge is in the item's lore.
