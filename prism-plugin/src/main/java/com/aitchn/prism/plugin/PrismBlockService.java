@@ -560,6 +560,7 @@ final class PrismBlockService implements BlockService, Listener {
             // Neighbours in chunks that were unloaded when the mask was saved can be seen now.
             refreshConnections(custom.block());
             structures.load(custom);
+            lights.update(custom); // the light may have changed or gone while the chunk was unloaded
         }
         refreshBorders(chunk);
         structures.chunkLoaded(chunk);
