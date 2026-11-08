@@ -16,6 +16,10 @@
 方塊透過 `BlockCapability` 與 `BlockCapabilityProvider` 對鄰居提供服務；Prism 只提供查找機制與 `PrismCapabilities.INVENTORY`。
 `prism:rotation` 讓方塊面向玩家放置，`prism:mining` 設定生存模式挖掘所需時間。
 
+**礦石。** `prism:ore` 讓方塊以礦脈形式出現在新生成的區塊：`dimension`、`replace`（可取代的原版方塊）、`min_y`、`max_y`、
+`veins_per_chunk`、`rarity` 與 `size`，也可以寫成多組設定的清單。礦脈不會超出所在區塊。安裝模組之前就存在的區塊不會長出礦石。
+範例是 `examplemod:ruby_ore`；它使用音符盒狀態呈現，所以基岩版玩家也看得到。
+
 **取得物品。** `/prism give <玩家> <物品> [數量]` 與 `/prism items`（物品瀏覽選單）適用所有模組，權限 `prism.command.give`（預設 OP）。
 
 **模型。** 方塊可用 Blockbench 動畫模型：`prism:model_ref: <ns>:<name>` 加上 jar 內的 `prism/models/<name>.bbmodel`，
