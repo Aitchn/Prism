@@ -21,7 +21,8 @@ import org.bukkit.event.server.ServerLoadEvent;
  * {@code -Dprism.selftest.cuboid=<controller>,<wall>}; the smoke test passes
  * {@code examplemod:ruby_tank,examplemod:ruby_block}. Builds a hollow 4x3x3 box of {@code wall} with the controller in
  * the middle of its roof, which must switch the controller to its {@code formed} variant (the example's behavior).
- * Then fills and clears the inside, and finally removes the controller.
+ * A second controller sits in the west wall, so one box has two controllers: breaking a wall must end the structure for both,
+ * and putting it back forms both again. Then fills and clears the inside, and finally removes the controllers.
  */
 final class CuboidSelfTest implements Listener {
 
@@ -56,13 +57,14 @@ final class CuboidSelfTest implements Listener {
     private void run(Block corner) {
         Block top = corner.getRelative(1, 2, 1);
         Block inside = corner.getRelative(1, 1, 1); // right under the controller: no smaller box can form
+        Block second = corner.getRelative(0, 1, 1); // a second controller on the west wall: same box, two controllers
         List<Block> shell = new ArrayList<>();
         for (int x = 0; x <= 3; x++) {
             for (int y = 0; y <= 2; y++) {
                 for (int z = 0; z <= 2; z++) {
                     Block block = corner.getRelative(x, y, z);
                     boolean edge = x == 0 || x == 3 || y == 0 || y == 2 || z == 0 || z == 2;
-                    if (edge && !block.equals(top)) {
+                    if (edge && !block.equals(top) && !block.equals(second)) {
                         shell.add(block);
                     }
                 }
@@ -70,6 +72,7 @@ final class CuboidSelfTest implements Listener {
         }
         try {
             boolean placed = blocks.place(controller, top.getLocation());
+            placed &= blocks.place(controller, second.getLocation());
             for (Block block : shell.subList(0, shell.size() - 1)) {
                 placed &= blocks.place(wall, block.getLocation());
             }
@@ -80,18 +83,27 @@ final class CuboidSelfTest implements Listener {
             boolean shape = formed != null && formed.facing() == BlockFace.DOWN && formed.min().equals(corner)
                     && formed.max().equals(corner.getRelative(3, 2, 2));
             boolean formedLook = variant(top).equals("formed");
-            boolean memberLink = blocks.controllerOf(shell.getFirst()).map(top::equals).orElse(false);
+            boolean memberLink = blocks.controllerOf(shell.getFirst()).isPresent();
+            boolean both = blocks.structure(second).isPresent() && variant(second).equals("formed");
+            // A wall comes out: the box is gone for both controllers, not only for the one that formed last.
+            Block wallBlock = shell.getFirst();
+            blocks.remove(wallBlock, false);
+            boolean bothBroken = blocks.structure(top).isEmpty() && blocks.structure(second).isEmpty();
+            blocks.place(wall, wallBlock.getLocation());
+            boolean bothBack = blocks.structure(top).isPresent() && blocks.structure(second).isPresent();
             blocks.place(wall, inside.getLocation());
             boolean filled = blocks.structure(top).isEmpty() && variant(top).equals("idle");
             blocks.remove(inside, false);
             boolean reformed = blocks.structure(top).isPresent() && variant(top).equals("formed");
             blocks.remove(top, false);
+            blocks.remove(second, false);
             boolean released = blocks.controllerOf(shell.getFirst()).isEmpty();
             shell.forEach(block -> blocks.remove(block, false));
-            boolean ok = placed && !early && members == shell.size() && shape && formedLook && memberLink && filled
+            boolean ok = placed && !early && members == shell.size() + 1 && both && bothBroken && bothBack && shape && formedLook && memberLink && filled
                     && reformed && released;
             log.info((ok ? "PRISM_CUBOID_SELFTEST_OK " : "PRISM_CUBOID_SELFTEST_FAIL ") + controller + " placed="
-                    + placed + " earlyForm=" + early + " members=" + members + "/" + shell.size() + " shape=" + shape
+                    + placed + " earlyForm=" + early + " members=" + members + "/" + (shell.size() + 1) + " both=" + both
+                    + " bothBroken=" + bothBroken + " bothBack=" + bothBack + " shape=" + shape
                     + " formedLook=" + formedLook + " memberLink=" + memberLink + " filled=" + filled
                     + " reformed=" + reformed + " released=" + released);
         } catch (RuntimeException e) {
