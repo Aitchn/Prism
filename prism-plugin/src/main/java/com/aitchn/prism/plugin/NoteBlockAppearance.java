@@ -64,6 +64,13 @@ final class NoteBlockAppearance implements BlockAppearance {
         return block.getType() == Material.NOTE_BLOCK;
     }
 
+    /** The state already allocated to this look, or null; never allocates (for looks shown to Bedrock only). */
+    NoteBlock existingState(BlockDefinition definition, BlockFace facing, String variant) {
+        String id = new Appearances.Look(definition.key(), variant, facing.name()).id();
+        OptionalInt index = allocator.indexOf(id);
+        return index.isEmpty() ? null : data(index.getAsInt());
+    }
+
     private NoteBlock state(BlockDefinition definition, BlockFace facing, String variant) {
         String id = new Appearances.Look(definition.key(), variant, facing.name()).id();
         OptionalInt index = allocator.allocate(id);
@@ -71,7 +78,11 @@ final class NoteBlockAppearance implements BlockAppearance {
             log.severe("PRISM_NATIVE_OUT_OF_STATES cannot draw " + id + "; all 799 note block states are taken");
             return null;
         }
-        NoteBlockStates.State state = NoteBlockStates.state(index.getAsInt());
+        return data(index.getAsInt());
+    }
+
+    private static NoteBlock data(int index) {
+        NoteBlockStates.State state = NoteBlockStates.state(index);
         NoteBlock data = (NoteBlock) Material.NOTE_BLOCK.createBlockData();
         data.setInstrument(INSTRUMENTS[NoteBlockStates.INSTRUMENTS.indexOf(state.instrument())]);
         data.setNote(new Note(state.note()));

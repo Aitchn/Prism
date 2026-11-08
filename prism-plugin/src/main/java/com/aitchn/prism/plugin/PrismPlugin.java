@@ -81,7 +81,11 @@ public final class PrismPlugin extends JavaPlugin {
             blocks.contentChanged();
         });
         ChestMenus menus = new ChestMenus(items, scheduler, getLogger());
-        Prism.install(lifecycle, items, blocks, new Profiles(BedrockDetector.create(getLogger())), menus, data,
+        BedrockDetector bedrockPlayers = BedrockDetector.create(getLogger());
+        BedrockModelLooks modelLooks = new BedrockModelLooks(blocks, noteBlocks, bedrockPlayers, scheduler);
+        blocks.onLookChanged(modelLooks::changed);
+        getServer().getPluginManager().registerEvents(modelLooks, this);
+        Prism.install(lifecycle, items, blocks, new Profiles(bedrockPlayers), menus, data,
                 new SchedulerAdapter(scheduler), recipes);
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(menus.containers(), this);
@@ -103,7 +107,8 @@ public final class PrismPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(modelSync, this);
         String modelSelfTest = System.getProperty("prism.selftest.model");
         if (modelSelfTest != null) {
-            modelSync.selfTest(blocks, com.aitchn.prism.api.PrismKey.parse(modelSelfTest));
+            modelSync.selfTest(blocks, com.aitchn.prism.api.PrismKey.parse(modelSelfTest),
+                    block -> blocks.get(block).map(modelLooks::lookOf).isPresent());
         }
         String platformSelfTest = System.getProperty("prism.selftest.platform");
         if (platformSelfTest != null) {

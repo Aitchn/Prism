@@ -225,7 +225,8 @@ final class PackManager implements Listener {
         for (BlockDefinition block : blocks) {
             // Blocks that no longer get note block states for new placements (blocks.backend: display) keep the
             // looks they already own, so blocks placed earlier still draw correctly.
-            boolean allocate = PrismBlockService.usesNoteBlocks(backend, block);
+            boolean allocate = PrismBlockService.usesNoteBlocks(backend, block)
+                    || PrismBlockService.bedrockLookForModel(backend, block);
             for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
                 (allocate ? allocator.allocate(look.id()) : allocator.indexOf(look.id()))
                         .ifPresent(index -> looks.put(look.id(), index));
@@ -239,6 +240,9 @@ final class PackManager implements Listener {
         java.util.Map<String, Integer> looks = nativeLooks(blocks);
         java.util.Map<Integer, com.aitchn.prism.pack.NativeBlockstates.StateModel> models = new java.util.LinkedHashMap<>();
         for (BlockDefinition block : blocks) {
+            if (ModelAnchors.modelOf(block).isPresent()) {
+                continue; // a Bedrock-only look: Java players never get this state, they see the model
+            }
             for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
                 Integer index = looks.get(look.id());
                 if (index != null) {

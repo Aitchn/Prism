@@ -69,6 +69,8 @@ final class PrismBlockService implements BlockService, Listener {
     private final PlatformScheduler scheduler;
     private final Logger log;
     private final OreGenerator ores;
+    /** Told after a block is placed or changes variant, so per-player looks can follow; set once at startup. */
+    private volatile java.util.function.Consumer<Block> lookChanged = block -> {};
 
     /**
      * @param backend {@code auto} (note block states for every block that has no BetterModel model, so Bedrock sees
@@ -122,6 +124,7 @@ final class PrismBlockService implements BlockService, Listener {
                 d -> BlockEventContext.of(handle, placer).placedFrom(from), (b, c) -> b.onPlace(c));
         startTicking(handle);
         notifyNeighbors(block);
+        lookChanged.accept(block);
         return true;
     }
 
@@ -215,8 +218,21 @@ final class PrismBlockService implements BlockService, Listener {
         if (!custom.get().variant().equals(variant)) {
             appearanceOf(block).update(block, custom.get().definition(), custom.get().facing(), variant);
             index.setVariant(block, variant);
+            lookChanged.accept(block);
         }
         return true;
+    }
+
+    void onLookChanged(java.util.function.Consumer<Block> listener) {
+        this.lookChanged = listener;
+    }
+
+    /**
+     * Whether blocks of {@code definition} drawn by a BetterModel model also get a note block look for Bedrock players
+     * (sent to them per player; Java players keep the model).
+     */
+    static boolean bedrockLookForModel(String backend, BlockDefinition definition) {
+        return !"display".equals(backend) && ModelAnchors.modelOf(definition).isPresent();
     }
 
     /** The appearance new blocks of {@code definition} get. */
