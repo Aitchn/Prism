@@ -236,9 +236,17 @@ final class PackManager implements Listener {
             boolean allocate = passable ? PrismBlockService.usesTripwire(backend, block)
                     : PrismBlockService.usesNoteBlocks(backend, block)
                             || PrismBlockService.bedrockOnlyLooks(backend, block);
+            // A block that switched carriers (prism:passable added or removed) keeps the states its earlier placements
+            // use, under a second key, so those placements still draw.
+            com.aitchn.prism.core.block.StateAllocator other = tripwires == null ? null
+                    : passable ? allocator : tripwires;
             for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
                 (allocate ? states.allocate(look.id()) : states.indexOf(look.id()))
                         .ifPresent(index -> looks.put(look.id(), index));
+                if (other != null) {
+                    other.indexOf(look.id()).ifPresent(index -> looks.put(
+                            look.id() + com.aitchn.prism.pack.BedrockPackBuilder.OTHER_CARRIER, index));
+                }
             }
         }
         return looks;
@@ -254,11 +262,14 @@ final class PackManager implements Listener {
                 continue; // Bedrock-only looks: Java players never get these states, they see a display entity
             }
             for (com.aitchn.prism.core.block.Appearances.Look look : com.aitchn.prism.core.block.Appearances.looks(block)) {
-                Integer index = looks.get(look.id());
-                if (index != null) {
-                    int[] rotation = com.aitchn.prism.core.block.Appearances.rotation(look.facing());
-                    models.put(index, new com.aitchn.prism.pack.NativeBlockstates.StateModel(
-                            com.aitchn.prism.core.block.Appearances.model(block, look.variant()), rotation[0], rotation[1]));
+                for (String key : List.of(look.id(), look.id() + com.aitchn.prism.pack.BedrockPackBuilder.OTHER_CARRIER)) {
+                    Integer index = looks.get(key);
+                    if (index != null) {
+                        int[] rotation = com.aitchn.prism.core.block.Appearances.rotation(look.facing());
+                        models.put(index, new com.aitchn.prism.pack.NativeBlockstates.StateModel(
+                                com.aitchn.prism.core.block.Appearances.model(block, look.variant()), rotation[0],
+                                rotation[1]));
+                    }
                 }
             }
         }

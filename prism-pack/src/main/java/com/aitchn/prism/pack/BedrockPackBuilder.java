@@ -68,6 +68,12 @@ public final class BedrockPackBuilder {
             int flipbooks,
             int geometries) {}
 
+    /**
+     * Suffix of a {@link Input#nativeStates} key for the state a look owns on its other carrier: a block that gained or
+     * lost {@code prism:passable} keeps drawing its earlier placements.
+     */
+    public static final String OTHER_CARRIER = "|other";
+
     private static final UUID HEADER = UUID.nameUUIDFromBytes("prism:bedrock:header".getBytes(StandardCharsets.UTF_8));
     private static final UUID MODULE = UUID.nameUUIDFromBytes("prism:bedrock:module".getBytes(StandardCharsets.UTF_8));
 
@@ -157,53 +163,55 @@ public final class BedrockPackBuilder {
                 continue;
             }
             for (Appearances.Look look : Appearances.looks(block)) {
-                Integer state = input.nativeStates().get(look.id());
-                if (state == null) {
-                    continue;
+                for (String key : List.of(look.id(), look.id() + OTHER_CARRIER)) {
+                    Integer state = input.nativeStates().get(key);
+                    if (state == null) {
+                        continue;
+                    }
+                    PrismKey model = Appearances.model(block, look.variant());
+                    Map<String, String> faces = blockFaces(sources, model);
+                    if (faces.isEmpty()) {
+                        warnings.add("bedrock block " + look.id() + ": no texture for model " + model
+                                + "; Bedrock players see a plain note block");
+                        continue;
+                    }
+                    boolean tripwire = TripwireStates.isTripwire(state);
+                    Map<String, Object> materials = new LinkedHashMap<>();
+                    faces.forEach((face, texturePath) -> materials.put(face,
+                            material(terrainTexture(sources, files, terrainData, flipbooks, texturePath))));
+                    Map<String, Object> override = new LinkedHashMap<>();
+                    override.put("display_name", look.block().toString());
+                    override.put("material_instances", materials);
+                    if (tripwire) {
+                        // Passable: no collision, and the shape of the Java model (its boxes, or a cross like a flower).
+                        String name = "prismb_" + look.id().replace(':', '_').replace('#', '_').replace('@', '_')
+                                .replace('/', '_');
+                        String geometry = "geometry.prism." + name;
+                        List<ConnectedShapes.Box> boxes = modelBoxes(sources, model);
+                        files.put("models/blocks/prism/" + name + ".geo.json", JsonWriter.write(boxes == null
+                                ? ConnectedShapes.bedrockCross(geometry)
+                                : ConnectedShapes.bedrockGeometry(geometry, boxes)).getBytes(StandardCharsets.UTF_8));
+                        geometries++;
+                        override.put("geometry", geometry);
+                        Map<String, Object> noBox = new LinkedHashMap<>();
+                        noBox.put("origin", List.of(0, 0, 0));
+                        noBox.put("size", List.of(0, 0, 0));
+                        override.put("collision_box", noBox);
+                    }
+                    int[] rotation = Appearances.rotation(look.facing());
+                    if (rotation[0] != 0 || rotation[1] != 0) {
+                        // Bedrock turns counterclockwise for positive angles, Java clockwise (to verify on a client).
+                        Map<String, Object> transformation = new LinkedHashMap<>();
+                        transformation.put("rotation", List.of((360 - rotation[0]) % 360, (360 - rotation[1]) % 360, 0));
+                        override.put("transformation", transformation);
+                    }
+                    if (tripwire) {
+                        tripwireOverrides.put(TripwireStates.state(state).variant(), override);
+                    } else {
+                        stateOverrides.put(NoteBlockStates.state(state).variant(), override);
+                    }
+                    looksDone.add(look.id());
                 }
-                PrismKey model = Appearances.model(block, look.variant());
-                Map<String, String> faces = blockFaces(sources, model);
-                if (faces.isEmpty()) {
-                    warnings.add("bedrock block " + look.id() + ": no texture for model " + model
-                            + "; Bedrock players see a plain note block");
-                    continue;
-                }
-                boolean tripwire = TripwireStates.isTripwire(state);
-                Map<String, Object> materials = new LinkedHashMap<>();
-                faces.forEach((face, texturePath) -> materials.put(face,
-                        material(terrainTexture(sources, files, terrainData, flipbooks, texturePath))));
-                Map<String, Object> override = new LinkedHashMap<>();
-                override.put("display_name", look.block().toString());
-                override.put("material_instances", materials);
-                if (tripwire) {
-                    // Passable: no collision, and the shape of the Java model (its boxes, or a cross like a flower).
-                    String name = "prismb_" + look.id().replace(':', '_').replace('#', '_').replace('@', '_')
-                            .replace('/', '_');
-                    String geometry = "geometry.prism." + name;
-                    List<ConnectedShapes.Box> boxes = modelBoxes(sources, model);
-                    files.put("models/blocks/prism/" + name + ".geo.json", JsonWriter.write(boxes == null
-                            ? ConnectedShapes.bedrockCross(geometry)
-                            : ConnectedShapes.bedrockGeometry(geometry, boxes)).getBytes(StandardCharsets.UTF_8));
-                    geometries++;
-                    override.put("geometry", geometry);
-                    Map<String, Object> noBox = new LinkedHashMap<>();
-                    noBox.put("origin", List.of(0, 0, 0));
-                    noBox.put("size", List.of(0, 0, 0));
-                    override.put("collision_box", noBox);
-                }
-                int[] rotation = Appearances.rotation(look.facing());
-                if (rotation[0] != 0 || rotation[1] != 0) {
-                    // Bedrock turns counterclockwise for positive angles, Java clockwise (to verify on a client).
-                    Map<String, Object> transformation = new LinkedHashMap<>();
-                    transformation.put("rotation", List.of((360 - rotation[0]) % 360, (360 - rotation[1]) % 360, 0));
-                    override.put("transformation", transformation);
-                }
-                if (tripwire) {
-                    tripwireOverrides.put(TripwireStates.state(state).variant(), override);
-                } else {
-                    stateOverrides.put(NoteBlockStates.state(state).variant(), override);
-                }
-                looksDone.add(look.id());
             }
         }
         if (!terrainData.isEmpty()) {
@@ -452,17 +460,27 @@ public final class BedrockPackBuilder {
     }
 
     /**
-     * The boxes of a mod's Java block model ({@code elements} from and to, rotations ignored), or null when the mod
-     * ships no model, or one without elements whose parent is a cross, so the block is drawn as a cross.
+     * The boxes of a mod's Java block model ({@code elements} from and to, rotations ignored, inherited through the mods'
+     * own parent models), or null when the mod ships no model or the chain reaches a cross, so the block is a cross.
      */
     static List<ConnectedShapes.Box> modelBoxes(Map<String, byte[]> sources, PrismKey model) {
-        byte[] json = sources.get("assets/" + model.namespace() + "/models/" + model.value() + ".json");
-        if (json == null) {
-            return null;
-        }
-        try {
-            Object parsed = YamlFiles.parse(model.toString(), new String(json, StandardCharsets.UTF_8));
-            if (!(parsed instanceof Map<?, ?> root)) {
+        PrismKey current = model;
+        boolean shipped = false;
+        // Follow the parent chain through the mods' own models (a vanilla parent is not in the sources).
+        for (int depth = 0; depth < 8; depth++) {
+            byte[] json = sources.get("assets/" + current.namespace() + "/models/" + current.value() + ".json");
+            if (json == null) {
+                break;
+            }
+            shipped = true;
+            Map<?, ?> root;
+            try {
+                Object parsed = YamlFiles.parse(current.toString(), new String(json, StandardCharsets.UTF_8));
+                if (!(parsed instanceof Map<?, ?> map)) {
+                    return null;
+                }
+                root = map;
+            } catch (RuntimeException | com.aitchn.prism.api.content.ContentException e) {
                 return null;
             }
             List<ConnectedShapes.Box> boxes = new ArrayList<>();
@@ -475,15 +493,24 @@ public final class BedrockPackBuilder {
                     }
                 }
             }
-            if (boxes.isEmpty()) {
-                // No elements: a cross parent stays a cross, anything else is drawn as a full block.
-                return String.valueOf(root.get("parent")).contains("cross") ? null
-                        : List.of(new ConnectedShapes.Box(0, 0, 0, 16, 16, 16));
+            if (!boxes.isEmpty()) {
+                return boxes;
             }
-            return boxes;
-        } catch (RuntimeException | com.aitchn.prism.api.content.ContentException e) {
-            return null;
+            String parent = root.get("parent") == null ? null : String.valueOf(root.get("parent"));
+            if (parent == null) {
+                break;
+            }
+            if (parent.contains("cross")) {
+                return null;
+            }
+            try {
+                current = parent.contains(":") ? PrismKey.parse(parent) : new PrismKey("minecraft", parent);
+            } catch (IllegalArgumentException e) {
+                break;
+            }
         }
+        // No model shipped: Prism generates a cross. A model without elements or a cross parent: a full block.
+        return shipped ? List.of(new ConnectedShapes.Box(0, 0, 0, 16, 16, 16)) : null;
     }
 
     private static double number(Object value) {
