@@ -48,6 +48,14 @@ machine ticking meanwhile leaves that slot alone.
 **Letting a click through.** An interact behavior that calls `context.pass()` does not use the click, so the held item
 is used or placed against the block as with a vanilla block. The counter passes clicks made with a block in hand.
 
+**Typing text.** `Prism.menus().prompt(player, title, initial, text -> ..., onCancel)` asks for a line of text in an
+anvil. Bedrock players get the anvil's rename box through Geyser. No item moves. The counter's label button uses it.
+
+**Moving items.** `PrismCapabilities.ITEM_HANDLER` gives an `ItemHandler`: `insert(stack, simulate)`,
+`extract(filter, amount, simulate)` and `contents()`. It has no slots, so pipes and storage buses work with any block.
+Prism answers it for vanilla containers (furnaces follow hopper side rules) and for custom blocks that offer
+`PrismCapabilities.INVENTORY`. A block can also answer it directly, for example a storage network.
+
 **Item data and lore.** `Prism.items().editData(stack, data -> ...)` writes the stack's own persistent data and
 re-renders its lore. `prism:lore` holds static lines, and an `ItemLoreBehavior` adds lines computed from the stack.
 Both editions show the lore. `examplemod:ruby` counts its uses this way (`UseCounterBehavior`).

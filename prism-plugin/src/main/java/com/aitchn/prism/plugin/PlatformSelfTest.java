@@ -88,6 +88,17 @@ final class PlatformSelfTest implements Listener {
             Block chest = block.getRelative(BlockFace.NORTH);
             chest.setType(Material.CHEST, false);
             boolean vanillaCapability = blocks.capability(chest, BlockFace.SOUTH, PrismCapabilities.INVENTORY).isPresent();
+            // Slotless item transfer into and out of the chest: simulate changes nothing, then a real move.
+            boolean itemHandler = blocks.capability(chest, BlockFace.SOUTH, PrismCapabilities.ITEM_HANDLER)
+                    .map(handler -> {
+                        ItemStack diamonds = new ItemStack(Material.DIAMOND, 10);
+                        boolean simulated = handler.insert(diamonds, true).isEmpty() && handler.contents().isEmpty();
+                        boolean inserted = handler.insert(diamonds, false).isEmpty() && diamonds.getAmount() == 10;
+                        ItemStack taken = handler.extract(s -> s.getType() == Material.DIAMOND, 4, false);
+                        int left = handler.contents().stream().mapToInt(ItemStack::getAmount).sum();
+                        boolean none = handler.extract(s -> s.getType() == Material.EMERALD, 1, false).isEmpty();
+                        return simulated && inserted && taken.getAmount() == 4 && left == 6 && none;
+                    }).orElse(false);
 
             Block side = block.getRelative(BlockFace.WEST);
             boolean neighborPlaced = blocks.place(neighbor, side.getLocation());
@@ -96,10 +107,10 @@ final class PlatformSelfTest implements Listener {
 
             BlockCapability<IntSupplier> count = BlockCapability.of(new PrismKey("examplemod", "count"), IntSupplier.class);
             String early = "placed=" + placed + " facing=" + facing + " placeBehavior=" + placeRan + " variant=" + variant
-                    + " vanillaCapability=" + vanillaCapability + " neighborPlaced=" + neighborPlaced
+                    + " vanillaCapability=" + vanillaCapability + " itemHandler=" + itemHandler + " neighborPlaced=" + neighborPlaced
                     + " neighbors=" + neighbors + " listed=" + listed;
             scheduler.runAtLater(block.getLocation(), () -> finish(block, side, chest, count, early, placed && facing
-                    && placeRan && variant && vanillaCapability && neighborPlaced && neighbors >= 1 && listed), 50);
+                    && placeRan && variant && vanillaCapability && itemHandler && neighborPlaced && neighbors >= 1 && listed), 50);
         } catch (RuntimeException e) {
             log.severe("PRISM_PLATFORM_SELFTEST_FAIL " + e);
         }

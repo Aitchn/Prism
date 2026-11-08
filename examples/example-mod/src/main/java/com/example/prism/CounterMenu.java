@@ -25,10 +25,12 @@ import org.jetbrains.annotations.NotNull;
 final class CounterMenu implements ContainerMenu {
 
     static final NamespacedKey STORED = NamespacedKey.fromString("examplemod:stored");
+    static final NamespacedKey LABEL = NamespacedKey.fromString("examplemod:label");
 
     private static final int COUNT_SLOT = 11;
     private static final int SWITCH_SLOT = 13;
     private static final int STORE_SLOT = 15;
+    private static final int LABEL_SLOT = 22;
 
     /** One viewer per block: two players editing the same stored slot could duplicate the item. */
     private static final Map<Location, CounterMenu> OPEN = new ConcurrentHashMap<>();
@@ -37,11 +39,13 @@ final class CounterMenu implements ContainerMenu {
     private final ItemStack stored;
     private final AtomicInteger count;
     private volatile String variant;
+    private final String label;
     /** Set when the block is removed while open: the item in the slot then goes to the viewer on close. */
     private volatile boolean removed;
 
-    private CounterMenu(Location at, ItemStack stored, int count, String variant) {
+    private CounterMenu(Location at, ItemStack stored, int count, String variant, String label) {
         this.at = at;
+        this.label = label;
         this.stored = stored;
         this.count = new AtomicInteger(count);
         this.variant = variant;
@@ -52,7 +56,8 @@ final class CounterMenu implements ContainerMenu {
         Location at = block.block().getLocation();
         byte[] bytes = block.data().get(STORED, PersistentDataType.BYTE_ARRAY);
         CounterMenu menu = new CounterMenu(at, bytes == null ? null : ItemStack.deserializeBytes(bytes),
-                block.data().getOrDefault(CounterBehavior.TICKS, PersistentDataType.INTEGER, 0), block.variant());
+                block.data().getOrDefault(CounterBehavior.TICKS, PersistentDataType.INTEGER, 0), block.variant(),
+                block.data().getOrDefault(LABEL, PersistentDataType.STRING, ""));
         return OPEN.putIfAbsent(at, menu) == null ? menu : null;
     }
 
@@ -89,10 +94,25 @@ final class CounterMenu implements ContainerMenu {
         drawCount(view);
         drawSwitch(view);
         view.setItem(STORE_SLOT, stored);
+        view.setIcon(LABEL_SLOT, PrismKey.parse("minecraft:name_tag"),
+                label.isEmpty() ? "<gray>No label"
+                        : "<yellow>" + net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().escapeTags(label), List.of("<gray>Click to type a label"));
     }
 
     @Override
     public void onButton(@NotNull MenuView view, int slot, @NotNull ClickKind click) {
+        if (slot == LABEL_SLOT) {
+            // Text input: an anvil prompt (Bedrock players get the anvil's rename box through Geyser).
+            Prism.menus().prompt(view.player(), "<dark_red>Counter label", label, text ->
+                    Prism.scheduler().runAt(at, () -> Prism.blocks().get(at.getBlock()).ifPresent(block -> {
+                        if (text.isEmpty()) {
+                            block.data().remove(LABEL);
+                        } else {
+                            block.data().set(LABEL, PersistentDataType.STRING, text);
+                        }
+                    })), null);
+            return;
+        }
         if (slot != SWITCH_SLOT) {
             return;
         }

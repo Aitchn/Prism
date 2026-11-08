@@ -89,6 +89,7 @@ public final class PrismPlugin extends JavaPlugin {
                 new SchedulerAdapter(scheduler), recipes);
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(menus.containers(), this);
+        getServer().getPluginManager().registerEvents(menus.prompts(), this);
         getServer().getPluginManager().registerEvents(vanillaRecipes, this);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
