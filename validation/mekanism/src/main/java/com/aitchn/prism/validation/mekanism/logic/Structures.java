@@ -72,6 +72,11 @@ public final class Structures {
 
     /** Finds the structures again. Content of structures that stopped being whole is kept by their anchor. */
     public void rebuild() {
+        rebuild(p -> false);
+    }
+
+    /** As {@link #rebuild()}; {@code occupied} says which other positions hold a known block, which spoils a hollow. */
+    public void rebuild(java.util.function.Predicate<Pos> occupied) {
         Map<Pos, String> contents = new HashMap<>(kept);
         for (Formed f : formed) {
             if (f.tank().type() != null) {
@@ -82,7 +87,7 @@ public final class Structures {
         byPos.clear();
         for (Set<Pos> component : Networks.components(members)) {
             Pos seed = component.iterator().next();
-            Cuboid.Result result = Cuboid.validate(seed, members::contains, p -> !members.contains(p), MIN, MAX);
+            Cuboid.Result result = Cuboid.validate(seed, members::contains, p -> !members.contains(p) && !occupied.test(p), MIN, MAX);
             if (!result.valid() || component.size() != shellSize(result)) {
                 continue;
             }

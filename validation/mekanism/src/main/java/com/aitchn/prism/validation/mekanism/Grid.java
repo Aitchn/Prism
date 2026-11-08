@@ -711,6 +711,7 @@ final class Grid {
             }
             if (text != null) {
                 plant.structures().restore(pos, text);
+                saved.put(pos, text); // so that emptying the tank later overwrites the loaded text
             }
             plant.markDirty();
         });

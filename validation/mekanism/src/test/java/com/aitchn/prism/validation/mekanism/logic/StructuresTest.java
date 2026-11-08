@@ -72,6 +72,16 @@ class StructuresTest {
     }
 
     @Test
+    void a_machine_or_cable_inside_the_box_spoils_it() {
+        Plant plant = new Plant();
+        box(plant, 3, 3, 3);
+        plant.cables().add(ORIGIN.offset(1, 1, 1));
+        plant.markDirty();
+        plant.rebuildIfNeeded();
+        assertNull(plant.structures().at(ORIGIN), "a known block in the middle is not empty space");
+    }
+
+    @Test
     void content_survives_the_box_being_opened_and_closed_again() {
         Plant plant = new Plant();
         box(plant, 3, 3, 3);
