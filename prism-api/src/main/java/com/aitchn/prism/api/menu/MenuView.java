@@ -30,6 +30,15 @@ public interface MenuView {
     void setIcon(int slot, @NotNull PrismKey icon, @NotNull String name, @NotNull List<String> lore);
 
     /**
+     * Shows a gauge item ({@code prism:gauge}) at the step nearest {@code fraction} (0 empty, 1 full) in {@code slot},
+     * with a MiniMessage name and lore: a fill bar for energy or a tank, an arrow for progress. Both editions see the
+     * stepped icon. Call it again from {@link ContainerMenu#onRefresh} to move it. A key that is not a gauge shows as
+     * {@link #setIcon} would.
+     */
+    void setGauge(int slot, @NotNull PrismKey gauge, double fraction, @NotNull String name,
+            @NotNull List<String> lore);
+
+    /**
      * Whether the player changed {@code slot} and {@link ContainerMenu#onSlotChanged} has not reported it yet. While
      * true, the slot's content may still be moving; do not copy it into your model or overwrite it.
      */

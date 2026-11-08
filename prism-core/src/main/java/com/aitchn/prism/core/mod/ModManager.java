@@ -70,7 +70,8 @@ public final class ModManager {
                 Map.entry(PrismComponents.AMBIENT_SOUND.key(), PrismComponents.AMBIENT_SOUND),
                 Map.entry(PrismComponents.CONNECTIONS.key(), PrismComponents.CONNECTIONS),
                 Map.entry(PrismComponents.PASSABLE.key(), PrismComponents.PASSABLE),
-                Map.entry(PrismComponents.STRUCTURE.key(), PrismComponents.STRUCTURE)));
+                Map.entry(PrismComponents.STRUCTURE.key(), PrismComponents.STRUCTURE),
+                Map.entry(PrismComponents.GAUGE.key(), PrismComponents.GAUGE)));
         Map<PrismKey, RecipeType<?>> builtinRecipes = new LinkedHashMap<>();
         PrismRecipes.ALL.forEach(type -> builtinRecipes.put(type.key(), type));
         recipeTypes.publish(BUILTIN_OWNER, builtinRecipes);

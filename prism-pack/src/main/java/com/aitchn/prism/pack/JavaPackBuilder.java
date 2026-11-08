@@ -102,9 +102,25 @@ public final class JavaPackBuilder {
         Set<PrismKey> itemsOk = new LinkedHashSet<>();
         Set<PrismKey> blocksOk = new LinkedHashSet<>();
         for (ItemDefinition item : input.items()) {
+            String definitionPath = "assets/" + item.key().namespace() + "/items/" + item.key().value() + ".json";
+            int steps = GaugeIcons.addTextures(files, item);
+            if (steps > 0) {
+                // A gauge: one item definition per step (its item_model in menus), and the item itself looks full.
+                boolean all = true;
+                for (int step = 0; step <= steps; step++) {
+                    PrismKey look = Appearances.gaugeLook(item.key(), step);
+                    all &= generate(files, warnings, item.key().toString(),
+                            "assets/" + look.namespace() + "/items/" + look.value() + ".json",
+                            Appearances.gaugeModel(item.key(), step), "minecraft:item/generated", "layer0", "item");
+                }
+                if (all && generate(files, warnings, item.key().toString(), definitionPath,
+                        Appearances.gaugeModel(item.key(), steps), "minecraft:item/generated", "layer0", "item")) {
+                    itemsOk.add(item.key());
+                }
+                continue;
+            }
             PrismKey model = item.components().get(PrismComponents.MODEL).map(PrismComponents.Model::model)
                     .orElseGet(() -> new PrismKey(item.key().namespace(), "item/" + item.key().value()));
-            String definitionPath = "assets/" + item.key().namespace() + "/items/" + item.key().value() + ".json";
             if (generate(files, warnings, item.key().toString(), definitionPath, model, "minecraft:item/generated", "layer0",
                     "item")) {
                 itemsOk.add(item.key());

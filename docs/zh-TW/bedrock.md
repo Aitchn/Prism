@@ -15,6 +15,7 @@ Mod 依「能力」而非「版本」調整。
 | 方塊外觀變體（`prism:variants`、`setVariant`） | 有 | 有 |
 | 自訂音效（`sounds.json`、`prism:ambient_sound`） | 有 | 有（基岩版資源包的 `sound_definitions`，經 Geyser 播放） |
 | 動畫方塊材質（`.png.mcmeta`） | 有 | 有（flipbook） |
+| 選單量表（`prism:gauge`） | 分段圖示 | 分段圖示（每一階一個基岩版自訂物品） |
 | 選單 | 箱子介面 | 箱子介面（Geyser 轉譯）；原生表單未實作 |
 
 ## 設定

@@ -1,0 +1,8 @@
+# A menu gauge (prism:gauge): machine GUIs show it in steps; Prism draws the icons. Not obtainable.
+base: minecraft:paper
+components:
+  prism:display_name: "<white>Chemical tank"
+  prism:gauge:
+    style: bar
+    color: "#40c8e0"
+    steps: 16

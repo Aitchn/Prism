@@ -122,6 +122,16 @@ class ExampleModTest {
     }
 
     @Test
+    void cycleGaugeHasNineSteps() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var gauge = harness.item("examplemod:cycle_gauge").components().get(PrismComponents.GAUGE).orElseThrow();
+        assertEquals("arrow", gauge.style());
+        assertEquals(8, gauge.steps());
+        assertEquals(4, gauge.step(0.5));
+    }
+
+    @Test
     void recipesLoadForPrismAndModTypes() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());
