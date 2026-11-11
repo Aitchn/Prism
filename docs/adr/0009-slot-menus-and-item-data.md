@@ -3,6 +3,9 @@
 Status: Accepted (2026-11-05). The click rules are unit tested. Menus need a player, so the smoke test cannot open
 one (see below).
 
+Update: [ADR-0026](0026-per-viewer-item-text.md) replaces the "Lore" decision below: lore lines are kept on the stack as
+translation keys with arguments and turned into text per viewer in packets.
+
 ## Context
 
 Machines, storage terminals and generators all need a GUI with real slots that updates live, and items that carry

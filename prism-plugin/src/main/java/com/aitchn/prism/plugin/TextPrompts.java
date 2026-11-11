@@ -8,7 +8,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import com.aitchn.prism.api.text.Message;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -36,11 +36,13 @@ final class TextPrompts implements Listener {
     private record Prompt(InventoryView view, Consumer<String> onSubmit, Runnable onCancel) {}
 
     private final PlatformScheduler scheduler;
+    private final PrismTranslations translations;
     private final Logger log;
     private final Map<UUID, Prompt> open = new ConcurrentHashMap<>();
 
-    TextPrompts(PlatformScheduler scheduler, Logger log) {
+    TextPrompts(PlatformScheduler scheduler, PrismTranslations translations, Logger log) {
         this.scheduler = scheduler;
+        this.translations = translations;
         this.log = log;
     }
 
@@ -54,7 +56,7 @@ final class TextPrompts implements Listener {
                 }
                 open.remove(player.getUniqueId(), previous);
             }
-            Component name = MiniMessage.miniMessage().deserialize(title);
+            Component name = translations.render(Message.of(title), player);
             InventoryView view = MenuType.ANVIL.create(player, name);
             ItemStack paper = new ItemStack(Material.PAPER);
             // A single space keeps the name field editable when the initial text is empty.

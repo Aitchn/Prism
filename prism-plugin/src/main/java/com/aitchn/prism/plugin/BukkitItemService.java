@@ -6,15 +6,14 @@ import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.registry.Registry;
 import com.aitchn.prism.api.item.ItemLoreBehavior;
+import com.aitchn.prism.api.text.Message;
+import com.aitchn.prism.core.lang.TextSpec;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
@@ -27,16 +26,22 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Server-side items carry only identity: a vanilla carrier material plus the Prism key in the item's persistent data.
  * Appearance is decided per viewer later (see the presentation layer), never stored on the stack.
+ *
+ * <p>No text of any language is stored either (ADR-0026): the name comes from the item's key and the lore from its
+ * static {@code prism:lore} plus the {@link ItemLoreBehavior} lines, which are kept in persistent data as translation
+ * keys with arguments ({@code prism:text}). The packet layer turns them into words for each viewer.
  */
 final class BukkitItemService implements ItemService {
 
     private final NamespacedKey identityKey;
+    private final NamespacedKey textKey;
     private final Registry<ItemDefinition> definitions;
     private final Appearance appearance;
     private final Logger log;
 
     BukkitItemService(Plugin prism, Registry<ItemDefinition> definitions, Appearance appearance) {
         this.identityKey = new NamespacedKey(prism, "item");
+        this.textKey = new NamespacedKey(prism, "text");
         this.definitions = definitions;
         this.appearance = appearance;
         this.log = prism.getLogger();
@@ -55,14 +60,12 @@ final class BukkitItemService implements ItemService {
         }
         ItemStack stack = new ItemStack(material.get(), amount);
         stack.editMeta(meta -> apply(definition, meta));
-        renderLore(definition, stack);
+        renderText(definition, stack);
         return Optional.of(stack);
     }
 
     private void apply(ItemDefinition definition, ItemMeta meta) {
         meta.getPersistentDataContainer().set(identityKey, PersistentDataType.STRING, definition.key().toString());
-        definition.components().get(PrismComponents.DISPLAY_NAME).ifPresent(name ->
-                meta.itemName(MiniMessage.miniMessage().deserialize(name.miniMessage())));
         if (appearance.hasItem(definition.key())) {
             // item_model is also what Geyser keys its Bedrock custom items on, so one component serves both editions.
             Keys.bukkit(definition.key()).ifPresent(meta::setItemModel);
@@ -85,38 +88,87 @@ final class BukkitItemService implements ItemService {
                 data.set(identityKey, PersistentDataType.STRING, identity); // the identity cannot be edited away
             }
         });
-        renderLore(definition.get(), stack);
+        renderText(definition.get(), stack);
         return true;
     }
 
+    /**
+     * Re-applies the definition and recomputes the lore keys. Also drops any name or lore text stored on the stack:
+     * stacks made before ADR-0026 had them baked in (in one language), and Prism owns both on its items. A name given
+     * in an anvil is a custom name and stays.
+     */
     @Override
     public void refresh(@NotNull ItemStack stack) {
         definition(stack).ifPresent(definition -> {
-            stack.editMeta(meta -> apply(definition, meta));
-            renderLore(definition, stack);
+            stack.editMeta(meta -> {
+                apply(definition, meta);
+                meta.itemName(null);
+                meta.lore(null);
+            });
+            renderText(definition, stack);
         });
     }
 
-    /** Static {@code prism:lore} lines, then every {@link ItemLoreBehavior}'s lines for this stack. */
-    private void renderLore(ItemDefinition definition, ItemStack stack) {
-        List<String> lines = new ArrayList<>(definition.components().get(PrismComponents.LORE)
-                .map(PrismComponents.Lore::lines).orElse(List.of()));
+    /**
+     * Brings a stack made before ADR-0026 (name and lore baked into it) to the current form, so it stacks with new
+     * ones. Cheap for everything else: a stack without meta or without Prism's identity is not looked at further.
+     *
+     * @return whether {@code stack} was changed
+     */
+    boolean normalize(@NotNull ItemStack stack) {
+        if (stack.isEmpty() || !stack.hasItemMeta()) {
+            return false;
+        }
+        if (!stack.getPersistentDataContainer().has(identityKey, PersistentDataType.STRING)) {
+            return false;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (!meta.hasItemName() && !meta.hasLore()) {
+            return false;
+        }
+        refresh(stack);
+        return true;
+    }
+
+    /** Puts a menu icon's name and lore on {@code stack} as translation keys, after the stack's own lore keys. */
+    void label(@NotNull ItemStack stack, @NotNull Message name, @NotNull List<Message> lore) {
+        stack.editMeta(meta -> {
+            PersistentDataContainer data = meta.getPersistentDataContainer();
+            List<Message> lines = new ArrayList<>(TextSpec.decode(data.get(textKey, PersistentDataType.STRING))
+                    .map(TextSpec::lore).orElse(List.of()));
+            lines.addAll(lore);
+            TextSpec spec = new TextSpec(name.key().isEmpty() && name.args().isEmpty() ? null : name, lines);
+            if (spec.isEmpty()) {
+                data.remove(textKey);
+            } else {
+                data.set(textKey, PersistentDataType.STRING, spec.encode());
+            }
+        });
+    }
+
+    /** Every {@link ItemLoreBehavior}'s lines for this stack, kept as keys and arguments in {@code prism:text}. */
+    private void renderText(ItemDefinition definition, ItemStack stack) {
+        List<Message> lines = new ArrayList<>();
         ItemStack view = stack.clone();
         for (ItemLoreBehavior behavior : definition.behaviors(ItemLoreBehavior.class)) {
             try {
-                lines.addAll(behavior.lore(view));
+                lines.addAll(behavior.loreMessages(view));
             } catch (RuntimeException e) {
                 log.log(Level.SEVERE, "Lore of " + definition.key() + " failed", e);
             }
         }
-        if (lines.isEmpty() && !stack.getItemMeta().hasLore()) {
+        String encoded = lines.isEmpty() ? null : new TextSpec(null, lines).encode();
+        String current = stack.getPersistentDataContainer().get(textKey, PersistentDataType.STRING);
+        if (java.util.Objects.equals(encoded, current)) {
             return;
         }
-        List<Component> lore = new ArrayList<>(lines.size());
-        for (String line : lines) {
-            lore.add(MiniMessage.miniMessage().deserialize(line).decoration(TextDecoration.ITALIC, false));
-        }
-        stack.editMeta(meta -> meta.lore(lore.isEmpty() ? null : lore));
+        stack.editMeta(meta -> {
+            if (encoded == null) {
+                meta.getPersistentDataContainer().remove(textKey);
+            } else {
+                meta.getPersistentDataContainer().set(textKey, PersistentDataType.STRING, encoded);
+            }
+        });
     }
 
     @Override

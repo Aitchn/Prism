@@ -8,6 +8,7 @@ and on Bedrock (through Geyser).
 - [Concepts](concepts.md): content model, lifecycle, blocks, models
 - [Bedrock](bedrock.md): what Bedrock players see and how to adapt
 - [Block looks at scale](block-looks.md): borrowed states, the display layer, `prism:render`
+- [Translations](translations.md): language files, per-player item names and lore, messages
 - [Known gaps](https://github.com/Aitchn/Prism/blob/main/docs/gaps.md) and [ADRs](https://github.com/Aitchn/Prism/blob/main/docs/adr/README.md)
 
 > Preview status: Prism is `0.1.0-SNAPSHOT`. The API is not frozen and nothing has been verified on a real Bedrock

@@ -2,11 +2,11 @@ package com.aitchn.prism.plugin;
 
 import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.content.PrismComponents;
-import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.menu.ClickKind;
 import com.aitchn.prism.api.menu.ContainerMenu;
 import com.aitchn.prism.api.menu.MenuView;
 import com.aitchn.prism.api.menu.SlotRole;
+import com.aitchn.prism.api.text.Message;
 import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.menu.SlotRules;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
@@ -15,9 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -29,7 +26,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,17 +36,19 @@ import org.jetbrains.annotations.Nullable;
  */
 final class ContainerMenus implements Listener {
 
-    private final ItemService items;
+    private final BukkitItemService items;
+    private final PrismTranslations translations;
     private final PlatformScheduler scheduler;
     private final Logger log;
 
-    ContainerMenus(ItemService items, PlatformScheduler scheduler, Logger log) {
+    ContainerMenus(BukkitItemService items, PrismTranslations translations, PlatformScheduler scheduler, Logger log) {
         this.items = items;
+        this.translations = translations;
         this.scheduler = scheduler;
         this.log = log;
     }
 
-    private final class View implements MenuView, InventoryHolder {
+    private final class View implements MenuView, MenuHolder {
         final Player player;
         final ContainerMenu menu;
         Inventory inventory;
@@ -91,22 +89,18 @@ final class ContainerMenus implements Listener {
         }
 
         @Override
-        public void setIcon(int slot, @NotNull PrismKey icon, @NotNull String name, @NotNull List<String> lore) {
+        public void setIcon(int slot, @NotNull PrismKey icon, @NotNull Message name, @NotNull List<Message> lore) {
             ItemStack stack = items.create(icon, 1)
                     .or(() -> VanillaItems.material(icon).map(ItemStack::new))
                     .orElseGet(() -> new ItemStack(Material.BARRIER));
-            stack.editMeta(meta -> {
-                meta.displayName(text(name));
-                List<Component> lines = new ArrayList<>();
-                lore.forEach(line -> lines.add(text(line)));
-                meta.lore(lines);
-            });
+            // Keys, not text: every viewer reads the icon in their own language (ADR-0026).
+            items.label(stack, name, lore);
             inventory.setItem(slot, stack);
         }
 
         @Override
-        public void setGauge(int slot, @NotNull PrismKey gauge, double fraction, @NotNull String name,
-                @NotNull List<String> lore) {
+        public void setGauge(int slot, @NotNull PrismKey gauge, double fraction, @NotNull Message name,
+                @NotNull List<Message> lore) {
             setIcon(slot, gauge, name, lore);
             var spec = items.definition(gauge).flatMap(definition ->
                     definition.components().get(PrismComponents.GAUGE));
@@ -143,10 +137,6 @@ final class ContainerMenus implements Listener {
         }
     }
 
-    private static Component text(String miniMessage) {
-        return MiniMessage.miniMessage().deserialize(miniMessage).decoration(TextDecoration.ITALIC, false);
-    }
-
     void open(Player player, ContainerMenu menu) {
         int rows = menu.rows();
         if (rows < 1 || rows > 6) {
@@ -154,7 +144,8 @@ final class ContainerMenus implements Listener {
         }
         scheduler.runOn(player, () -> {
             View view = new View(player, menu);
-            view.inventory = Bukkit.createInventory(view, rows * 9, text(menu.title()));
+            view.inventory = Bukkit.createInventory(view, rows * 9,
+                    translations.render(Message.of(menu.title()), player));
             try {
                 menu.onOpen(view);
             } catch (RuntimeException e) {

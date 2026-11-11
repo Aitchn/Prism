@@ -7,6 +7,7 @@ import com.aitchn.prism.api.menu.ClickKind;
 import com.aitchn.prism.api.menu.ContainerMenu;
 import com.aitchn.prism.api.menu.MenuView;
 import com.aitchn.prism.api.menu.SlotRole;
+import com.aitchn.prism.api.text.Message;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -78,7 +79,7 @@ final class CounterMenu implements ContainerMenu {
 
     @Override
     public @NotNull String title() {
-        return "<dark_red>Ruby counter";
+        return "menu.examplemod.counter"; // a translation key: each viewer reads the title in their language
     }
 
     @Override
@@ -96,16 +97,18 @@ final class CounterMenu implements ContainerMenu {
         drawCount(view);
         drawSwitch(view);
         view.setItem(STORE_SLOT, stored);
+        // The label is the player's own text: passed as an argument, so it is shown as typed (never as markup).
         view.setIcon(LABEL_SLOT, PrismKey.parse("minecraft:name_tag"),
-                label.isEmpty() ? "<gray>No label"
-                        : "<yellow>" + net.kyori.adventure.text.minimessage.MiniMessage.miniMessage().escapeTags(label), List.of("<gray>Click to type a label"));
+                label.isEmpty() ? Message.of("examplemod.counter.no_label")
+                        : Message.of("examplemod.counter.label", label),
+                List.of(Message.of("examplemod.counter.label_hint")));
     }
 
     @Override
     public void onButton(@NotNull MenuView view, int slot, @NotNull ClickKind click) {
         if (slot == LABEL_SLOT) {
             // Text input: an anvil prompt (Bedrock players get the anvil's rename box through Geyser).
-            Prism.menus().prompt(view.player(), "<dark_red>Counter label", label, text ->
+            Prism.menus().prompt(view.player(), "examplemod.counter.label_prompt", label, text ->
                     Prism.scheduler().runAt(at, () -> Prism.blocks().get(at.getBlock()).ifPresent(block -> {
                         if (text.isEmpty()) {
                             block.data().remove(LABEL);
@@ -173,17 +176,18 @@ final class CounterMenu implements ContainerMenu {
     }
 
     private void drawCount(MenuView view) {
-        view.setIcon(COUNT_SLOT, PrismKey.parse("minecraft:clock"), "<gold>Count: " + count.get(),
-                List.of("<gray>Counts once a second"));
+        view.setIcon(COUNT_SLOT, PrismKey.parse("minecraft:clock"), Message.of("examplemod.counter.count", count.get()),
+                List.of(Message.of("examplemod.counter.count_hint")));
         // A stepped gauge icon (prism:gauge): the same arrow on Java and Bedrock.
         int cycle = count.get() % 10;
-        view.setGauge(CYCLE_SLOT, CYCLE_GAUGE, cycle / 10.0, "<gold>Cycle " + cycle + "/10",
-                List.of("<gray>Fills up every ten counts"));
+        view.setGauge(CYCLE_SLOT, CYCLE_GAUGE, cycle / 10.0, Message.of("examplemod.counter.cycle", cycle),
+                List.of(Message.of("examplemod.counter.cycle_hint")));
     }
 
     private void drawSwitch(MenuView view) {
         boolean active = "active".equals(variant);
         view.setIcon(SWITCH_SLOT, PrismKey.parse(active ? "minecraft:lime_dye" : "minecraft:gray_dye"),
-                active ? "<green>Active" : "<gray>Idle", List.of("<gray>Click to switch the block's look"));
+                Message.of(active ? "examplemod.counter.active" : "examplemod.counter.idle"),
+                List.of(Message.of("examplemod.counter.switch_hint")));
     }
 }

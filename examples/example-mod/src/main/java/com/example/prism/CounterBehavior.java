@@ -16,7 +16,7 @@ import com.aitchn.prism.api.content.ConfigSection;
 import com.aitchn.prism.api.content.ContentException;
 import java.util.Set;
 import java.util.function.IntSupplier;
-import net.kyori.adventure.text.Component;
+import com.aitchn.prism.api.text.Message;
 import org.bukkit.NamespacedKey;
 import org.bukkit.block.BlockFace;
 import org.bukkit.inventory.ItemStack;
@@ -99,7 +99,7 @@ public record CounterBehavior(int interval) implements BlockPlaceBehavior, Block
         }
         CounterMenu menu = CounterMenu.of(context.custom());
         if (menu == null) {
-            context.player().sendActionBar(Component.text("Someone else is using this counter"));
+            Prism.translations().sendActionBar(context.player(), Message.of("examplemod.counter.busy"));
         } else {
             Prism.menus().open(context.player(), menu);
         }

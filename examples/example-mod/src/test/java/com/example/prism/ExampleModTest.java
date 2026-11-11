@@ -35,10 +35,14 @@ class ExampleModTest {
 
         ItemDefinition ruby = harness.item("examplemod:ruby");
         assertEquals(2, ruby.components().get(ExampleMod.tier).orElseThrow().level());
-        assertEquals("<red>Ruby", ruby.components().get(PrismComponents.DISPLAY_NAME).orElseThrow().miniMessage());
+        // Names live in the language files now; the stack and the definition carry no text of any language.
+        assertTrue(ruby.components().get(PrismComponents.DISPLAY_NAME).isEmpty());
+        var tables = harness.manager().translations();
+        assertEquals("<red>Ruby", tables.translate(com.aitchn.prism.api.text.Message.of("item.examplemod.ruby"), "en_us"));
+        assertEquals("<red>紅寶石", tables.translate(com.aitchn.prism.api.text.Message.of("item.examplemod.ruby"), "zh_tw"));
         assertEquals(2, ruby.behaviors(ItemUseBehavior.class).size());
         assertEquals(1, ruby.behaviors(com.aitchn.prism.api.item.ItemLoreBehavior.class).size());
-        assertEquals(java.util.List.of("<gray>Right click to heal"),
+        assertEquals(java.util.List.of("examplemod.lore.heal"),
                 ruby.components().get(PrismComponents.LORE).orElseThrow().lines());
     }
 
@@ -193,5 +197,17 @@ class ExampleModTest {
 
         assertEquals(14.0, fake.health());
         assertTrue(cancelled[0]);
+    }
+
+    @Test
+    void everyItemHasANameAndOnlyTheDemoKeyIsMissing() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        assertEquals("PRISM_LANG examplemod locales=en_us,zh_tw keys=26 missing=1 (zh_tw: examplemod.demo.english_only)",
+                harness.manager().langSummary("examplemod").orElseThrow());
+        var tables = harness.manager().translations();
+        var names = new com.aitchn.prism.core.lang.ItemTextRenderer(() -> tables, harness.manager().items());
+        assertEquals("<gold>紅寶石計數器", tables.translate(
+                names.itemName(com.aitchn.prism.api.PrismKey.parse("examplemod:ruby_counter")), "zh_tw"));
     }
 }

@@ -117,8 +117,9 @@ Prism answers it for vanilla containers (furnaces follow hopper side rules) and 
 `PrismCapabilities.INVENTORY`. A block can also answer it directly, for example a storage network.
 
 **Item data and lore.** `Prism.items().editData(stack, data -> ...)` writes the stack's own persistent data and
-re-renders its lore. `prism:lore` holds static lines, and an `ItemLoreBehavior` adds lines computed from the stack.
-Both editions show the lore. `examplemod:ruby` counts its uses this way (`UseCounterBehavior`).
+recomputes its lore. `prism:lore` holds static lines, and an `ItemLoreBehavior` adds lines computed from the stack
+(`loreMessages`: translation keys with arguments). Both editions show the lore, each player in their own language.
+`examplemod:ruby` counts its uses this way (`UseCounterBehavior`). See [Translations](translations.md).
 
 **Recipes.** Put recipes in `prism/recipes/**.yml`. `type: prism:shaped`, `prism:shapeless`, `prism:smelting`,
 `prism:blasting`, `prism:smoking` and `prism:campfire_cooking` become real crafting table and furnace recipes, so

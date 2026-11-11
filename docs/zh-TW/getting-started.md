@@ -26,9 +26,17 @@ depend:
 ```yaml
 base: minecraft:paper
 components:
-  prism:display_name: "<red>Ruby"
   prism:max_stack_size: 16
 ```
+
+名稱寫在同一個 jar 的語言檔裡，每個語系一個檔案：`src/main/resources/prism/lang/en_us.json`
+
+```json
+{ "item.examplemod.ruby": "<red>Ruby" }
+```
+
+以及 `prism/lang/zh_tw.json` 內容為 `{ "item.examplemod.ruby": "<red>紅寶石" }`。每位玩家看到的是自己語言的名稱，
+而伺服器上的物品堆疊完全相同。詳見[翻譯](translations.md)。
 
 ## 3. 貼圖
 

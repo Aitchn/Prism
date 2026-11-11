@@ -132,9 +132,8 @@ final class PrismCommand implements TabExecutor {
         int current = Math.max(0, Math.min(page, pages - 1));
         List<MenuButton> buttons = new ArrayList<>();
         for (PrismKey key : keys.subList(current * PAGE_SIZE, Math.min(keys.size(), (current + 1) * PAGE_SIZE))) {
-            String name = definitions.get(key).flatMap(d -> d.components().get(PrismComponents.DISPLAY_NAME))
-                    .map(PrismComponents.DisplayName::miniMessage).orElse(key.toString());
-            buttons.add(new MenuButton("item:" + key, name, key));
+            // An empty label shows the item's own name, translated for the viewer (ADR-0026).
+            buttons.add(new MenuButton("item:" + key, "", key));
         }
         if (pages > 1) {
             while (buttons.size() % 9 != 0) {

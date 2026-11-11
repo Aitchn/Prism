@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface ContainerMenu {
 
-    /** MiniMessage title. */
+    /** Title: a translation key or literal MiniMessage text, shown in the viewer's language when the menu opens. */
     @NotNull String title();
 
     /** Rows of 9 slots, 1 to 6. */

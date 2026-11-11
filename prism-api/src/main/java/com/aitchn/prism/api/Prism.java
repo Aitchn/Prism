@@ -8,6 +8,7 @@ import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.mod.ModRegistrar;
 import com.aitchn.prism.api.recipe.RecipeService;
 import com.aitchn.prism.api.scheduler.PrismScheduler;
+import com.aitchn.prism.api.text.TranslationService;
 import java.util.Objects;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
@@ -53,6 +54,11 @@ public final class Prism {
         return current().scheduler();
     }
 
+    /** Translations from the mods' language files, for text a mod sends to a player itself. */
+    public static @NotNull TranslationService translations() {
+        return current().translations();
+    }
+
     private static Services current() {
         Services current = services;
         if (current == null) {
@@ -71,10 +77,12 @@ public final class Prism {
             @NotNull MenuService menus,
             @NotNull DataService data,
             @NotNull PrismScheduler scheduler,
-            @NotNull RecipeService recipes) {
+            @NotNull RecipeService recipes,
+            @NotNull TranslationService translations) {
         services = new Services(Objects.requireNonNull(mods), Objects.requireNonNull(items),
                 Objects.requireNonNull(blocks), Objects.requireNonNull(clients), Objects.requireNonNull(menus),
-                Objects.requireNonNull(data), Objects.requireNonNull(scheduler), Objects.requireNonNull(recipes));
+                Objects.requireNonNull(data), Objects.requireNonNull(scheduler), Objects.requireNonNull(recipes),
+                Objects.requireNonNull(translations));
     }
 
     @ApiStatus.Internal
@@ -83,5 +91,6 @@ public final class Prism {
     }
 
     private record Services(ModRegistrar mods, ItemService items, BlockService blocks, ClientService clients,
-            MenuService menus, DataService data, PrismScheduler scheduler, RecipeService recipes) {}
+            MenuService menus, DataService data, PrismScheduler scheduler, RecipeService recipes,
+            TranslationService translations) {}
 }

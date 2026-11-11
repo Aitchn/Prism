@@ -1,10 +1,11 @@
 # Key: examplemod:ruby  (namespace = lower-cased plugin name, value = this file's path without extension)
+# Its name is item.examplemod.ruby in prism/lang/<locale>.json; each player reads it in their own language. The lore
+# line below is a translation key too. Items that place a block are named by the block (block.examplemod.<block>).
 base: minecraft:paper
 components:
-  prism:display_name: "<red>Ruby"
   prism:max_stack_size: 16
   prism:lore:
-    - "<gray>Right click to heal"
+    - "examplemod.lore.heal"
   examplemod:tier: 2
 behaviors:
   - type: examplemod:heal

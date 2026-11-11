@@ -43,15 +43,23 @@ public final class ExampleMod extends JavaPlugin implements PrismMod {
         var polish = Prism.recipes().all(polishing);
         getLogger().info((polish.size() == 1 ? "EXAMPLE_RECIPES_OK" : "EXAMPLE_RECIPES_FAIL") + " polishing="
                 + polish.size() + polish.stream().map(r -> " " + r.id() + ":" + r.value().input()).reduce("", String::concat));
-        // Per-stack data and dynamic lore: the smoke test looks for EXAMPLE_LORE_OK.
+        // Per-stack data and dynamic lore: the smoke test looks for EXAMPLE_LORE_OK. The stack itself holds no text;
+        // each player sees the lore in their own language (prism/lang/*.json), here English and Traditional Chinese.
         Prism.items().create(new PrismKey("examplemod", "ruby"), 1).ifPresent(stack -> {
             Prism.items().editData(stack, data -> data.set(UseCounterBehavior.USES, PersistentDataType.INTEGER, 3));
-            java.util.List<net.kyori.adventure.text.Component> lore = stack.lore();
-            String text = lore == null ? "" : lore.stream()
-                    .map(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()::serialize)
-                    .reduce("", (a, b) -> a + "|" + b);
-            boolean ok = text.equals("|Right click to heal|Used 3 times");
-            getLogger().info((ok ? "EXAMPLE_LORE_OK " : "EXAMPLE_LORE_FAIL ") + text);
+            String english = plain(Prism.translations().lore(stack, "en_us"));
+            String chinese = plain(Prism.translations().lore(stack, "zh_tw"));
+            // A key zh_tw.json does not have falls back to en_us (the startup line PRISM_LANG lists it as missing).
+            String fallback = Prism.translations().translate("examplemod.demo.english_only", "zh_tw");
+            boolean ok = stack.lore() == null && english.equals("|Right click to heal|Used 3 times")
+                    && chinese.equals("|右鍵點擊以治療|已使用 3 次") && fallback.startsWith("This line has no");
+            getLogger().info((ok ? "EXAMPLE_LORE_OK " : "EXAMPLE_LORE_FAIL ") + english + " " + chinese);
         });
+    }
+
+    private static String plain(java.util.List<net.kyori.adventure.text.Component> lines) {
+        return lines.stream()
+                .map(net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText()::serialize)
+                .reduce("", (a, b) -> a + "|" + b);
     }
 }

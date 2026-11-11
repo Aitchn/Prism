@@ -91,8 +91,9 @@ Java 與基岩版玩家看到相同的分段量條或箭頭。若要換成自己
 Prism 為原版容器提供這個能力（熔爐依漏斗的面向規則），也為提供 `PrismCapabilities.INVENTORY` 的自訂方塊提供。
 方塊也可以自己直接提供，例如儲存網路。
 
-**物品資料與說明文字。** `Prism.items().editData(stack, data -> ...)` 寫入該物品堆疊自己的持久資料並重新產生說明文字。
-`prism:lore` 是固定說明，`ItemLoreBehavior` 可依堆疊內容加上動態行。兩個版本都看得到。`examplemod:ruby` 用這個方式記錄使用次數。
+**物品資料與說明文字。** `Prism.items().editData(stack, data -> ...)` 寫入該物品堆疊自己的持久資料並重新計算說明文字。
+`prism:lore` 是固定說明，`ItemLoreBehavior` 可依堆疊內容加上動態行（`loreMessages`：翻譯鍵加參數）。兩個版本都看得到，
+每位玩家看到自己的語言。`examplemod:ruby` 用這個方式記錄使用次數。詳見[翻譯](translations.md)。
 
 **配方。** 配方放在 `prism/recipes/**.yml`。`type: prism:shaped`、`prism:shapeless`、`prism:smelting`、`prism:blasting`、
 `prism:smoking` 與 `prism:campfire_cooking` 會成為真正的工作台與熔爐配方，玩家在兩個版本的生存模式都能合成你的物品。自訂物品

@@ -1,5 +1,4 @@
 # The item form of the tank: using it on a block face places examplemod:ruby_tank.
 base: minecraft:paper
 components:
-  prism:display_name: "<red>Ruby Tank"
   prism:places_block: examplemod:ruby_tank

@@ -6,6 +6,7 @@ import com.aitchn.prism.api.content.ContentException;
 import com.aitchn.prism.api.item.ItemLoreBehavior;
 import com.aitchn.prism.api.item.ItemUseBehavior;
 import com.aitchn.prism.api.item.ItemUseContext;
+import com.aitchn.prism.api.text.Message;
 import java.util.List;
 import java.util.Set;
 import org.bukkit.NamespacedKey;
@@ -35,8 +36,9 @@ public record UseCounterBehavior() implements ItemUseBehavior, ItemLoreBehavior 
     }
 
     @Override
-    public @NotNull List<String> lore(@NotNull ItemStack stack) {
+    public @NotNull List<Message> loreMessages(@NotNull ItemStack stack) {
         int uses = stack.getPersistentDataContainer().getOrDefault(USES, PersistentDataType.INTEGER, 0);
-        return List.of("<gray>Used <white>" + uses + "</white> times");
+        // A key and an argument, not text: each player reads the line in their own language (prism/lang/*.json).
+        return List.of(Message.of("examplemod.lore.used", uses));
     }
 }

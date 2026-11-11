@@ -99,6 +99,24 @@ if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMP
   echo "FAIL: a mod failed to activate" >&2
   exit 1
 fi
+# Per-viewer item text (ADR-0026): the missing-translation summary of the example mod (one deliberate gap), and the
+# self test that runs a stack through PacketEvents for two locales and normalises a stack with baked text.
+for marker in 'PRISM_LANG ExampleMod locales=en_us,zh_tw keys=26 missing=1 (zh_tw: examplemod.demo.english_only)' 'PRISM_LANG_SELFTEST_OK examplemod:ruby locales=2 restored=equal legacy=normalised '; do
+  found=""
+  for ((i = 0; i < 90; i++)); do
+    if docker logs "$NAME" 2>&1 | grep -qF "$marker"; then found=1; break; fi
+    sleep 1
+  done
+  if [[ -z "$found" ]]; then
+    echo "FAIL: expected log line not seen: $marker" >&2
+    docker logs "$NAME" 2>&1 | grep -E 'PRISM_LANG|EXAMPLE_LORE' >&2 || true
+    exit 1
+  fi
+done
+if docker logs "$NAME" 2>&1 | grep -q 'PRISM_LANG_SELFTEST_FAIL'; then
+  echo "FAIL: the item text self test reported a failure" >&2
+  exit 1
+fi
 # Informational: BetterModel model loading is not asserted yet.
 docker logs "$NAME" 2>&1 | grep -E 'PRISM_MODEL|PRISM_EXTERNAL_PACK|PRISM_PACK_WARNING' || true
 echo "OK: $PLATFORM $MC_VERSION"

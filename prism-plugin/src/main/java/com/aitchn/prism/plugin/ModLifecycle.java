@@ -86,6 +86,8 @@ final class ModLifecycle implements ModRegistrar, Listener {
                     new ModCandidate(id, namespace, root, jar.source(), mod, plugin.getLogger()));
             if (report.active()) {
                 prism.getLogger().info("PRISM_MOD_ACTIVE " + id + " items=" + report.itemCount() + " blocks=" + report.blockCount());
+                // One line per mod: its locales and the translations it is missing (ADR-0026).
+                manager.langSummary(id).ifPresent(line -> prism.getLogger().info(line));
                 onContentChanged.run();
             } else {
                 prism.getLogger().severe("PRISM_MOD_FAILED " + id + " (nothing was registered):");

@@ -1,5 +1,4 @@
 # The item form of the core: using it on a block face places examplemod:ruby_core.
 base: minecraft:paper
 components:
-  prism:display_name: "<red>Ruby Core"
   prism:places_block: examplemod:ruby_core

@@ -33,6 +33,7 @@ public final class PrismPlugin extends JavaPlugin {
     private PackManager packManager;
     private SqliteDataService data;
     private Runnable uninstallRewriter;
+    private Runnable uninstallItemText;
 
     @Override
     public void onEnable() {
@@ -85,7 +86,9 @@ public final class PrismPlugin extends JavaPlugin {
             blocks.contentChanged();
         };
         ModLifecycle lifecycle = new ModLifecycle(this, mods, contentChanged);
-        ChestMenus menus = new ChestMenus(items, scheduler, getLogger());
+        PrismTranslations translations = new PrismTranslations(this,
+                new com.aitchn.prism.core.lang.ItemTextRenderer(mods::translations, mods.items()), scheduler);
+        ChestMenus menus = new ChestMenus(items, translations, scheduler, getLogger());
         BedrockDetector bedrockPlayers = BedrockDetector.create(getLogger());
         BedrockModelLooks modelLooks = new BedrockModelLooks(blocks, packManager::looks, bedrockPlayers, scheduler);
         packManager.onRelook(() -> scheduler.runGlobal(blocks::contentChanged));
@@ -101,13 +104,15 @@ public final class PrismPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BreakFeel(this, blocks, packManager::looks,
                 id -> packManager.bedrockBlocks().bedrockStates() && bedrockPlayers.test(id)), this);
         Prism.install(lifecycle, items, blocks, new Profiles(bedrockPlayers), menus, data,
-                new SchedulerAdapter(scheduler), recipes);
+                new SchedulerAdapter(scheduler), recipes, translations);
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(menus.containers(), this);
         getServer().getPluginManager().registerEvents(menus.prompts(), this);
         getServer().getPluginManager().registerEvents(vanillaRecipes, this);
         getServer().getPluginManager().registerEvents(lifecycle, this);
         getServer().getPluginManager().registerEvents(new ItemListener(items, dispatcher), this);
+        getServer().getPluginManager().registerEvents(new ItemTextListener(items, translations, scheduler), this);
+        uninstallItemText = ItemText.install(this, items, translations, scheduler);
         getServer().getPluginManager().registerEvents(blocks, this);
         getServer().getPluginManager().registerEvents(new BlockListener(items, blocks, mods.items(), dispatcher), this);
         getServer().getPluginManager().registerEvents(new DigListener(blocks, scheduler), this);
@@ -224,6 +229,9 @@ public final class PrismPlugin extends JavaPlugin {
     public void onDisable() {
         if (uninstallRewriter != null) {
             uninstallRewriter.run();
+        }
+        if (uninstallItemText != null) {
+            uninstallItemText.run();
         }
         if (data != null) {
             data.close();
