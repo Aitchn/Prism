@@ -100,10 +100,19 @@ final class ConsistencySelfTest implements Listener {
     /**
      * Everything that must hold for a custom block: indexed, its carrier in the world, a published look equal to the
      * one recomputed from the index, and the packet rewrite of the carrier equal to that look. Null when it holds.
+     *
+     * @param carrier {@link Carrier#SOLID} stands for whichever solid carrier the block's look asks for in this boot
+     *                (glass for one display entity, ADR-0025)
      */
     private String problem(Block block, PrismKey key, Carrier carrier) {
         if (!blocks.indexed(block)) {
             return "not indexed";
+        }
+        if (carrier == Carrier.SOLID) {
+            carrier = blocks.wantedCarrier(block);
+            if (carrier == null) {
+                return "no carrier wanted";
+            }
         }
         if (blocks.identify(block).filter(key::equals).isEmpty()) {
             return "identify says " + blocks.identify(block);
@@ -212,7 +221,8 @@ final class ConsistencySelfTest implements Listener {
         Block same = at(0, 0, 6);
         place(solid, same);
         same.setBlockData(same.getBlockData(), false);
-        same.setType(Carrier.SOLID.material(), false);
+        Carrier sameCarrier = blocks.wantedCarrier(same);
+        same.setType((sameCarrier != null ? sameCarrier : Carrier.SOLID).material(), false);
         check("same carrier written again", problem(same, solid, Carrier.SOLID));
         blocks.remove(same, false);
 

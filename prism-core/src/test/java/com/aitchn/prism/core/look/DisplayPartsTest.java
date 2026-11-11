@@ -2,6 +2,7 @@ package com.aitchn.prism.core.look;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.aitchn.prism.api.content.PrismComponents.Render;
@@ -114,6 +115,48 @@ class DisplayPartsTest {
         // ties go to the first of up, north, east, south, west, down that is open
         parts = DisplayParts.compute(look(DisplayPlan.whole("m:whole"), 0, 0), new boolean[6], new int[6]);
         assertEquals(1, parts.getFirst().dy());
+    }
+
+    // ---------------------------------------------------------------- one entity per block (ADR-0025)
+
+    @Test
+    void blockLightingDrawsTheWholeModelWithOneEntityAtTheBlockCentre() {
+        DisplayPlan plan = DisplayPlan.split(SIX, "m:whole");
+        List<DisplayLook.Part> parts = DisplayParts.compute(look(plan, 0, 90), new boolean[6], new int[6],
+                DisplayLighting.BLOCK);
+        assertEquals(1, parts.size());
+        DisplayLook.Part part = parts.getFirst();
+        assertEquals(DisplayLook.WHOLE, part.slot());
+        assertEquals("m:whole", part.model());
+        assertEquals(0, part.dx());
+        assertEquals(0, part.dy());
+        assertEquals(0, part.dz());
+        assertArrayEquals(new float[3], part.translation());
+        assertArrayEquals(Dir.quaternion(0, 90), part.rotation());
+    }
+
+    @Test
+    void blockLightingSkipsOnlyEnclosedBlocks() {
+        DisplayLook look = look(DisplayPlan.whole("m:whole"), 0, 0);
+        for (int open = 0; open < 6; open++) {
+            boolean[] occluded = new boolean[6];
+            java.util.Arrays.fill(occluded, true);
+            occluded[open] = false;
+            assertEquals(1, DisplayParts.compute(look, occluded, new int[6], DisplayLighting.BLOCK).size(),
+                    "one open side is enough to see the block");
+            assertFalse(DisplayParts.enclosed(occluded));
+        }
+        boolean[] all = new boolean[6];
+        java.util.Arrays.fill(all, true);
+        assertTrue(DisplayParts.enclosed(all));
+        assertTrue(DisplayParts.compute(look, all, new int[6], DisplayLighting.BLOCK).isEmpty());
+    }
+
+    @Test
+    void blockLightingWithoutAWholeModelFallsBackToFaces() {
+        List<DisplayLook.Part> parts = DisplayParts.compute(look(DisplayPlan.split(SIX), 0, 0), new boolean[6],
+                new int[6], DisplayLighting.BLOCK);
+        assertEquals(6, parts.size());
     }
 
     @Test

@@ -67,13 +67,12 @@ final class BreakFeel implements Listener {
         Player player = event.getPlayer();
         clear(player);
         Block block = event.getBlock();
-        if (player.getGameMode() != GameMode.SURVIVAL || !blocks.clientBreaks(block)) {
+        if (player.getGameMode() != GameMode.SURVIVAL || !blocks.drawnAsLook(block)) {
             return;
         }
         Optional<CustomBlock> custom = blocks.get(block);
         String lookId = blocks.lookIdOf(block);
-        ClientBreak client = lookId == null ? null : looks.get().table().breaking(lookId);
-        if (custom.isEmpty() || client == null) {
+        if (custom.isEmpty() || lookId == null) {
             return;
         }
         PrismComponents.Mining mining = custom.get().definition().components().get(PrismComponents.MINING)
@@ -82,7 +81,13 @@ final class BreakFeel implements Listener {
         int efficiency = held.getEnchantmentLevel(Enchantment.EFFICIENCY);
         int ticks = DigMath.ticksToBreak(mining, held.getType().name(), efficiency,
                 level(player, PotionEffectType.HASTE), level(player, PotionEffectType.MINING_FATIGUE), true, false);
+        // Recorded for every carrier, so the earliest-break check also covers a Geyser client breaking a display
+        // block's synthetic look; Java clients cannot break that one themselves (DigListener digs it).
         digs.put(player.getUniqueId(), new Dig(block, System.nanoTime(), ticks));
+        ClientBreak client = blocks.clientBreaks(block) ? looks.get().table().breaking(lookId) : null;
+        if (client == null) {
+            return;
+        }
         if (looks.get().bedrockId(lookId) != com.aitchn.prism.core.block.BlockLook.NO_BEDROCK
                 && syntheticViewer.test(player.getUniqueId())) {
             // A Geyser viewer is shown the synthetic block, whose hardness is the custom one already (ADR-0024). The

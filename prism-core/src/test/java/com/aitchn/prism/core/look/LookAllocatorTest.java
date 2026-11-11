@@ -180,6 +180,57 @@ class LookAllocatorTest {
         assertEquals(target, used.canonical(target));
     }
 
+    // ---------------------------------------------------------------- display first (ADR-0025)
+
+    @Test
+    void underTheDefaultSettingsEveryAutoLookIsDrawnByTheDisplayLayer() {
+        LookTable table = LookAllocator.allocate(POOL, synthetic(10_000), false, RenderSettings.DEFAULT);
+        assertEquals(10_000, table.placements().size());
+        assertTrue(table.unplaced().isEmpty());
+        for (LookTable.Placement placement : table.placements().values()) {
+            // synthetic() gives every fifth look, from the fourth on, prism:render: state
+            boolean optedIn = Integer.parseInt(placement.lookId().substring("test:block_".length())) % 5 == 3;
+            if (!optedIn) {
+                assertEquals(LookTable.Tier.DISPLAY, placement.tier(), placement.lookId());
+            }
+            if (placement.tier() == LookTable.Tier.DISPLAY && placement.wanted().collision() == Collision.FULL) {
+                assertEquals(LookPool.CLEAR_SHELL, placement.state(), "solid display looks get the clear shell");
+                assertTrue(table.bedrockIndex(placement.lookId()).isEmpty());
+                assertTrue(table.breaking(placement.lookId()) == null, "the client cannot break the clear shell");
+            }
+        }
+        // prism:render: state stays an opt-in that still borrows states
+        assertTrue(table.count(LookTable.Tier.STATE) > 0);
+        assertTrue(table.warnings().stream().noneMatch(w -> w.contains("shell of another class") && w.contains("full/")),
+                table.warnings().toString());
+        assertFalse(table.activeBlocks().contains("minecraft:barrier"), "the clear shell is not a borrowed family");
+    }
+
+    @Test
+    void passableDisplayLooksKeepANoCollisionShell() {
+        PhysicsClass passable = new PhysicsClass(Collision.NONE, false, SoundGroup.STONE);
+        LookTable table = LookAllocator.allocate(POOL, List.of(request(1, passable, Render.AUTO)), false,
+                RenderSettings.DEFAULT);
+        LookTable.Placement placement = table.placement("test:block_00001");
+        assertEquals(LookTable.Tier.DISPLAY, placement.tier());
+        assertEquals(Collision.NONE, placement.drawnAs().collision());
+        assertEquals("minecraft:tripwire", placement.state().block());
+    }
+
+    @Test
+    void stateDefaultBehavesAsBeforeAndFaceLightingKeepsThePoolShells() {
+        RenderSettings states = new RenderSettings(Render.STATE, DisplayLighting.FACES, List.of());
+        List<LookRequest> requests = synthetic(3_000);
+        assertEquals(LookAllocator.allocate(POOL, requests, false).placements(),
+                LookAllocator.allocate(POOL, requests, false, states).placements());
+        RenderSettings stateBlock = new RenderSettings(Render.STATE, DisplayLighting.BLOCK, List.of());
+        LookTable table = LookAllocator.allocate(POOL, requests, false, stateBlock);
+        assertTrue(table.count(LookTable.Tier.STATE) > 0);
+        table.placements().values().stream()
+                .filter(p -> p.tier() == LookTable.Tier.DISPLAY && p.wanted().collision() == Collision.FULL)
+                .forEach(p -> assertEquals(LookPool.CLEAR_SHELL, p.state()));
+    }
+
     @Test
     void breakingComesFromTheFamilyOfTheState() {
         LookTable table = LookAllocator.allocate(POOL, List.of(request(1, DEFAULT, Render.AUTO),

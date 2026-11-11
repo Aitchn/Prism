@@ -7,6 +7,10 @@ PacketEvents and Paper, is not (see "Not verified").
 
 Update: ADR-0024 lifts the Bedrock limit stated below: with Geyser on the same server, display-layer blocks are real Bedrock custom blocks too.
 
+Update: ADR-0025 makes the display layer the default (borrowed states are opt-in with `blocks.render: state`) and
+draws a block with one entity at its centre in a clear shell by default; the per-face drawing below is kept as
+`blocks.display.lighting: faces`.
+
 ## Context
 
 Stage 1 made the index the only truth and the server carrier inert, but a Java client can still tell apart only as many

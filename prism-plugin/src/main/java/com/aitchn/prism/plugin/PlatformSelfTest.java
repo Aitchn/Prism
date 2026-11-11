@@ -4,6 +4,7 @@ import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.block.BlockCapability;
 import com.aitchn.prism.api.block.CustomBlock;
 import com.aitchn.prism.api.block.PrismCapabilities;
+import com.aitchn.prism.core.block.BlockLook;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import com.aitchn.prism.platform.spi.ScheduledTask;
 import java.util.Optional;
@@ -78,13 +79,14 @@ final class PlatformSelfTest implements Listener {
             boolean facing = custom.map(c -> c.facing() == BlockFace.EAST).orElse(false);
             boolean placeRan = custom.map(c -> c.data().has(placedKey, PersistentDataType.LONG)).orElse(false);
             // Variants: placed with the first, switched at runtime, unknown names refused, the look follows. The world
-            // keeps the inert carrier (ADR-0022), so the look is the state the packet rewrite sends to clients.
-            int before = blocks.expectedLookId(block);
+            // keeps the inert carrier (ADR-0022), so the look is what the packet layer shows clients: a borrowed
+            // state, or for a display look the shell state plus the display model.
+            BlockLook before = blocks.expectedLook(block);
             boolean variant = custom.map(c -> c.variant().equals("idle")).orElse(false)
                     && blocks.setVariant(block, "active")
                     && blocks.get(block).map(c -> c.variant().equals("active")).orElse(false)
                     && !blocks.setVariant(block, "missing")
-                    && before != -1 && before != blocks.expectedLookId(block);
+                    && before != null && !before.equals(blocks.expectedLook(block));
 
             Block chest = block.getRelative(BlockFace.NORTH);
             chest.setType(Material.CHEST, false);

@@ -25,31 +25,44 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * {@code /prism give <player> <item> [amount]} and {@code /prism items}: an item browser that works on Java and Bedrock
- * (chest menu), so every custom item can be obtained in game without a mod-specific command.
+ * (chest menu), so every custom item can be obtained in game without a mod-specific command. {@code /prism bench} is the
+ * display layer's load test ({@link DisplayBench}), under its own permission.
  */
 final class PrismCommand implements TabExecutor {
 
     static final String PERMISSION = "prism.command.give";
+    static final String BENCH_PERMISSION = "prism.command.bench";
     private static final int PAGE_SIZE = 45;
 
     private final Registry<ItemDefinition> definitions;
     private final ItemService items;
     private final MenuService menus;
     private final PlatformScheduler scheduler;
+    private final DisplayBench bench;
 
     PrismCommand(Registry<ItemDefinition> definitions, ItemService items, MenuService menus,
-            PlatformScheduler scheduler) {
+            PlatformScheduler scheduler, DisplayBench bench) {
         this.definitions = definitions;
         this.items = items;
         this.menus = menus;
         this.scheduler = scheduler;
+        this.bench = bench;
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label,
             @NotNull String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Component.text("/prism give <player> <item> [amount] | /prism items", NamedTextColor.GRAY));
+            sender.sendMessage(Component.text("/prism give <player> <item> [amount] | /prism items"
+                    + " | /prism bench displays <count> [radius] | /prism bench clear", NamedTextColor.GRAY));
+            return true;
+        }
+        if (args[0].equalsIgnoreCase("bench")) {
+            if (!sender.hasPermission(BENCH_PERMISSION)) {
+                sender.sendMessage(Component.text("You do not have permission.", NamedTextColor.RED));
+            } else {
+                bench.run(sender, args);
+            }
             return true;
         }
         if (!sender.hasPermission(PERMISSION)) {
@@ -158,11 +171,15 @@ final class PrismCommand implements TabExecutor {
     @Override
     public @NotNull List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
             @NotNull String alias, @NotNull String[] args) {
+        boolean benches = sender.hasPermission(BENCH_PERMISSION);
+        if (args.length > 1 && args[0].equalsIgnoreCase("bench")) {
+            return benches && args.length == 2 ? filter(List.of("displays", "clear"), args[1]) : List.of();
+        }
         if (!sender.hasPermission(PERMISSION)) {
-            return List.of();
+            return args.length == 1 && benches ? filter(List.of("bench"), args[0]) : List.of();
         }
         return switch (args.length) {
-            case 1 -> filter(List.of("give", "items"), args[0]);
+            case 1 -> filter(benches ? List.of("give", "items", "bench") : List.of("give", "items"), args[0]);
             case 2 -> args[0].equalsIgnoreCase("give")
                     ? filter(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), args[1]) : List.of();
             case 3 -> args[0].equalsIgnoreCase("give")

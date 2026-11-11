@@ -11,10 +11,12 @@ import com.aitchn.prism.api.content.BlockDefinition;
 import com.aitchn.prism.api.content.ComponentMap;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.core.block.Appearances;
+import com.aitchn.prism.core.look.DisplayLighting;
 import com.aitchn.prism.core.look.DisplayPlan;
 import com.aitchn.prism.core.look.LookAllocator;
 import com.aitchn.prism.core.look.LookRequest;
 import com.aitchn.prism.core.look.LookTable;
+import com.aitchn.prism.core.look.RenderSettings;
 import com.aitchn.prism.core.look.ResolvedPool;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -162,6 +164,78 @@ class LookPackTest {
             assertEquals("mod:block/" + name, plan.whole(), name);
             assertTrue(resolved.files().containsKey("assets/mod/items/block/" + name + ".json"));
         }
+    }
+
+    // ---------------------------------------------------------------- one entity per block (ADR-0025)
+
+    private static LookTable allocateDisplayFirst(List<BlockDefinition> blocks) {
+        List<LookRequest> requests = new ArrayList<>();
+        for (BlockDefinition block : blocks) {
+            for (Appearances.Look look : Appearances.looks(block)) {
+                requests.add(new LookRequest(look.id(), Appearances.physics(block), Appearances.render(block), false));
+            }
+        }
+        return LookAllocator.allocate(ResolvedPool.standard(), requests, false, RenderSettings.DEFAULT);
+    }
+
+    private static JavaPackBuilder.Resolved resolveDisplayFirst(Map<String, byte[]> assets,
+            List<BlockDefinition> blocks) {
+        return JavaPackBuilder.resolve(new JavaPackBuilder.Input(Map.of("mod", assets), List.of(), blocks, 46, "t",
+                allocateDisplayFirst(blocks), DisplayLighting.BLOCK));
+    }
+
+    @Test
+    void underTheDefaultsEveryLookIsOneWholeItemModelAndNothingIsBorrowed() {
+        Map<String, byte[]> assets = new LinkedHashMap<>();
+        assets.put("assets/mod/textures/block/ruby.png", PNG);
+        assets.put("assets/mod/textures/block/press.png", PNG);
+        var rotating = block("mod:press", ComponentMap.builder()
+                .put(PrismComponents.ROTATION, PrismComponents.Rotation.HORIZONTAL).build());
+        var resolved = resolveDisplayFirst(assets, List.of(block("mod:ruby", ComponentMap.empty()), rotating));
+        assertEquals(5, resolved.displayPlans().size(), "ruby and four facings of the press");
+        for (DisplayPlan plan : resolved.displayPlans().values()) {
+            assertFalse(plan.isSplit());
+            assertFalse(plan.whole().isEmpty());
+            assertTrue(resolved.files().containsKey("assets/" + plan.whole().replace(":", "/items/") + ".json"),
+                    plan.whole());
+        }
+        assertEquals("mod:block/ruby", resolved.displayPlans().get("mod:ruby").whole());
+        // the clear shell is vanilla's barrier: no borrowed family file, no shell model, no face models
+        assertFalse(resolved.files().containsKey(LookBlockstates.path("minecraft:note_block")));
+        assertFalse(resolved.files().containsKey(LookBlockstates.SHELL_MODEL_PATH));
+        assertTrue(resolved.files().keySet().stream().noneMatch(path -> path.startsWith("assets/prism/models/face/")));
+    }
+
+    @Test
+    void passableDisplayLooksStillGetTheirShellFile() {
+        var flower = block("mod:flower", ComponentMap.builder()
+                .put(PrismComponents.PASSABLE, new PrismComponents.Passable(true)).build());
+        var resolved = resolveDisplayFirst(Map.of("assets/mod/textures/block/flower.png", PNG), List.of(flower));
+        assertTrue(resolved.files().containsKey(LookBlockstates.SHELL_MODEL_PATH));
+        assertTrue(resolved.files().containsKey(LookBlockstates.path("minecraft:tripwire")));
+        assertEquals("mod:block/flower", resolved.displayPlans().get("mod:flower").whole());
+    }
+
+    @Test
+    void aModelWithManyFacesIsReportedOnce() {
+        StringBuilder elements = new StringBuilder();
+        for (int i = 0; i < 5; i++) {
+            if (i > 0) {
+                elements.append(',');
+            }
+            elements.append("{\"from\":[0,").append(i).append(",0],\"to\":[16,").append(i + 1).append(",16],\"faces\":{")
+                    .append("\"up\":{\"texture\":\"#all\"},\"down\":{\"texture\":\"#all\"},\"north\":{\"texture\":\"#all\"},")
+                    .append("\"south\":{\"texture\":\"#all\"},\"east\":{\"texture\":\"#all\"},\"west\":{\"texture\":\"#all\"}}}");
+        }
+        Map<String, byte[]> assets = new LinkedHashMap<>();
+        assets.put("assets/mod/models/block/heavy.json", ("{\"textures\":{\"all\":\"mod:block/heavy\"},\"elements\":["
+                + elements + "]}").getBytes(StandardCharsets.UTF_8));
+        var heavy = block("mod:heavy", ComponentMap.builder()
+                .put(PrismComponents.ROTATION, PrismComponents.Rotation.HORIZONTAL).build());
+        var resolved = resolveDisplayFirst(assets, List.of(heavy, block("mod:light", ComponentMap.empty())));
+        List<String> reports = resolved.warnings().stream().filter(w -> w.contains("faces;")).toList();
+        assertEquals(1, reports.size(), resolved.warnings().toString());
+        assertTrue(reports.getFirst().contains("5 elements and 30 faces"), reports.getFirst());
     }
 
     @Test

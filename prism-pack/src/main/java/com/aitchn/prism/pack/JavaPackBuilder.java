@@ -6,7 +6,9 @@ import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.content.PrismComponents;
 import com.aitchn.prism.core.block.Appearances;
 import com.aitchn.prism.core.block.ConnectedShapes;
+import com.aitchn.prism.core.look.DisplayLighting;
 import com.aitchn.prism.core.look.DisplayPlan;
+import com.aitchn.prism.core.look.LookPool;
 import com.aitchn.prism.core.look.LookTable;
 import com.aitchn.prism.core.look.ModelRef;
 import com.aitchn.prism.core.look.ResolvedPool;
@@ -40,18 +42,29 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class JavaPackBuilder {
 
-    /** Input for one build. {@code assets} maps mod id to its pack files. */
+    /**
+     * Input for one build. {@code assets} maps mod id to its pack files; {@code lighting} decides whether display looks
+     * also get face models (ADR-0023) or only their whole model (ADR-0025).
+     */
     public record Input(
             @NotNull Map<String, Map<String, byte[]>> assets,
             @NotNull Collection<ItemDefinition> items,
             @NotNull Collection<BlockDefinition> blocks,
             int packFormat,
             @NotNull String description,
-            @NotNull LookTable looks) {
+            @NotNull LookTable looks,
+            @NotNull DisplayLighting lighting) {
 
         public Input(@NotNull Map<String, Map<String, byte[]>> assets, @NotNull Collection<ItemDefinition> items,
                 @NotNull Collection<BlockDefinition> blocks, int packFormat, @NotNull String description) {
-            this(assets, items, blocks, packFormat, description, LookTable.empty());
+            this(assets, items, blocks, packFormat, description, LookTable.empty(), DisplayLighting.BLOCK);
+        }
+
+        /** With face lighting, as before ADR-0025. */
+        public Input(@NotNull Map<String, Map<String, byte[]>> assets, @NotNull Collection<ItemDefinition> items,
+                @NotNull Collection<BlockDefinition> blocks, int packFormat, @NotNull String description,
+                @NotNull LookTable looks) {
+            this(assets, items, blocks, packFormat, description, looks, DisplayLighting.FACES);
         }
     }
 
@@ -183,11 +196,13 @@ public final class JavaPackBuilder {
                     custom.computeIfAbsent(placement.state().block(), k -> new LinkedHashMap<>())
                             .put(placement.state(), new ModelRef(model.toString(), rotation[0], rotation[1]));
                 } else {
-                    shells.add(placement.state().block());
+                    if (!LookPool.isClearShell(placement.state())) {
+                        shells.add(placement.state().block()); // the clear shell is vanilla's barrier: no pack file
+                    }
                     PrismKey itemModel = Appearances.itemModel(block.key(), look.variant());
                     String whole = files.containsKey("assets/" + itemModel.namespace() + "/items/" + itemModel.value()
                             + ".json") ? itemModel.toString() : "";
-                    plans.put(look.id(), displays.plan("block " + look.id(), model, whole));
+                    plans.put(look.id(), displays.plan("block " + look.id(), model, whole, input.lighting()));
                 }
             }
         }

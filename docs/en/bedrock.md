@@ -12,7 +12,6 @@ Bedrock players join through Geyser. Prism detects them (Floodgate, then Geyser)
 | Connected blocks (`prism:connections`) | display entity over a barrier | custom block with the generated shape per combination of sides |
 | Passable blocks (`prism:passable`) | tripwire state + resource pack | custom block without collision |
 | Any block drawn by the display layer (beyond the borrowed states) | packet-only display entities | custom block (never a display entity); **not visible** if synthetic blocks are off or not registered |
-| Any block with `blocks.backend: display` | display entity | custom block; **not visible** if synthetic blocks are off or not registered |
 | Block variants (`prism:variants`, `setVariant`) | yes | yes |
 | Block light (`prism:light`) | vanilla light block next to it | the same light block, through Geyser |
 | Custom sounds (`sounds.json`, `prism:ambient_sound`) | yes | yes (Bedrock pack `sound_definitions`, played through Geyser) |

@@ -12,7 +12,6 @@ Mod 依「能力」而非「版本」調整。
 | 連接方塊（`prism:connections`） | 屏障上的顯示實體 | 依連接組合自動產生形狀的自訂方塊 |
 | 可穿過的方塊（`prism:passable`） | 絆線狀態＋資源包 | 無碰撞的自訂方塊 |
 | 由顯示層繪製的方塊（超出借用狀態的部分） | 只存在封包中的顯示實體 | 自訂方塊（絕不送顯示實體）；合成方塊關閉或未註冊時**看不見** |
-| `blocks.backend: display` 下的所有方塊 | 顯示實體 | 自訂方塊；合成方塊關閉或未註冊時**看不見** |
 | 方塊外觀變體（`prism:variants`、`setVariant`） | 有 | 有 |
 | 方塊光源（`prism:light`） | 旁邊放原版光源方塊 | 同一個光源方塊（經 Geyser） |
 | 自訂音效（`sounds.json`、`prism:ambient_sound`） | 有 | 有（基岩版資源包的 `sound_definitions`，經 Geyser 播放） |

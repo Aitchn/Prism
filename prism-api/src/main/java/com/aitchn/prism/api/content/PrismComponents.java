@@ -415,11 +415,11 @@ public final class PrismComponents {
 
     /**
      * Where the look of a block is drawn from, for blocks drawn as a client-side look (no BetterModel model, no
-     * connections). {@code auto} (default) uses a borrowed vanilla block state when one with the block's collision,
-     * occlusion and sound exists, and an invisible shell plus packet-only display entities otherwise. {@code state}
-     * asks for a borrowed state (the block still falls back to a display if none is left, and the log says so);
-     * {@code display} always uses the display layer, which has no limit on the number of looks. Scalar form:
-     * {@code prism:render: display}.
+     * connections). {@code auto} (default) follows the server's {@code blocks.render} setting, which is {@code display}
+     * unless the server owner changed it. {@code state} asks for a borrowed vanilla block state with the block's
+     * collision, occlusion and sound (the block still falls back to the display layer if none is left, and the log
+     * says so); {@code display} always uses the display layer (an invisible shell plus packet-only display entities),
+     * which has no limit on the number of looks. Scalar form: {@code prism:render: state}.
      */
     public static final ComponentType<Render> RENDER = new ComponentType<>(
             new PrismKey(PrismKey.PRISM_NAMESPACE, "render"),

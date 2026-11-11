@@ -10,6 +10,7 @@ import com.aitchn.prism.client.LookSource;
 import com.aitchn.prism.core.block.ChunkLooks;
 import com.aitchn.prism.core.client.Profiles;
 import com.aitchn.prism.core.data.SqliteDataService;
+import com.aitchn.prism.core.look.RenderSettings;
 import com.aitchn.prism.core.PrismRuntime;
 import com.aitchn.prism.core.StartupReport;
 import com.aitchn.prism.core.recipe.RegistryRecipes;
@@ -71,12 +72,20 @@ public final class PrismPlugin extends JavaPlugin {
         } catch (java.sql.SQLException | RuntimeException e) {
             throw new IllegalStateException("cannot open Prism's data store", e);
         }
-        String backend = getConfig().getString("blocks.backend", "auto");
-        packManager.configure(backend, getConfig().getBoolean("blocks.display.solid-shells", false));
+        // blocks.backend is the setting of earlier versions: read only when blocks.render is not set (ADR-0025). Only
+        // values the server's config.yml really holds count (a null default skips the defaults of the bundled file),
+        // so an old file with backend and without render keeps meaning what it says.
+        RenderSettings render = RenderSettings.read(getConfig().getString("blocks.backend", null),
+                getConfig().getString("blocks.render", null),
+                getConfig().getString("blocks.display.lighting", null));
+        render.notes().forEach(note -> getLogger().info("PRISM_RENDER_NOTE " + note));
+        getLogger().info("PRISM_RENDER default=" + render.defaultRender().name().toLowerCase(java.util.Locale.ROOT)
+                + " lighting=" + render.lighting().id());
+        packManager.configure(render, getConfig().getBoolean("blocks.display.solid-shells", false));
         packManager.bedrockBlocks().attach();
         packManager.installInto(new GeyserInstaller(getLogger(), getDataFolder().toPath().resolve("geyser")));
         PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, new BlockIndex(this), display,
-                packManager::looks, backend, dispatcher, scheduler, getLogger());
+                packManager::looks, dispatcher, scheduler, getLogger());
         RegistryRecipes recipes = new RegistryRecipes(mods.recipeTypes(), mods.recipes());
         VanillaRecipes vanillaRecipes = new VanillaRecipes(recipes, items, scheduler, getLogger());
         Runnable contentChanged = () -> {
@@ -97,7 +106,8 @@ public final class PrismPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(modelLooks, this);
         DisplayLayer displayLayer = new DisplayLayer(blocks, packManager::looks, scheduler, bedrockPlayers,
                 Math.max(0, getConfig().getInt("blocks.display.view-distance", 8)),
-                (float) getConfig().getDouble("blocks.display.view-range", 1.0));
+                (float) getConfig().getDouble("blocks.display.view-range", 1.0),
+                Math.max(0, getConfig().getInt("blocks.display.max-per-player", 12000)), render.lighting());
         blocks.onLookChanged(displayLayer::changed);
         blocks.onChunkRelooked(displayLayer::relooked);
         getServer().getPluginManager().registerEvents(displayLayer, this);
@@ -151,7 +161,8 @@ public final class PrismPlugin extends JavaPlugin {
         }, blocks::foreignChange);
         var command = getCommand("prism");
         if (command != null) {
-            PrismCommand executor = new PrismCommand(mods.items(), items, menus, scheduler);
+            PrismCommand executor = new PrismCommand(mods.items(), items, menus, scheduler,
+                    new DisplayBench(this, mods, contentChanged, blocks, displayLayer, scheduler));
             command.setExecutor(executor);
             command.setTabCompleter(executor);
         }
@@ -208,7 +219,7 @@ public final class PrismPlugin extends JavaPlugin {
         String syntheticSelfTest = System.getProperty("prism.selftest.synthetic");
         if (syntheticSelfTest != null) {
             getServer().getPluginManager().registerEvents(new SyntheticSelfTest(Integer.parseInt(syntheticSelfTest),
-                    mods, contentChanged, packManager, blocks, scheduler, getLogger()), this);
+                    mods, contentChanged, packManager, blocks, displayLayer, scheduler, getLogger()), this);
         }
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {

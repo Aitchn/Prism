@@ -97,6 +97,15 @@ public final class ChunkLooks {
         }
     }
 
+    /** How many positions of this chunk are drawn by the display layer. */
+    public int displayCount() {
+        int count = 0;
+        for (int d : display) {
+            count += d != BlockLook.NO_DISPLAY ? 1 : 0;
+        }
+        return count;
+    }
+
     /** Whether any position of this chunk is drawn by the display layer. */
     public boolean hasDisplays() {
         for (int d : display) {

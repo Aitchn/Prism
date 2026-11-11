@@ -35,6 +35,23 @@ public final class LookPool {
     private static final PhysicsClass STONE_PLANT = new PhysicsClass(Collision.NONE, false, SoundGroup.STONE);
     private static final PhysicsClass GRASS_PLANT = new PhysicsClass(Collision.NONE, false, SoundGroup.GRASS);
 
+    /**
+     * The shell of display looks with full collision when the display layer draws one entity per block
+     * ({@link DisplayLighting#BLOCK}, ADR-0025): the barrier. It is not borrowed and needs no model in the pack: vanilla
+     * draws nothing for it, it has full collision, it hides no faces of its neighbours and light passes through it, so
+     * a client lights an entity at the block's centre from that cell. A survival client cannot break it; the server
+     * runs the dig.
+     */
+    public static final StateRef CLEAR_SHELL = StateRef.parse("minecraft:barrier[waterlogged=false]");
+
+    /** The class a client predicts for {@link #CLEAR_SHELL}. */
+    public static final PhysicsClass CLEAR_SHELL_PHYSICS = new PhysicsClass(Collision.FULL, false, SoundGroup.STONE);
+
+    /** Whether {@code state} is {@link #CLEAR_SHELL}. */
+    public static boolean isClearShell(@NotNull StateRef state) {
+        return CLEAR_SHELL.equals(state);
+    }
+
     /** The families, in the order they are handed out. */
     public static @NotNull List<BorrowedFamily> families() {
         List<BorrowedFamily> families = new ArrayList<>();

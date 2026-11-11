@@ -30,4 +30,5 @@ the ADRs are the authoritative English form.
 | [0022](0022-inert-block-carrier.md) | Inert block carrier and packet rewriting (stage 1) | Accepted |
 | [0023](0023-look-pool-and-display-layer.md) | Look pool and display layer (stage 2) | Accepted |
 | [0024](0024-bedrock-synthetic-blocks.md) | Synthetic block states for Bedrock (stage 3) | Accepted |
+| [0025](0025-display-first.md) | Display layer first, one entity per block | Accepted |
 | [0026](0026-per-viewer-item-text.md) | Per-viewer item text, translated in packets | Accepted |

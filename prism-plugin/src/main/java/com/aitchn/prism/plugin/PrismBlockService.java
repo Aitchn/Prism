@@ -76,8 +76,8 @@ final class PrismBlockService implements BlockService, Listener {
     private final DisplayEntityBackend display;
     private final CarrierAppearance noteBlocks;
     private final CarrierAppearance tripwires;
+    private final CarrierAppearance clearShells;
     private final java.util.function.Supplier<ClientLooks> clientLooks;
-    private final String backend;
     private final BehaviorDispatcher dispatcher;
     private final PlatformScheduler scheduler;
     private final Logger log;
@@ -90,17 +90,13 @@ final class PrismBlockService implements BlockService, Listener {
     private final java.util.List<java.util.function.Consumer<Block>> lookChanged =
             new java.util.concurrent.CopyOnWriteArrayList<>();
 
-    /**
-     * @param backend {@code auto} (note block states for every block that has no BetterModel model, so Bedrock sees
-     *                them), {@code display} (always display entities) or {@code native} (note block states only)
-     */
     PrismBlockService(Registry<BlockDefinition> definitions, ItemService items, BlockIndex index,
-            DisplayEntityBackend display, java.util.function.Supplier<ClientLooks> clientLooks, String backend,
+            DisplayEntityBackend display, java.util.function.Supplier<ClientLooks> clientLooks,
             BehaviorDispatcher dispatcher, PlatformScheduler scheduler, Logger log) {
         this.clientLooks = clientLooks;
         this.noteBlocks = new CarrierAppearance(Carrier.SOLID, clientLooks, log);
         this.tripwires = new CarrierAppearance(Carrier.PASSABLE, clientLooks, log);
-        this.backend = backend;
+        this.clearShells = new CarrierAppearance(Carrier.DISPLAY, clientLooks, log);
         this.definitions = definitions;
         this.items = items;
         this.index = index;
@@ -140,10 +136,12 @@ final class PrismBlockService implements BlockService, Listener {
                 .isPresent() ? facing : BlockFace.NORTH;
         String variant = Appearances.variants(definition).getFirst();
         int mask = connected ? connections(new Handle(block, key, definition, actual, variant, index)) : -1;
-        if (!appearanceFor(definition).spawn(block, definition, actual, Appearances.drawnVariant(variant, mask))) {
+        String drawn = Appearances.drawnVariant(variant, mask);
+        Carrier carrier = carrierFor(definition, new Appearances.Look(key, drawn, actual.name()).id());
+        if (!appearance(carrier).spawn(block, definition, actual, drawn)) {
             return false;
         }
-        index.put(block, new BlockIndex.Entry(key, actual, variant, mask, carrierFor(definition)));
+        index.put(block, new BlockIndex.Entry(key, actual, variant, mask, carrier));
         publishLook(block);
         Handle handle = new Handle(block, key, definition, actual, variant, index);
         dispatcher.dispatchBlock(key, block.getLocation(), BlockPlaceBehavior.class,
@@ -178,10 +176,13 @@ final class PrismBlockService implements BlockService, Listener {
         String variant = Appearances.variants(definition).getFirst();
         // Neighbours are not looked at while the chunk generates: a connected block starts unconnected.
         int mask = definition.components().has(PrismComponents.CONNECTIONS) ? 0 : -1;
-        if (!appearanceFor(definition).spawn(block, definition, BlockFace.NORTH, Appearances.drawnVariant(variant, mask))) {
+        String drawn = Appearances.drawnVariant(variant, mask);
+        Carrier carrier = carrierFor(definition,
+                new Appearances.Look(definition.key(), drawn, BlockFace.NORTH.name()).id());
+        if (!appearance(carrier).spawn(block, definition, BlockFace.NORTH, drawn)) {
             return false;
         }
-        index.put(block, new BlockIndex.Entry(definition.key(), BlockFace.NORTH, variant, mask, carrierFor(definition)));
+        index.put(block, new BlockIndex.Entry(definition.key(), BlockFace.NORTH, variant, mask, carrier));
         publishLook(block);
         return true;
     }
@@ -380,45 +381,66 @@ final class PrismBlockService implements BlockService, Listener {
     }
 
     /**
-     * Whether blocks of {@code definition} drawn by a display entity (a BetterModel model or a connected shape) also get
-     * note block looks for Bedrock players (sent to them per player; Java players keep the display entity).
+     * Whether blocks of {@code definition} drawn by a server-side display entity (a BetterModel model or a connected
+     * shape) also get note block looks for Bedrock players (sent to them per player; Java players keep the entity).
      */
-    static boolean bedrockOnlyLooks(String backend, BlockDefinition definition) {
-        return !"display".equals(backend) && (ModelAnchors.modelOf(definition).isPresent()
-                || definition.components().has(PrismComponents.CONNECTIONS));
+    static boolean bedrockOnlyLooks(BlockDefinition definition) {
+        return !usesCarrier(definition);
     }
 
-    /** The appearance new blocks of {@code definition} get. */
-    private BlockAppearance appearanceFor(BlockDefinition definition) {
-        return usesTripwire(backend, definition) ? tripwires : usesNoteBlocks(backend, definition) ? noteBlocks : display;
+    /**
+     * Whether blocks of {@code definition} are stored as an inert {@link Carrier} and drawn as a client-side look (a
+     * borrowed state, or a shell plus the display layer). BetterModel models need a server entity to animate, and a
+     * connected shape is drawn by one too, so neither uses a carrier unless the block is passable.
+     */
+    static boolean usesCarrier(BlockDefinition definition) {
+        return Appearances.passable(definition) || ModelAnchors.modelOf(definition).isEmpty()
+                && !definition.components().has(PrismComponents.CONNECTIONS);
     }
 
-    /** Whether new blocks of {@code definition} are drawn as passable tripwire states. */
-    static boolean usesTripwire(String backend, BlockDefinition definition) {
-        return !"display".equals(backend) && Appearances.passable(definition);
-    }
-
-    /** Whether new blocks of {@code definition} are drawn as note block states under the {@code blocks.backend} setting. */
-    static boolean usesNoteBlocks(String backend, BlockDefinition definition) {
-        // BetterModel models need an entity to animate, and a connected shape drawn by a note block would hide the faces
-        // of its neighbours on Java (the note block is opaque to the client), so both always use a display entity.
-        return !"display".equals(backend) && ModelAnchors.modelOf(definition).isEmpty()
-                && !definition.components().has(PrismComponents.CONNECTIONS) && !Appearances.passable(definition);
-    }
-
-    /** The inert carrier new blocks of {@code definition} get, or null if they are drawn by a display entity. */
-    private Carrier carrierFor(BlockDefinition definition) {
-        return usesTripwire(backend, definition) ? Carrier.PASSABLE
-                : usesNoteBlocks(backend, definition) ? Carrier.SOLID : null;
-    }
-
-    /** The appearance an existing block was placed with (blocks keep theirs when the setting changes). */
-    BlockAppearance appearanceOf(Block block) {
-        Carrier carrier = index.get(block).map(BlockIndex.Entry::carrier).orElse(null);
-        if (carrier == null) {
-            carrier = Carrier.legacy(block.getType()); // a block of an earlier version, not migrated yet
+    /**
+     * The carrier a new block of {@code definition} drawn as {@code lookId} gets in this boot, or null if it is drawn by
+     * a server-side display entity. Follows the look's tier: one display entity in a clear shell is stored as
+     * {@link Carrier#DISPLAY}, everything else solid as {@link Carrier#SOLID} (ADR-0025).
+     */
+    private @Nullable Carrier carrierFor(BlockDefinition definition, String lookId) {
+        if (!usesCarrier(definition)) {
+            return null;
         }
-        return carrier == Carrier.SOLID ? noteBlocks : carrier == Carrier.PASSABLE ? tripwires : display;
+        Carrier carrier = clientLooks.get().carrierFor(lookId, Appearances.passable(definition));
+        return carrier != null ? carrier : Carrier.SOLID;
+    }
+
+    /** The carrier the custom block at {@code block} would get if it were placed now, or null; for the self tests. */
+    @Nullable Carrier wantedCarrier(Block block) {
+        Optional<BlockIndex.Entry> entry = index.get(block);
+        Optional<BlockDefinition> definition = entry.flatMap(e -> definitions.get(e.key()));
+        if (entry.isEmpty() || definition.isEmpty()) {
+            return null;
+        }
+        return carrierFor(definition.get(), lookIdOf(entry.get()));
+    }
+
+    private BlockAppearance appearance(@Nullable Carrier carrier) {
+        if (carrier == null) {
+            return display;
+        }
+        return switch (carrier) {
+            case SOLID -> noteBlocks;
+            case PASSABLE -> tripwires;
+            case DISPLAY -> clearShells;
+        };
+    }
+
+    /** The carrier the block at {@code block} is stored with (an earlier version's counts), or null. */
+    private @Nullable Carrier carrierOf(Block block) {
+        Carrier carrier = index.get(block).map(BlockIndex.Entry::carrier).orElse(null);
+        return carrier != null ? carrier : Carrier.legacy(block.getType()); // an earlier version's, not migrated yet
+    }
+
+    /** The appearance an existing block was placed with. */
+    BlockAppearance appearanceOf(Block block) {
+        return appearance(carrierOf(block));
     }
 
     /** The look id of the custom block at {@code block} (what {@link ClientLooks} is keyed by), or null. */
@@ -427,9 +449,18 @@ final class PrismBlockService implements BlockService, Listener {
                 Appearances.drawnVariant(entry.variant(), entry.connections()), entry.facing().name()).id()).orElse(null);
     }
 
-    /** Whether the client breaks this block itself (its carrier is breakable), so Prism must not run the dig. */
+    private static String lookIdOf(BlockIndex.Entry entry) {
+        return new Appearances.Look(entry.key(), Appearances.drawnVariant(entry.variant(), entry.connections()),
+                entry.facing().name()).id();
+    }
+
+    /**
+     * Whether the client breaks this block itself (what it is shown is breakable), so Prism must not run the dig. Not
+     * for a server-side display entity's carrier or the barrier shown for {@link Carrier#DISPLAY}.
+     */
     boolean clientBreaks(Block block) {
-        return appearanceOf(block) != display;
+        Carrier carrier = carrierOf(block);
+        return carrier == Carrier.SOLID || carrier == Carrier.PASSABLE;
     }
 
     /** Whether {@code block} is drawn as a client-side look (the server stores an inert carrier). */
@@ -559,6 +590,13 @@ final class PrismBlockService implements BlockService, Listener {
             publishLook(block);
             return true;
         }
+        Carrier found = Carrier.of(type);
+        if (convertible(found, wanted)) {
+            // The world holds the other solid carrier (a conversion that was cut short): adopt it, then convert again.
+            index.setCarrier(block, found);
+            publishLook(block);
+            return true;
+        }
         log.info("PRISM_CARRIER_LOST " + entry.key() + " at " + block.getX() + "," + block.getY() + "," + block.getZ()
                 + " now " + type + "; the world wins, removing the block");
         remove(block, false, stack -> {}, true);
@@ -588,12 +626,30 @@ final class PrismBlockService implements BlockService, Listener {
         long packed = BlockIndex.packed(block);
         BlockIndex.Entry entry = mirror.blocks.get(packed);
         Carrier carrier = entry == null ? null : entry.carrier();
+        if (carrier != null && scheduler.isOwnedByCurrentThread(block.getLocation())) {
+            // Only once this boot's looks know the look: before that (or for a look that got nothing) keep what is there.
+            Carrier wanted = definitions.get(entry.key()).filter(PrismBlockService::usesCarrier)
+                    .map(definition -> clientLooks.get().carrierFor(lookIdOf(entry), Appearances.passable(definition)))
+                    .orElse(null);
+            if (wanted != null && convertible(carrier, wanted) && block.getType() == carrier.material()) {
+                // The look's tier changed since the block was stored (settings or content): follow it. ADR-0025.
+                block.setType(wanted.material(), false);
+                index.setCarrier(block, wanted);
+                carrier = wanted;
+            }
+        }
         BlockLook look = carrier == null ? null : lookFor(carrier, entry);
         if (look == null) {
             mirror.clearLook(packed);
             return;
         }
         mirror.setLook(packed, look);
+    }
+
+    /** Whether a block stored as {@code from} is converted to {@code to}: only between the two solid carriers. */
+    private static boolean convertible(@Nullable Carrier from, @Nullable Carrier to) {
+        return from != to && (from == Carrier.SOLID || from == Carrier.DISPLAY)
+                && (to == Carrier.SOLID || to == Carrier.DISPLAY);
     }
 
     /** What viewers see for {@code entry}, or null if its look got no client representation in this boot. */
@@ -668,12 +724,20 @@ final class PrismBlockService implements BlockService, Listener {
 
     /** The look id recomputed from the index entry alone, or -1: what {@link #lookOf} must agree with. */
     int expectedLookId(Block block) {
+        BlockLook look = expectedLook(block);
+        return look == null ? -1 : look.look();
+    }
+
+    /**
+     * The whole look recomputed from the index entry alone, or null. Two display looks share the shell state and differ
+     * only in {@link BlockLook#display()}, so a check that the look changed must compare this, not the state id.
+     */
+    BlockLook expectedLook(Block block) {
         Optional<BlockIndex.Entry> entry = index.get(block);
         if (entry.isEmpty() || entry.get().carrier() == null) {
-            return -1;
+            return null;
         }
-        BlockLook look = lookFor(entry.get().carrier(), entry.get());
-        return look == null ? -1 : look.look();
+        return lookFor(entry.get().carrier(), entry.get());
     }
 
     /** Makes the entry look like one an earlier version wrote (no carrier recorded). */
