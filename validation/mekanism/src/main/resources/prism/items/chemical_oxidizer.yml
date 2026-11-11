@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Chemical Oxidizer"
-  prism:places_block: mekanism:chemical_oxidizer

@@ -1,8 +1,0 @@
-# A menu gauge (prism:gauge): machine GUIs show it in steps; Prism draws the icons. Not obtainable.
-base: minecraft:paper
-components:
-  prism:display_name: "<white>Energy"
-  prism:gauge:
-    style: bar
-    color: "#d03030"
-    steps: 16

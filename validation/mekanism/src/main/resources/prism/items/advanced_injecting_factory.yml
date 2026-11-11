@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Advanced Injecting Factory"
-  prism:places_block: mekanism:advanced_injecting_factory

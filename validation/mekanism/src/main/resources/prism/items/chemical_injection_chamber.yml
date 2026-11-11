@@ -1,5 +1,0 @@
-# Item form of mekanism:chemical_injection_chamber.
-base: minecraft:paper
-components:
-  prism:display_name: "Chemical Injection Chamber"
-  prism:places_block: mekanism:chemical_injection_chamber

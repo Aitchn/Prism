@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Precision Sawmill"
-  prism:places_block: mekanism:precision_sawmill

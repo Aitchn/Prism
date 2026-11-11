@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: precision_sawmill
-input: minecraft:jungle_log
-output: {item: minecraft:jungle_planks, count: 6}
-ticks: 100
-energy: 50

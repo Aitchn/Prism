@@ -1,3 +1,0 @@
-type: prism:shapeless
-ingredients: [mekanism:hdpe_sheet]
-result: {item: mekanism:hdpe_rod, count: 2}

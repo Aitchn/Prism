@@ -1,7 +1,0 @@
-type: mekanism:machine
-machine: chemical_injection_chamber
-input: mekanism:osmium_crystal
-output: mekanism:osmium_shard
-chemical_in: {chemical: hydrogen_chloride, amount: 10}
-ticks: 300
-energy: 50

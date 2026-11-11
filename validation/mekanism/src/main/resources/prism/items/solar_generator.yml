@@ -1,5 +1,0 @@
-# Item form of mekanism:solar_generator.
-base: minecraft:paper
-components:
-  prism:display_name: "Solar Generator"
-  prism:places_block: mekanism:solar_generator

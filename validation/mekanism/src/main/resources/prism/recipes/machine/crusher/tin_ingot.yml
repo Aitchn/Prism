@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: crusher
-input: mekanism:tin_ingot
-output: mekanism:tin_dust
-ticks: 200
-energy: 50

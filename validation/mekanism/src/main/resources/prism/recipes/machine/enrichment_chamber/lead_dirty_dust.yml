@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: enrichment_chamber
-input: mekanism:lead_dirty_dust
-output: mekanism:lead_dust
-ticks: 200
-energy: 50

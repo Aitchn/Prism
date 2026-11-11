@@ -1,7 +1,0 @@
-type: prism:shaped
-pattern:
-  - "PP"
-  - "PP"
-key:
-  P: mekanism:hdpe_pellet
-result: mekanism:hdpe_sheet

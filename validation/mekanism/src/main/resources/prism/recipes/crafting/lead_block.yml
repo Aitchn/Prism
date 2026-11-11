@@ -1,8 +1,0 @@
-type: prism:shaped
-pattern:
-  - "III"
-  - "III"
-  - "III"
-key:
-  I: mekanism:lead_ingot
-result: mekanism:lead_block

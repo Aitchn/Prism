@@ -1,5 +1,0 @@
-# Item form of mekanism:crusher.
-base: minecraft:paper
-components:
-  prism:display_name: "Crusher"
-  prism:places_block: mekanism:crusher

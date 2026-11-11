@@ -1,7 +1,0 @@
-type: mekanism:machine
-machine: chemical_oxidizer
-input: mekanism:sulfur_dust
-chemical_out:
-  - {chemical: sulfur_dioxide, amount: 200}
-ticks: 100
-energy: 50

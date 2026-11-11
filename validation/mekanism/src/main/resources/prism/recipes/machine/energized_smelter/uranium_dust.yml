@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: energized_smelter
-input: mekanism:uranium_dust
-output: mekanism:uranium_ingot
-ticks: 160
-energy: 40

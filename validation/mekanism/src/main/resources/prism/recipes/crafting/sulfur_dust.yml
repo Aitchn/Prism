@@ -1,3 +1,0 @@
-type: prism:shapeless
-ingredients: [minecraft:gunpowder, mekanism:coal_dust]
-result: {item: mekanism:sulfur_dust, count: 2}

@@ -1,5 +1,0 @@
-# Key: mekanism:solar_generator. Charges in daylight with open sky, keeps its energy in per-block data.
-base: minecraft:barrier
-drop: mekanism:solar_generator
-behaviors:
-  - type: mekanism:solar

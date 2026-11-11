@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: energized_smelter
-input: mekanism:iron_dust
-output: minecraft:iron_ingot
-ticks: 160
-energy: 40

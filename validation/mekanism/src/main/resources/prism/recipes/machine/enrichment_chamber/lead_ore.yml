@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: enrichment_chamber
-input: mekanism:lead_ore
-output: {item: mekanism:lead_dust, count: 2}
-ticks: 200
-energy: 50

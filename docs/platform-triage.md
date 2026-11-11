@@ -1,6 +1,6 @@
 # Platform triage of the validation gaps
 
-The Botania, AE2 and Mekanism rebuilds (`validation/*`, see [gaps.md](gaps.md) and `docs/validation/`) produced about
+The Botania, AE2 and Mekanism rebuilds (standalone plugins outside this repository, see [gaps.md](gaps.md)) produced about
 forty gap reports. This file merges them and decides, for each one, **who owns it**:
 
 - **Prism**: a platform primitive every content mod needs, whatever its theme. Prism provides the mechanism only.

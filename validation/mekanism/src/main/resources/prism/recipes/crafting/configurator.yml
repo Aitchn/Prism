@@ -1,9 +1,0 @@
-type: prism:shaped
-pattern:
-  - " A "
-  - "AIA"
-  - " I "
-key:
-  A: mekanism:alloy_infused
-  I: minecraft:iron_ingot
-result: mekanism:configurator

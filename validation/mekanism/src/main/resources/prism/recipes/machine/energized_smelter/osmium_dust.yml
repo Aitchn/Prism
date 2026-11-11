@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: energized_smelter
-input: mekanism:osmium_dust
-output: mekanism:osmium_ingot
-ticks: 160
-energy: 40

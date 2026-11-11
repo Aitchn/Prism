@@ -1,3 +1,0 @@
-type: prism:shapeless
-ingredients: [mekanism:configurator, minecraft:hopper]
-result: mekanism:item_configurator

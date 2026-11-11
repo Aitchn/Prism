@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: crusher
-input: mekanism:lead_ingot
-output: mekanism:lead_dust
-ticks: 200
-energy: 50

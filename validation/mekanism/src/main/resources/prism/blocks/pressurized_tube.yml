@@ -1,5 +1,0 @@
-# Key: mekanism:pressurized_tube. Joins machines touching it into one chemical (gas and water) network.
-base: minecraft:barrier
-drop: mekanism:pressurized_tube
-behaviors:
-  - type: mekanism:pipe

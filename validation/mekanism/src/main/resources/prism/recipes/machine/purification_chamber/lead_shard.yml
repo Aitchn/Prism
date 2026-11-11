@@ -1,7 +1,0 @@
-type: mekanism:machine
-machine: purification_chamber
-input: mekanism:lead_shard
-output: mekanism:lead_clump
-chemical_in: {chemical: oxygen, amount: 1}
-ticks: 300
-energy: 50

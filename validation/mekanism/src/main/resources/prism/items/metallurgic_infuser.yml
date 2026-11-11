@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Metallurgic Infuser"
-  prism:places_block: mekanism:metallurgic_infuser

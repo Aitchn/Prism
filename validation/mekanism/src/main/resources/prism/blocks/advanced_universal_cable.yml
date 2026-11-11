@@ -1,6 +1,0 @@
-# Key: mekanism:advanced_universal_cable. Advanced tier universal cable: limit scales with the tier.
-base: minecraft:barrier
-drop: mekanism:advanced_universal_cable
-behaviors:
-  - type: mekanism:cable
-    tier: 1

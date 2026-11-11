@@ -1,5 +1,0 @@
-# Key: mekanism:logistical_transporter. Basic tier logistical transporter: limit scales with the tier.
-base: minecraft:barrier
-drop: mekanism:logistical_transporter
-behaviors:
-  - type: mekanism:transporter

@@ -1,7 +1,0 @@
-type: mekanism:machine
-machine: combiner
-input: mekanism:copper_dust
-input2: {item: minecraft:cobblestone, count: 2}
-output: minecraft:raw_copper
-ticks: 300
-energy: 50

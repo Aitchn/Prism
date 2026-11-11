@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: enrichment_chamber
-input: mekanism:gold_dirty_dust
-output: mekanism:gold_dust
-ticks: 200
-energy: 50

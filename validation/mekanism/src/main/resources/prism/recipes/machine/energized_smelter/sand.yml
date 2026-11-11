@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: energized_smelter
-input: minecraft:sand
-output: minecraft:glass
-ticks: 160
-energy: 40

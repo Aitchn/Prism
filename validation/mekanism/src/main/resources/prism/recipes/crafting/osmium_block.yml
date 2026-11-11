@@ -1,8 +1,0 @@
-type: prism:shaped
-pattern:
-  - "III"
-  - "III"
-  - "III"
-key:
-  I: mekanism:osmium_ingot
-result: mekanism:osmium_block

@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: chemical_crystallizer
-output: mekanism:copper_crystal
-chemical_in: {chemical: clean_copper_slurry, amount: 200}
-ticks: 200
-energy: 50

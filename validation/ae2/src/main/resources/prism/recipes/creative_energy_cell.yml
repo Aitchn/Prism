@@ -1,6 +1,0 @@
-# A creative item gated behind a nether star so every item is obtainable in survival.
-type: prism:shapeless
-ingredients:
-  - ae2:energy_cell
-  - minecraft:nether_star
-result: ae2:creative_energy_cell
