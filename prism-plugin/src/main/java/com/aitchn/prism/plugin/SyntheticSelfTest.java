@@ -485,7 +485,7 @@ final class SyntheticSelfTest implements Listener {
         if (farthestSent > nearestLeft) {
             return "budget " + budget + " sent a block farther than one it left out";
         }
-        log.info("PRISM_DISPLAY_SELFTEST_OK lattice=" + lattice.size() + " entities=" + all.entities()
+        log.info("PRISM_DISPLAY_SELFTEST_OK lattice=" + lattice.size() + " entities=" + exposed
                 + " enclosed=0 budget=" + budget + " sent=" + cut.entities());
         return null;
     }

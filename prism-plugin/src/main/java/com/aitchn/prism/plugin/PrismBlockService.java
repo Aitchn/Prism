@@ -724,12 +724,20 @@ final class PrismBlockService implements BlockService, Listener {
 
     /** The look id recomputed from the index entry alone, or -1: what {@link #lookOf} must agree with. */
     int expectedLookId(Block block) {
+        BlockLook look = expectedLook(block);
+        return look == null ? -1 : look.look();
+    }
+
+    /**
+     * The whole look recomputed from the index entry alone, or null. Two display looks share the shell state and differ
+     * only in {@link BlockLook#display()}, so a check that the look changed must compare this, not the state id.
+     */
+    BlockLook expectedLook(Block block) {
         Optional<BlockIndex.Entry> entry = index.get(block);
         if (entry.isEmpty() || entry.get().carrier() == null) {
-            return -1;
+            return null;
         }
-        BlockLook look = lookFor(entry.get().carrier(), entry.get());
-        return look == null ? -1 : look.look();
+        return lookFor(entry.get().carrier(), entry.get());
     }
 
     /** Makes the entry look like one an earlier version wrote (no carrier recorded). */
