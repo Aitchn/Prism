@@ -23,7 +23,15 @@ enum Carrier {
      * No collision, no states, no ticks, does not hold fluid, cannot be pressed or connected. Structure void: the
      * client is shown a tripwire state (disarmed) with no collision either.
      */
-    PASSABLE(Material.STRUCTURE_VOID);
+    PASSABLE(Material.STRUCTURE_VOID),
+
+    /**
+     * Full collision, lets light through, no states, no ticks, does not hold fluid. Glass: carries the solid blocks
+     * whose look is one display entity at the block centre (ADR-0025). Java viewers are shown a barrier (invisible,
+     * full collision, not breakable by the client, so the server digs it); the light the server computes for this cell
+     * is what the entity is drawn with, which is why the carrier must not be opaque.
+     */
+    DISPLAY(Material.GLASS);
 
     private final Material material;
     private volatile int clientId = -1;

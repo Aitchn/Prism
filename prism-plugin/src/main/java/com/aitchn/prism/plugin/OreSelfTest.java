@@ -68,7 +68,8 @@ final class OreSelfTest implements Listener {
             }
             Chunk chunk = world.getChunkAt(chunkX, chunkZ);
             List<CustomBlock> ores = blocks.blocksIn(chunk).stream().filter(b -> b.key().equals(key)).toList();
-            boolean visible = !ores.isEmpty() && ores.stream().allMatch(b -> b.block().getType() == Carrier.SOLID.material()
+            boolean visible = !ores.isEmpty() && ores.stream().allMatch(b -> blocks.wantedCarrier(b.block()) != null
+                    && b.block().getType() == blocks.wantedCarrier(b.block()).material()
                     && blocks.lookOf(b.block()) != null);
             int targets = (int) blocks.oreTargets().stream().filter(t -> t.block().equals(key)).count();
             boolean ok = targets > 0 && visible;

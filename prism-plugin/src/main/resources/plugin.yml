@@ -16,9 +16,12 @@ softdepend:
   - PlaceholderAPI
 commands:
   prism:
-    description: Prism tools (give custom items, browse items).
-    usage: /prism give <player> <item> [amount] | /prism items
+    description: Prism tools (give custom items, browse items, display bench).
+    usage: /prism give <player> <item> [amount] | /prism items | /prism bench displays <count> [radius] | /prism bench clear
 permissions:
   prism.command.give:
     description: Use /prism give and /prism items.
+    default: op
+  prism.command.bench:
+    description: Use /prism bench (places and removes test blocks to load-test the display layer).
     default: op

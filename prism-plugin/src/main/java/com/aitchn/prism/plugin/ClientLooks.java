@@ -93,6 +93,22 @@ final class ClientLooks {
         return new BlockLook(carrier.clientId(), found[0], found[1], bedrockId(lookId));
     }
 
+    /**
+     * The carrier a block of look {@code lookId} is stored with in this boot: {@link Carrier#PASSABLE} for a passable
+     * block, {@link Carrier#DISPLAY} when its Java shell is the clear shell (one display entity, ADR-0025), otherwise
+     * {@link Carrier#SOLID}. Null if the look got nothing or is for Bedrock only (the caller keeps its default).
+     */
+    @Nullable Carrier carrierFor(String lookId, boolean passable) {
+        if (passable) {
+            return Carrier.PASSABLE;
+        }
+        LookTable.Placement placement = table.placement(lookId);
+        if (placement == null || placement.bedrockOnly()) {
+            return null;
+        }
+        return com.aitchn.prism.core.look.LookPool.isClearShell(placement.state()) ? Carrier.DISPLAY : Carrier.SOLID;
+    }
+
     /** Whether the custom block shown as {@code look} hides the faces of its neighbours. */
     boolean occludes(BlockLook look) {
         if (look.displayed()) {

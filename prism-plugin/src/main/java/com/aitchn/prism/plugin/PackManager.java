@@ -12,6 +12,7 @@ import com.aitchn.prism.core.look.LookAllocator;
 import com.aitchn.prism.core.look.LookRequest;
 import com.aitchn.prism.core.look.LookTable;
 import com.aitchn.prism.core.look.PhysicsClass;
+import com.aitchn.prism.core.look.RenderSettings;
 import com.aitchn.prism.core.look.ResolvedPool;
 import com.aitchn.prism.core.mod.ModManager;
 import com.aitchn.prism.pack.BedrockPackBuilder;
@@ -58,7 +59,7 @@ final class PackManager implements Listener {
     private final AtomicBoolean buildQueued = new AtomicBoolean();
     private volatile boolean serverStarted;
     private volatile PackServer server;
-    private volatile String backend = "display";
+    private volatile RenderSettings settings = RenderSettings.DEFAULT;
     private volatile boolean solidShells;
     private volatile ResolvedPool pool;
     private volatile ClientLooks looks = ClientLooks.EMPTY;
@@ -94,12 +95,13 @@ final class PackManager implements Listener {
     }
 
     /**
-     * @param backend     the {@code blocks.backend} setting
+     * @param settings    how looks are drawn by default and how display looks are lit ({@code blocks.render},
+     *                    {@code blocks.display.lighting}, ADR-0025)
      * @param solidShells whether display looks may use the opaque shell of the solid-layer note block
-     *                    ({@code blocks.display.solid-shells})
+     *                    ({@code blocks.display.solid-shells}; face lighting only)
      */
-    void configure(String backend, boolean solidShells) {
-        this.backend = backend;
+    void configure(RenderSettings settings, boolean solidShells) {
+        this.settings = settings;
         this.solidShells = solidShells;
     }
 
@@ -333,15 +335,14 @@ final class PackManager implements Listener {
 
     /**
      * Asks the pool for a client representation of every look of every block drawn as a client-side look (a borrowed
-     * state or the display layer) under the {@code blocks.backend} setting, in a fixed order, so the same content always
+     * state or the display layer) under the {@code blocks.render} setting, in a fixed order, so the same content always
      * gets the same table and the same pack. Nothing is remembered from earlier boots (ADR-0023).
      */
     private LookTable allocate(List<BlockDefinition> blocks) {
         List<LookRequest> requests = new ArrayList<>();
         for (BlockDefinition block : blocks) {
-            boolean state = PrismBlockService.usesTripwire(backend, block)
-                    || PrismBlockService.usesNoteBlocks(backend, block);
-            boolean bedrockOnly = !state && PrismBlockService.bedrockOnlyLooks(backend, block);
+            boolean state = PrismBlockService.usesCarrier(block);
+            boolean bedrockOnly = !state && PrismBlockService.bedrockOnlyLooks(block);
             if (!state && !bedrockOnly) {
                 continue;
             }
@@ -361,7 +362,7 @@ final class PackManager implements Listener {
             }
             pool = resolved;
         }
-        return LookAllocator.allocate(resolved, requests, solidShells);
+        return LookAllocator.allocate(resolved, requests, solidShells, settings);
     }
 
     private JavaPackBuilder.Input input() {
@@ -374,6 +375,7 @@ final class PackManager implements Listener {
         if (format <= 0) {
             format = PackFormats.forVersion(platform.minecraftVersion()).number();
         }
-        return new JavaPackBuilder.Input(mods.assets(), items, blocks, format, "Prism content pack", table);
+        return new JavaPackBuilder.Input(mods.assets(), items, blocks, format, "Prism content pack", table,
+                settings.lighting());
     }
 }

@@ -18,11 +18,13 @@ import org.jetbrains.annotations.NotNull;
  * identity only).
  *
  * <ol>
- *   <li>A look that wants a state ({@code auto}, {@code state}) takes the next unused borrowed state of a family whose
- *       class (collision, occlusion, sound group) equals its own.
- *   <li>Otherwise, and for {@code display}, it takes the invisible shell of its class and is drawn by display
- *       entities. If no family offers a shell of exactly its class, the nearest one is used (same collision, then same
- *       occlusion, then same sound) and the table says so.
+ *   <li>A look that wants a state ({@code state}, or {@code auto} when the server's default is {@code state}) takes the
+ *       next unused borrowed state of a family whose class (collision, occlusion, sound group) equals its own.
+ *   <li>Otherwise, and for {@code display} (and {@code auto} under the default since ADR-0025), it is drawn by display
+ *       entities over an invisible shell. With {@link DisplayLighting#BLOCK} a look with full collision gets
+ *       {@link LookPool#CLEAR_SHELL}, which lets light through so the entity at the block's centre is lit from its own
+ *       cell. Every other display look takes the shell of its class; if no family offers a shell of exactly its
+ *       class, the nearest one is used (same collision, then same occlusion, then same sound) and the table says so.
  * </ol>
  */
 public final class LookAllocator {
@@ -30,11 +32,24 @@ public final class LookAllocator {
     private LookAllocator() {}
 
     /**
+     * The allocation before ADR-0025: borrowed states first ({@code auto} means {@code state}), face-split display
+     * looks.
+     *
      * @param solidShells also use shells on blocks the client draws in its solid layer (the note block): exact for the
      *                    default class, but only invisible if the client does not draw transparent texels opaque there
      */
     public static @NotNull LookTable allocate(@NotNull ResolvedPool pool, @NotNull Collection<LookRequest> requests,
             boolean solidShells) {
+        return allocate(pool, requests, solidShells, RenderSettings.STATES_FIRST);
+    }
+
+    /**
+     * @param solidShells also use shells on blocks the client draws in its solid layer (the note block), for display
+     *                    looks that do not get the clear shell
+     * @param settings    what {@code auto} means and how the display layer lights its entities
+     */
+    public static @NotNull LookTable allocate(@NotNull ResolvedPool pool, @NotNull Collection<LookRequest> requests,
+            boolean solidShells, @NotNull RenderSettings settings) {
         Map<String, LookRequest> sorted = new TreeMap<>();
         for (LookRequest request : requests) {
             sorted.putIfAbsent(request.id(), request);
@@ -69,7 +84,8 @@ public final class LookAllocator {
                 }
                 continue;
             }
-            if (request.render() != PrismComponents.Render.DISPLAY) {
+            PrismComponents.Render render = settings.resolve(request.render());
+            if (render != PrismComponents.Render.DISPLAY) {
                 Deque<StateRef> slots = free.get(wanted);
                 StateRef state = slots == null ? null : slots.pollFirst();
                 if (state != null) {
@@ -81,6 +97,12 @@ public final class LookAllocator {
                 if (request.render() == PrismComponents.Render.STATE) {
                     fellBack++;
                 }
+            }
+            if (settings.lighting() == DisplayLighting.BLOCK && wanted.collision() == Collision.FULL) {
+                // Not a relaxation worth a warning: the clear shell is the design of the one-entity layer (ADR-0025).
+                placements.put(request.id(), new LookTable.Placement(request.id(), LookTable.Tier.DISPLAY,
+                        LookPool.CLEAR_SHELL, wanted, LookPool.CLEAR_SHELL_PHYSICS, false));
+                continue;
             }
             Optional<Shell> shell = shellFor(pool, wanted, solidShells);
             if (shell.isEmpty()) {

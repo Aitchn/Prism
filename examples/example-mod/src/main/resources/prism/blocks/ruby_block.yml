@@ -1,4 +1,5 @@
-# Key: examplemod:ruby_block. Drawn as a note block state on Java and Bedrock (blocks.backend: auto); the base is only
-# used with blocks.backend: display. The model comes from assets/examplemod/textures/block/ruby_block.png.
+# Key: examplemod:ruby_block. Drawn by the display layer on Java (blocks.render: display, one entity per block) and as
+# a registered custom block on Bedrock; with blocks.render: state it borrows a note block state instead. The base is
+# not used for blocks drawn as a client-side look. The model comes from assets/examplemod/textures/block/ruby_block.png.
 base: minecraft:barrier
 drop: examplemod:ruby_block

@@ -13,27 +13,37 @@ pack:
   # Message shown in the pack prompt (MiniMessage).
   prompt: "<gray>This server uses a custom content pack."
 blocks:
-  # How custom blocks are drawn.
-  #   auto    - as vanilla note block states (Java and Bedrock see them; Bedrock through Geyser's custom
-  #             block mappings, which Prism installs into Geyser's folder). The world stores an inert
-  #             carrier block (brown mushroom block; structure void for passable blocks) and Prism shows players the
-  #             note block or tripwire look by rewriting block packets. Blocks with an animated
-  #             model (model_ref) still use display entities.
-  #   native  - same as auto.
-  #   display - always as an item display entity on a barrier (Java only; Geyser cannot draw these).
-  # Changing this needs a restart.
-  backend: auto
-  # Looks beyond the borrowed vanilla states (Java: note block, tripwire, target, dispenser, dropper, leaves, sugar
-  # cane) are drawn by the display layer: the server keeps an invisible shell block and each viewer is sent packet-only
-  # item display entities per visible face. See ADR-0023.
+  # How Java players are shown the looks of custom blocks whose own prism:render is auto (the default). The world
+  # always stores an inert carrier block and Prism shows players the look by rewriting block packets (ADR-0022).
+  #   display - the display layer (default): an invisible shell block plus a packet-only item display entity per
+  #             block, drawn with the block's own model. Every look is exact and there is no limit on their number.
+  #   state   - a borrowed vanilla state (note block, tripwire, ...) while one is left, then the display layer: cheaper
+  #             for clients, but the pool of states is small and each block borrows the physics of its state.
+  # A block can choose for itself with prism:render: state or display. Bedrock players (Geyser) see each look as a
+  # registered custom block either way when bedrock.synthetic-blocks registers them; without that they see only the
+  # looks drawn as borrowed states. The setting of earlier versions, backend, is still
+  # read when render is absent: auto and display become display, native becomes state. Changing this needs a restart.
+  # See ADR-0025.
+  render: display
   display:
+    # How the display layer draws a block.
+    #   block - one entity at the block's centre (default), inside an invisible barrier that has the block's collision.
+    #           The server stores glass there, so the entity is lit by its own cell: light passes through these blocks.
+    #           No entity at all for a block hidden on all six sides.
+    #   faces - one entity per visible face, lit by the cell in front of it, inside a shell from the vanilla pool
+    #           (ADR-0023). Light is blocked like a normal block, at up to six entities per block.
+    lighting: block
+    # The most display entities one player is sent. Chunks nearest the player get theirs first and the farthest go
+    # when the budget runs out; the choice follows the player as they move.
+    max-per-player: 12000
     # How far from the viewer (in chunks, Chebyshev distance) display entities are sent. 0 means every chunk the
     # client has, bounded by the server's view distance. Lower it on servers with many display-drawn blocks.
     view-distance: 8
     # The entities' view range multiplier (1.0 = the client default, which scales with its entity distance setting).
     view-range: 1.0
-    # Also use the opaque shell of the note block family for opaque display blocks. Exact, but only invisible if the
-    # client's solid render layer ignores transparent texels, which no known client does; leave off unless tested.
+    # Faces lighting only: also use the opaque shell of the note block family for opaque display blocks. Exact, but
+    # only invisible if the client's solid render layer ignores transparent texels, which no known client does; leave
+    # off unless tested.
     solid-shells: false
 bedrock:
   # How Geyser players are shown custom blocks (ADR-0024).

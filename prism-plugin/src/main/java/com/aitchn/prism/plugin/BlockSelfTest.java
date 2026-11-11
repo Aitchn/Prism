@@ -40,12 +40,15 @@ final class BlockSelfTest implements Listener {
             try {
                 boolean placed = blocks.place(key, at);
                 boolean identified = placed && blocks.identify(at.getBlock()).filter(key::equals).isPresent();
-                // Under blocks.backend auto a plain block is stored as the inert carrier and shown as a note block
-                // state, the look Bedrock can see; the world must hold the carrier and the index the look.
+                // A plain block is stored as the inert carrier its look's tier asks for (glass for one display entity,
+                // the mushroom block for a borrowed state, ADR-0025) and shown as something else; the world must hold
+                // that carrier and the index the look.
                 org.bukkit.Material carrier = at.getBlock().getType();
                 com.aitchn.prism.core.block.BlockLook look = blocks.lookOf(at.getBlock());
+                Carrier wanted = identified ? blocks.wantedCarrier(at.getBlock()) : null;
                 if (identified) {
-                    boolean shown = carrier == Carrier.SOLID.material() && look != null && look.look() != look.carrier();
+                    boolean shown = wanted != null && carrier == wanted.material() && look != null
+                            && look.look() != look.carrier();
                     log.info((shown ? "PRISM_NATIVE_SELFTEST_OK " : "PRISM_NATIVE_SELFTEST_FAIL ") + key
                             + " carrier=" + carrier + " look=" + look);
                 }

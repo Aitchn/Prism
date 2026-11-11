@@ -4,6 +4,7 @@ import com.aitchn.prism.api.PrismKey;
 import com.aitchn.prism.api.content.ContentException;
 import com.aitchn.prism.core.content.YamlFiles;
 import com.aitchn.prism.core.look.Dir;
+import com.aitchn.prism.core.look.DisplayLighting;
 import com.aitchn.prism.core.look.DisplayPlan;
 import com.aitchn.prism.pack.json.JsonWriter;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,10 @@ import java.util.TreeMap;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Splits a block model by face direction into up to six item models, so the display layer can draw each face from the
+ * Plans how the display layer draws a block model. With {@link DisplayLighting#BLOCK} (the default, ADR-0025) that is
+ * the whole model as one item model, checked for models whose face count would make thousands of blocks expensive for
+ * clients. With {@link DisplayLighting#FACES} (ADR-0023) the model is also split by face direction into up to six item
+ * models, so the display layer can draw each face from the
  * cell it looks into (see {@code DisplayParts}). A model can be split when every element is an unrotated box and every
  * face lies on the boundary of the cell: then a client lights each face from the neighbouring cell, and an entity in
  * that cell reproduces it. Any other model (inner faces, rotated elements, a vanilla parent Prism cannot expand) is
@@ -58,24 +62,67 @@ final class DisplayModels {
     }
 
     /**
+     * A model with more faces than this is reported at pack build: a display entity draws every face of its model, with
+     * no culling against neighbours, so a model of many faces repeated over thousands of blocks is what costs a client
+     * frames. A plain cube has six.
+     */
+    static final int MANY_FACES = 24;
+
+    /** As {@link #plan(String, PrismKey, String, DisplayLighting)} with face lighting (ADR-0023). */
+    DisplayPlan plan(String label, PrismKey model, String wholeItemModel) {
+        return plan(label, model, wholeItemModel, DisplayLighting.FACES);
+    }
+
+    /**
      * The plan for drawing {@code model}, writing the face models and item definitions it needs into the pack.
      *
-     * @param wholeItemModel the item model that draws the unsplit model (written by the caller), used when the model
-     *                       cannot be split; {@code ""} if there is none
+     * @param wholeItemModel the item model that draws the whole model (written by the caller): what
+     *                       {@link DisplayLighting#BLOCK} draws, and what face lighting uses when the model cannot be
+     *                       split; {@code ""} if there is none
+     * @param lighting       {@link DisplayLighting#BLOCK} needs only the whole model; face lighting also gets face models
      */
-    DisplayPlan plan(String label, PrismKey model, String wholeItemModel) {
-        String cached = model.toString();
+    DisplayPlan plan(String label, PrismKey model, String wholeItemModel, DisplayLighting lighting) {
+        String cached = model + "|" + wholeItemModel + "|" + lighting;
         DisplayPlan known = cache.get(cached);
         if (known != null) {
             return known;
         }
-        DisplayPlan plan = compute(label, model, wholeItemModel);
+        Optional<Expanded> expanded = expand(model);
+        expanded.ifPresent(e -> checkCost(label, model, e));
+        DisplayPlan plan;
+        if (lighting == DisplayLighting.BLOCK) {
+            if (wholeItemModel.isEmpty()) {
+                warnings.add(label + ": the model has no item model; it is invisible");
+            }
+            plan = DisplayPlan.whole(wholeItemModel);
+        } else {
+            plan = compute(label, model, wholeItemModel, expanded);
+        }
         cache.put(cached, plan);
         return plan;
     }
 
-    private DisplayPlan compute(String label, PrismKey model, String wholeItemModel) {
-        Optional<Expanded> expanded = expand(model);
+    /** Reports a model whose face count makes thousands of its blocks expensive to draw (once per model). */
+    private void checkCost(String label, PrismKey model, Expanded expanded) {
+        if (!reported.add(model.toString())) {
+            return;
+        }
+        int faces = 0;
+        for (Map<String, Object> element : expanded.elements()) {
+            if (element.get("faces") instanceof Map<?, ?> map) {
+                faces += map.size();
+            }
+        }
+        if (faces > MANY_FACES) {
+            warnings.add(label + ": model " + model + " has " + expanded.elements().size() + " elements and " + faces
+                    + " faces; every display entity of it draws all of them (a plain cube has 6), so thousands of"
+                    + " such blocks cost clients frames. Consider a simpler model");
+        }
+    }
+
+    private final java.util.Set<String> reported = new java.util.HashSet<>();
+
+    private DisplayPlan compute(String label, PrismKey model, String wholeItemModel, Optional<Expanded> expanded) {
         if (expanded.isEmpty() || !splittable(expanded.get())) {
             if (wholeItemModel.isEmpty()) {
                 warnings.add(label + ": the model cannot be split by face and has no item model; it is invisible");
@@ -117,7 +164,7 @@ final class DisplayModels {
                     JsonWriter.write(Map.of("model", inner)).getBytes(StandardCharsets.UTF_8));
             ids.add("prism:" + name);
         }
-        return DisplayPlan.split(ids);
+        return DisplayPlan.split(ids, wholeItemModel);
     }
 
     /** A model with its parent chain merged: the elements of the first model that has some, and all textures. */
