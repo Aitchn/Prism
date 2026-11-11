@@ -1,5 +1,8 @@
 # API gaps against large-mod workloads
 
+> The validation mods referred to below (`validation/*`) are maintained outside this repository as standalone
+> plugins built against `prism-api`. Paths to them are historical.
+
 The maintainers plan to test Prism by rebuilding mod-sized systems (a flora-magic mod, a storage-network mod and a
 machines/energy mod) as plain plugins. This file tracks what the API cannot express yet. [platform-triage.md](platform-triage.md) decides, for every
 gap below, whether it belongs to Prism or to the mod. It is a working list, not a
@@ -41,7 +44,7 @@ promise. Update it when a milestone closes a gap or finds a new one.
 
 ## Found in the AE2 validation
 
-Details are in [validation/ae2.md](validation/ae2.md). The first version found the gaps that the block platform, slot
+Details were in `docs/validation/ae2.md`, which left the repository with the mod. The first version found the gaps that the block platform, slot
 menus, item data and recipes (ADR-0007 to ADR-0010) then closed; AE2 has been migrated to them. What remains:
 
 - A slotless item-handler capability (or a virtual `Inventory`) so a network's storage can feed hoppers and other mods.

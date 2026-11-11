@@ -1,8 +1,0 @@
-type: prism:shaped
-pattern:
-  - "III"
-  - "III"
-  - "III"
-key:
-  I: mekanism:refined_glowstone_ingot
-result: mekanism:refined_glowstone_block

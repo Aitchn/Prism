@@ -1,7 +1,0 @@
-type: mekanism:machine
-machine: osmium_compressor
-input: mekanism:obsidian_dust
-input2: mekanism:osmium_dust
-output: mekanism:refined_obsidian_ingot
-ticks: 300
-energy: 50

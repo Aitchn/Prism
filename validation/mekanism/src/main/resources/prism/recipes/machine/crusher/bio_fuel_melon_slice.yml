@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: crusher
-input: minecraft:melon_slice
-output: mekanism:bio_fuel
-ticks: 100
-energy: 50

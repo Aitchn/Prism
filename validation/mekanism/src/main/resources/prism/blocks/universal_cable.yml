@@ -1,5 +1,0 @@
-# Key: mekanism:universal_cable. Joins generators and machines touching it into one energy network.
-base: minecraft:barrier
-drop: mekanism:universal_cable
-behaviors:
-  - type: mekanism:cable

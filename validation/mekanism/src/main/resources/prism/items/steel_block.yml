@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Steel Block"
-  prism:places_block: mekanism:steel_block

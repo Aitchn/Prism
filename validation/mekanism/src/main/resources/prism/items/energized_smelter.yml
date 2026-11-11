@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Energized Smelter"
-  prism:places_block: mekanism:energized_smelter

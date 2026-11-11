@@ -1,9 +1,0 @@
-type: prism:shaped
-pattern:
-  - "GGG"
-  - "OOO"
-  - "GGG"
-key:
-  G: minecraft:glass
-  O: mekanism:osmium_ingot
-result: {item: mekanism:pressurized_tube, count: 6}

@@ -1,5 +1,0 @@
-# The item form of ae2:crafting_storage_1k.
-base: minecraft:paper
-components:
-  prism:display_name: "<aqua>Crafting Storage 1K"
-  prism:places_block: ae2:crafting_storage_1k

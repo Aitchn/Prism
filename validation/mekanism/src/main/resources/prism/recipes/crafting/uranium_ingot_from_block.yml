@@ -1,3 +1,0 @@
-type: prism:shapeless
-ingredients: [mekanism:uranium_block]
-result: {item: mekanism:uranium_ingot, count: 9}

@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Combining Factory"
-  prism:places_block: mekanism:combining_factory

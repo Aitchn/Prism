@@ -1,5 +1,0 @@
-# The item form of ae2:drive.
-base: minecraft:paper
-components:
-  prism:display_name: "<aqua>Drive"
-  prism:places_block: ae2:drive

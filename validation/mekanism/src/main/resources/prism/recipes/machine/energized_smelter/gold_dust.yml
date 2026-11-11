@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: energized_smelter
-input: mekanism:gold_dust
-output: minecraft:gold_ingot
-ticks: 160
-energy: 40

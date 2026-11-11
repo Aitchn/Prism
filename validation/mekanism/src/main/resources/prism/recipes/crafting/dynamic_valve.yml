@@ -1,3 +1,0 @@
-type: prism:shapeless
-ingredients: [mekanism:dynamic_tank, minecraft:hopper]
-result: mekanism:dynamic_valve

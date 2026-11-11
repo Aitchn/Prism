@@ -1,8 +1,0 @@
-type: mekanism:machine
-machine: chemical_infuser
-chemical_in: {chemical: sulfur_trioxide, amount: 100}
-chemical_in2: {chemical: water, amount: 100}
-chemical_out:
-  - {chemical: sulfuric_acid, amount: 100}
-ticks: 60
-energy: 50

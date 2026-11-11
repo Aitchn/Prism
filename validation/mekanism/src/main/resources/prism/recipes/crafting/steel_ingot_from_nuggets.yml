@@ -1,8 +1,0 @@
-type: prism:shaped
-pattern:
-  - "NNN"
-  - "NNN"
-  - "NNN"
-key:
-  N: mekanism:steel_nugget
-result: mekanism:steel_ingot

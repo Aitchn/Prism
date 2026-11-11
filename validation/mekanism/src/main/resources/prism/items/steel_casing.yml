@@ -1,5 +1,0 @@
-# Item form of mekanism:steel_casing.
-base: minecraft:paper
-components:
-  prism:display_name: "Steel Casing"
-  prism:places_block: mekanism:steel_casing

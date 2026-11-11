@@ -1,8 +1,0 @@
-type: prism:shaped
-pattern:
-  - "NNN"
-  - "NNN"
-  - "NNN"
-key:
-  N: mekanism:refined_obsidian_nugget
-result: mekanism:refined_obsidian_ingot

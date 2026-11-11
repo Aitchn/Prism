@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: crusher
-input: mekanism:osmium_ingot
-output: mekanism:osmium_dust
-ticks: 200
-energy: 50

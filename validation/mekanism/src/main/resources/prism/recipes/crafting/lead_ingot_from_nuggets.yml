@@ -1,8 +1,0 @@
-type: prism:shaped
-pattern:
-  - "NNN"
-  - "NNN"
-  - "NNN"
-key:
-  N: mekanism:lead_nugget
-result: mekanism:lead_ingot

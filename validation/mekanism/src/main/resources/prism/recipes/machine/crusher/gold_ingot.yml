@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: crusher
-input: minecraft:gold_ingot
-output: mekanism:gold_dust
-ticks: 200
-energy: 50

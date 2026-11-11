@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Elite Logistical Transporter"
-  prism:places_block: mekanism:elite_logistical_transporter

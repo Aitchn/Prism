@@ -1,5 +1,0 @@
-# Item form of mekanism:electrolytic_separator.
-base: minecraft:paper
-components:
-  prism:display_name: "Electrolytic Separator"
-  prism:places_block: mekanism:electrolytic_separator

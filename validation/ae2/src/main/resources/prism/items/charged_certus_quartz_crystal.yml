@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "<aqua>Charged Certus Quartz Crystal"
-  ae2:energy: 1600

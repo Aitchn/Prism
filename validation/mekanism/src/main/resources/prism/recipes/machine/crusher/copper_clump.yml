@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: crusher
-input: mekanism:copper_clump
-output: mekanism:copper_dirty_dust
-ticks: 200
-energy: 50

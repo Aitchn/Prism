@@ -1,8 +1,0 @@
-type: prism:shaped
-pattern:
-  - "III"
-  - "III"
-  - "III"
-key:
-  I: mekanism:tin_ingot
-result: mekanism:tin_block

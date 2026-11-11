@@ -1,9 +1,0 @@
-type: mekanism:machine
-machine: pressurized_reaction_chamber
-input: mekanism:substrate
-chemical_in: {chemical: hydrogen, amount: 100}
-chemical_in2: {chemical: water, amount: 100}
-chemical_out:
-  - {chemical: ethylene, amount: 100}
-ticks: 200
-energy: 50

@@ -1,5 +1,0 @@
-# The item form of ae2:cable.
-base: minecraft:paper
-components:
-  prism:display_name: "<aqua>Cable"
-  prism:places_block: ae2:cable

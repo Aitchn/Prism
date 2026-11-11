@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Elite Combining Factory"
-  prism:places_block: mekanism:elite_combining_factory

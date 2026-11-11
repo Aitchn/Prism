@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: crusher
-input: minecraft:lapis_lazuli
-output: mekanism:lapis_dust
-ticks: 200
-energy: 50

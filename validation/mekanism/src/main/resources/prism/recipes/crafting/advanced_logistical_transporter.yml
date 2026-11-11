@@ -1,9 +1,0 @@
-type: prism:shaped
-pattern:
-  - "CCC"
-  - "CAC"
-  - "CCC"
-key:
-  C: mekanism:logistical_transporter
-  A: mekanism:alloy_infused
-result: {item: mekanism:advanced_logistical_transporter, count: 8}

@@ -21,13 +21,6 @@ cp "$PRISM_JAR" "$WORK/plugins/Prism.jar"
 # The example mod proves the whole path: discovery, YAML validation, registration and item creation on a real server.
 EXAMPLE_JAR="${EXAMPLE_MOD_JAR:-$(ls "$ROOT"/examples/example-mod/build/libs/*.jar | grep -v -- '-sources' | head -n1)}"
 cp "$EXAMPLE_JAR" "$WORK/plugins/ExampleMod.jar"
-# The AE2 validation mod (Applied Energistics 2 rebuilt on Prism) is optional: checked only when its jar is present.
-AE2_JAR="${AE2_JAR:-$(ls "$ROOT"/validation/ae2/build/libs/*.jar 2>/dev/null | grep -v -- '-sources' | head -n1 || true)}"
-if [[ -n "$AE2_JAR" ]]; then cp "$AE2_JAR" "$WORK/plugins/AE2.jar"; fi
-# The Mekanism rebuild (validation/mekanism) is a real mod on the platform: blocks with data, ticking, capabilities,
-# menus, recipes. It runs its own self test (MEKANISM_SELFTEST_OK) because no client joins.
-MEKANISM_JAR="${MEKANISM_JAR:-$(ls "$ROOT"/validation/mekanism/build/libs/*.jar | grep -v -- '-sources' | head -n1)}"
-cp "$MEKANISM_JAR" "$WORK/plugins/Mekanism.jar"
 
 download_server() {
   case "$PLATFORM" in
@@ -88,7 +81,7 @@ if docker logs "$NAME" 2>&1 | grep -q 'PRISM_SCHEDULER_FAIL'; then
   exit 1
 fi
 # Mods enable before the first tick, so these lines normally exist already; allow a few seconds anyway.
-for marker in 'PRISM_MOD_ACTIVE ExampleMod items=8 blocks=8' 'PRISM_MODELS_SYNCED changed=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'EXAMPLE_LORE_OK' 'EXAMPLE_RECIPES_OK polishing=1' 'PRISM_RECIPES_READY added=[0-9][0-9]* skipped=0' 'PRISM_PACK_READY sha1=' 'PRISM_BEDROCK_PACK_READY sha1=.* blocks=[0-9][0-9]* sounds=[1-9][0-9]* flipbooks=[1-9][0-9]* geometries=[1-9][0-9]* gauges=[1-9][0-9]* ' 'PRISM_DATA_OK' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block' 'PRISM_NATIVE_SELFTEST_OK examplemod:ruby_block' 'PRISM_GEYSER_EXPORTED' 'PRISM_PLATFORM_SELFTEST_OK examplemod:ruby_counter' 'PRISM_ORE_SELFTEST_OK examplemod:ruby_ore' 'PRISM_CONNECTIONS_SELFTEST_OK examplemod:ruby_cable' 'PRISM_PASSABLE_SELFTEST_OK examplemod:ruby_flower' 'PRISM_STRUCTURE_SELFTEST_OK examplemod:ruby_core' 'PRISM_CUBOID_SELFTEST_OK examplemod:ruby_tank' 'PRISM_LIGHT_SELFTEST_OK examplemod:ruby_counter' 'PRISM_CONSISTENCY_SELFTEST_OK examplemod:ruby_block' 'PRISM_BEDROCK_SELFTEST_OK looks=10000 synthetic=10000 ' 'PRISM_SYNTHETIC_SELFTEST_OK blocks=10000 looks=1[0-9][0-9][0-9][0-9] state=[1-9][0-9]* display=[1-9][0-9]* unplaced=0' 'PRISM_MOD_ACTIVE Mekanism items=[0-9][0-9]* blocks=[0-9][0-9]*' 'MEKANISM_RECIPES_OK machines=[0-9][0-9]* recipes=[0-9][0-9]*' 'MEKANISM_SELFTEST_OK'; do
+for marker in 'PRISM_MOD_ACTIVE ExampleMod items=8 blocks=8' 'PRISM_MODELS_SYNCED changed=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'EXAMPLE_LORE_OK' 'EXAMPLE_RECIPES_OK polishing=1' 'PRISM_RECIPES_READY added=[0-9][0-9]* skipped=0' 'PRISM_PACK_READY sha1=' 'PRISM_BEDROCK_PACK_READY sha1=.* blocks=[0-9][0-9]* sounds=[1-9][0-9]* flipbooks=[1-9][0-9]* geometries=[1-9][0-9]* gauges=[1-9][0-9]* ' 'PRISM_DATA_OK' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block' 'PRISM_NATIVE_SELFTEST_OK examplemod:ruby_block' 'PRISM_GEYSER_EXPORTED' 'PRISM_PLATFORM_SELFTEST_OK examplemod:ruby_counter' 'PRISM_ORE_SELFTEST_OK examplemod:ruby_ore' 'PRISM_CONNECTIONS_SELFTEST_OK examplemod:ruby_cable' 'PRISM_PASSABLE_SELFTEST_OK examplemod:ruby_flower' 'PRISM_STRUCTURE_SELFTEST_OK examplemod:ruby_core' 'PRISM_CUBOID_SELFTEST_OK examplemod:ruby_tank' 'PRISM_LIGHT_SELFTEST_OK examplemod:ruby_counter' 'PRISM_CONSISTENCY_SELFTEST_OK examplemod:ruby_block' 'PRISM_BEDROCK_SELFTEST_OK looks=10000 synthetic=10000 ' 'PRISM_SYNTHETIC_SELFTEST_OK blocks=10000 looks=1[0-9][0-9][0-9][0-9] state=[1-9][0-9]* display=[1-9][0-9]* unplaced=0'; do
   found=""
   for ((i = 0; i < 90; i++)); do
     if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
@@ -96,33 +89,15 @@ for marker in 'PRISM_MOD_ACTIVE ExampleMod items=8 blocks=8' 'PRISM_MODELS_SYNCE
   done
   if [[ -z "$found" ]]; then
     echo "FAIL: expected log line not seen: $marker" >&2
-    docker logs "$NAME" 2>&1 | grep -E 'PRISM_|EXAMPLE_|ExampleMod|MEKANISM_|Mekanism' >&2 || true
+    docker logs "$NAME" 2>&1 | grep -E 'PRISM_|EXAMPLE_|ExampleMod' >&2 || true
     echo "--- errors and stack traces ---" >&2
     docker logs "$NAME" 2>&1 | grep -E 'ERROR|SEVERE|Exception|Caused by|^[[:space:]]+at (com\.aitchn|io\.papermc\.paper\.threadedregions)' | head -80 >&2 || true
     exit 1
   fi
 done
-if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMPLE_LORE_FAIL|EXAMPLE_RECIPES_FAIL|PRISM_RECIPE_SKIPPED|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL|PRISM_NATIVE_SELFTEST_FAIL|PRISM_CONSISTENCY_SELFTEST_FAIL|PRISM_ORE_SELFTEST_FAIL|PRISM_ORE_UNKNOWN_BLOCK|PRISM_LOOK_UNPLACED|PRISM_LOOKS_FAIL|PRISM_SYNTHETIC_SELFTEST_FAIL|PRISM_BEDROCK_SELFTEST_FAIL|PRISM_BEDROCK_SYNTHETIC_FAIL|PRISM_GEYSER_INSTALL_FAIL|MEKANISM_SELFTEST_FAIL|MEKANISM_RECIPES_FAIL'; then
+if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMPLE_LORE_FAIL|EXAMPLE_RECIPES_FAIL|PRISM_RECIPE_SKIPPED|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL|PRISM_NATIVE_SELFTEST_FAIL|PRISM_CONSISTENCY_SELFTEST_FAIL|PRISM_ORE_SELFTEST_FAIL|PRISM_ORE_UNKNOWN_BLOCK|PRISM_LOOK_UNPLACED|PRISM_LOOKS_FAIL|PRISM_SYNTHETIC_SELFTEST_FAIL|PRISM_BEDROCK_SELFTEST_FAIL|PRISM_BEDROCK_SYNTHETIC_FAIL|PRISM_GEYSER_INSTALL_FAIL'; then
   echo "FAIL: a mod failed to activate" >&2
   exit 1
-fi
-if [[ -n "$AE2_JAR" ]]; then
-  for marker in 'PRISM_MOD_ACTIVE AE2 items=30 blocks=13' 'AE2_CONTENT_OK' 'AE2_SELFTEST_OK' 'AE2_GRID_SELFTEST_OK'; do
-    found=""
-    for ((i = 0; i < 90; i++)); do
-      if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
-      sleep 1
-    done
-    if [[ -z "$found" ]]; then
-      echo "FAIL: expected AE2 log line not seen: $marker" >&2
-      docker logs "$NAME" 2>&1 | grep -E 'PRISM_|AE2' >&2 || true
-      exit 1
-    fi
-  done
-  if docker logs "$NAME" 2>&1 | grep -qE 'AE2_CONTENT_FAIL|AE2_SELFTEST_FAIL|AE2_GRID_SELFTEST_FAIL'; then
-    echo "FAIL: the AE2 validation mod reported a failure" >&2
-    exit 1
-  fi
 fi
 # Informational: BetterModel model loading is not asserted yet.
 docker logs "$NAME" 2>&1 | grep -E 'PRISM_MODEL|PRISM_EXTERNAL_PACK|PRISM_PACK_WARNING' || true

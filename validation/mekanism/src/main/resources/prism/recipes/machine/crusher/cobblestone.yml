@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: crusher
-input: minecraft:cobblestone
-output: minecraft:gravel
-ticks: 200
-energy: 50

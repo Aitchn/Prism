@@ -1,9 +1,0 @@
-type: prism:shaped
-pattern:
-  - "III"
-  - "RRR"
-  - "III"
-key:
-  I: minecraft:iron_ingot
-  R: minecraft:redstone
-result: {item: mekanism:universal_cable, count: 6}

@@ -1,3 +1,0 @@
-type: prism:shapeless
-ingredients: [mekanism:osmium_ingot]
-result: {item: mekanism:osmium_nugget, count: 9}

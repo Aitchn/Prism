@@ -1,6 +1,0 @@
-# Key: mekanism:elite_pressurized_tube. Elite tier pressurized tube: limit scales with the tier.
-base: minecraft:barrier
-drop: mekanism:elite_pressurized_tube
-behaviors:
-  - type: mekanism:pipe
-    tier: 2

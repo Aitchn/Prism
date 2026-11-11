@@ -1,6 +1,0 @@
-type: mekanism:machine
-machine: enrichment_chamber
-input: mekanism:osmium_ore
-output: {item: mekanism:osmium_dust, count: 2}
-ticks: 200
-energy: 50

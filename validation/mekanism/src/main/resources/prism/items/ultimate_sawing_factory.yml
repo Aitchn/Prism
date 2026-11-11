@@ -1,4 +1,0 @@
-base: minecraft:paper
-components:
-  prism:display_name: "Ultimate Sawing Factory"
-  prism:places_block: mekanism:ultimate_sawing_factory

@@ -1,7 +1,0 @@
-type: mekanism:machine
-machine: combiner
-input: mekanism:osmium_dust
-input2: {item: minecraft:cobblestone, count: 2}
-output: mekanism:osmium_ore
-ticks: 300
-energy: 50

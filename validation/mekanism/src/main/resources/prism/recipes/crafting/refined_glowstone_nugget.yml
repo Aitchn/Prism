@@ -1,3 +1,0 @@
-type: prism:shapeless
-ingredients: [mekanism:refined_glowstone_ingot]
-result: {item: mekanism:refined_glowstone_nugget, count: 9}

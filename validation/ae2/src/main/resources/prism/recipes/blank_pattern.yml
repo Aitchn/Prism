@@ -1,9 +1,0 @@
-# blank_pattern
-type: prism:shapeless
-ingredients:
-  - minecraft:paper
-  - ae2:certus_quartz_crystal
-  - minecraft:glass_pane
-result:
-  item: ae2:blank_pattern
-  count: 2

@@ -1,3 +1,0 @@
-# Key: mekanism:dynamic_tank. A wall block of the dynamic tank: a closed hollow box of tank blocks, valves and structural glass (3 to 18 blocks a side, empty inside) stores chemicals; pipes connect to the valves.
-base: minecraft:barrier
-drop: mekanism:dynamic_tank

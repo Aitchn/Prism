@@ -1,7 +1,0 @@
-type: mekanism:machine
-machine: metallurgic_infuser
-input: minecraft:copper_ingot
-input2: mekanism:tin_dust
-output: mekanism:bronze_dust
-ticks: 300
-energy: 50

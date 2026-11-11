@@ -1,6 +1,0 @@
-# Key: mekanism:advanced_logistical_transporter. Advanced tier logistical transporter: limit scales with the tier.
-base: minecraft:barrier
-drop: mekanism:advanced_logistical_transporter
-behaviors:
-  - type: mekanism:transporter
-    tier: 1

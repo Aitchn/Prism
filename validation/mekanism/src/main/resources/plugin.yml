@@ -1,7 +1,0 @@
-name: Mekanism
-version: '${version}'
-main: com.aitchn.prism.validation.mekanism.MekanismMod
-api-version: '1.21.4'
-folia-supported: true
-depend:
-  - Prism

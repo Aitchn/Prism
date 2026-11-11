@@ -1,3 +1,0 @@
-type: prism:shapeless
-ingredients: [mekanism:tin_ingot]
-result: {item: mekanism:tin_nugget, count: 9}

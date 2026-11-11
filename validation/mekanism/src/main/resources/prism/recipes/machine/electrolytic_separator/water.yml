@@ -1,9 +1,0 @@
-# Water into hydrogen (first output tank) and oxygen (second). Water comes from a bucket.
-type: mekanism:machine
-machine: electrolytic_separator
-chemical_in: {chemical: water, amount: 2}
-chemical_out:
-  - {chemical: hydrogen, amount: 2}
-  - {chemical: oxygen, amount: 1}
-ticks: 1
-energy: 400

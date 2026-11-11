@@ -1,6 +1,0 @@
-# Key: mekanism:ultimate_pressurized_tube. Ultimate tier pressurized tube: limit scales with the tier.
-base: minecraft:barrier
-drop: mekanism:ultimate_pressurized_tube
-behaviors:
-  - type: mekanism:pipe
-    tier: 3
