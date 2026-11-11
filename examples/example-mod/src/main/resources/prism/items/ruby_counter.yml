@@ -1,5 +1,4 @@
 # The item form of examplemod:ruby_counter.
 base: minecraft:paper
 components:
-  prism:display_name: "<gold>Ruby Counter"
   prism:places_block: examplemod:ruby_counter

@@ -20,6 +20,10 @@ import com.aitchn.prism.api.registry.RegistrySnapshot;
 import com.aitchn.prism.core.content.ContentLoader;
 import com.aitchn.prism.core.content.Problem;
 import com.aitchn.prism.core.content.TypeLookup;
+import com.aitchn.prism.core.lang.ItemTextRenderer;
+import com.aitchn.prism.core.lang.LangJson;
+import com.aitchn.prism.core.lang.LangSummary;
+import com.aitchn.prism.core.lang.Translations;
 import com.aitchn.prism.core.registry.MutableRegistry;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,6 +54,8 @@ public final class ModManager {
     private final Map<String, ModCandidate> active = new HashMap<>();
     private final Map<String, String> namespaceOwners = new HashMap<>();
     private final Map<String, ModReport> reports = new LinkedHashMap<>();
+    private final Map<String, Map<String, Map<String, String>>> langs = new LinkedHashMap<>();
+    private volatile Translations translations = Translations.EMPTY;
     private final Predicate<PrismKey> baseItemExists;
     private final Predicate<PrismKey> carrierBlockExists;
 
@@ -114,6 +120,38 @@ public final class ModManager {
         return recipes;
     }
 
+    /**
+     * The translation tables of every active mod, merged in activation order. An immutable snapshot that is replaced
+     * whenever a mod is activated or removed; safe to read from any thread.
+     */
+    public @NotNull Translations translations() {
+        return translations;
+    }
+
+    /**
+     * The {@code PRISM_LANG} line of an active mod: its locales and the translations it is missing (see
+     * {@link LangSummary}). Empty for a mod that is not active.
+     */
+    public synchronized @NotNull Optional<String> langSummary(@NotNull String id) {
+        Map<String, Map<String, String>> bundle = langs.get(id);
+        if (bundle == null) {
+            return Optional.empty();
+        }
+        java.util.Set<String> expected = new java.util.TreeSet<>();
+        Translations tables = translations;
+        for (PrismKey key : items.keys()) {
+            if (items.ownerOf(key).filter(id::equals).isEmpty()) {
+                continue;
+            }
+            String own = ItemTextRenderer.nameKey("item", key);
+            String shown = new ItemTextRenderer(() -> tables, items).itemName(key).key();
+            if (shown.equals(own) && !tables.has(own)) {
+                expected.add(own);
+            }
+        }
+        return Optional.of(LangSummary.line(id, bundle, expected));
+    }
+
     public @NotNull Registry<ComponentType<?>> componentTypes() {
         return componentTypes;
     }
@@ -160,11 +198,13 @@ public final class ModManager {
         ContentLoader.Loaded loaded = new ContentLoader.Loaded(Map.of(), Map.of());
         Map<String, byte[]> modAssets = Map.of();
         Map<PrismKey, byte[]> modModels = Map.of();
+        Map<String, Map<String, String>> modLang = Map.of();
         if (problems.isEmpty()) {
             loaded = new ContentLoader(staging, baseItemExists, carrierBlockExists)
                     .load(mod.content(), mod.contentRoot(), mod.namespace(), mod.id(), problems);
             modAssets = readAssets(mod, problems);
             modModels = readModels(mod, problems);
+            modLang = readLang(mod, problems);
         }
         if (!problems.isEmpty()) {
             return fail(mod, problems);
@@ -185,6 +225,8 @@ public final class ModManager {
         active.put(mod.id(), mod);
         assets.put(mod.id(), modAssets);
         models.put(mod.id(), modModels);
+        langs.put(mod.id(), modLang);
+        rebuildTranslations();
         namespaceOwners.put(mod.namespace(), mod.id());
 
         try {
@@ -213,6 +255,9 @@ public final class ModManager {
         namespaceOwners.remove(mod.namespace(), id);
         assets.remove(id);
         models.remove(id);
+        if (langs.remove(id) != null) {
+            rebuildTranslations();
+        }
         rollback(id);
         if (notify) {
             try {
@@ -287,6 +332,40 @@ public final class ModManager {
             problems.add(new Problem(dir, "cannot read models: " + e.getMessage()));
         }
         return files;
+    }
+
+    private void rebuildTranslations() {
+        translations = Translations.merge(List.copyOf(langs.values()));
+    }
+
+    /**
+     * Language files ({@code <root>/lang/<locale>.json}) are read into memory once, never extracted. The file name is
+     * the Minecraft locale code, such as {@code en_us.json} or {@code zh_tw.json}.
+     */
+    private static Map<String, Map<String, String>> readLang(ModCandidate mod, List<Problem> problems) {
+        Map<String, Map<String, String>> tables = new LinkedHashMap<>();
+        String dir = mod.contentRoot() + "/lang";
+        try {
+            for (String path : mod.content().list(dir)) {
+                if (!path.endsWith(".json")) {
+                    continue;
+                }
+                String locale = path.substring(dir.length() + 1, path.length() - ".json".length());
+                if (!locale.matches("[a-z]{2,3}(_[a-z0-9]{2,8})?")) {
+                    problems.add(new Problem(path, "a language file is named after a lower-case Minecraft locale, "
+                            + "such as en_us.json or zh_tw.json"));
+                    continue;
+                }
+                try {
+                    tables.put(locale, Map.copyOf(LangJson.parse(mod.content().readText(path))));
+                } catch (IllegalArgumentException e) {
+                    problems.add(new Problem(path, "invalid language file: " + e.getMessage()));
+                }
+            }
+        } catch (java.io.IOException e) {
+            problems.add(new Problem(dir, "cannot read language files: " + e.getMessage()));
+        }
+        return tables;
     }
 
     private ModReport fail(ModCandidate mod, List<Problem> problems) {

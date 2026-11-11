@@ -1,6 +1,7 @@
 package com.aitchn.prism.api.menu;
 
 import com.aitchn.prism.api.PrismKey;
+import com.aitchn.prism.api.text.Message;
 import java.util.List;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -24,10 +25,19 @@ public interface MenuView {
     void setItem(int slot, @Nullable ItemStack stack);
 
     /**
-     * Shows {@code icon} (a custom or vanilla item key) with a MiniMessage name and lore in {@code slot}. A shortcut
-     * for buttons and indicators such as progress bars; unknown keys show a barrier.
+     * Shows {@code icon} (a custom or vanilla item key) with a name and lore in {@code slot}. A shortcut for buttons
+     * and indicators such as progress bars; unknown keys show a barrier. Each string is a translation key or literal
+     * MiniMessage text (see {@link Message}); every viewer reads it in their own language.
      */
-    void setIcon(int slot, @NotNull PrismKey icon, @NotNull String name, @NotNull List<String> lore);
+    default void setIcon(int slot, @NotNull PrismKey icon, @NotNull String name, @NotNull List<String> lore) {
+        setIcon(slot, icon, Message.of(name), messages(lore));
+    }
+
+    /**
+     * Shows {@code icon} with a translated name and lore in {@code slot}. An empty name key keeps the item's own name
+     * (a custom item's translated name, or the vanilla name).
+     */
+    void setIcon(int slot, @NotNull PrismKey icon, @NotNull Message name, @NotNull List<Message> lore);
 
     /**
      * Shows a gauge item ({@code prism:gauge}) at the step nearest {@code fraction} (0 empty, 1 full) in {@code slot},
@@ -35,8 +45,14 @@ public interface MenuView {
      * stepped icon. Call it again from {@link ContainerMenu#onRefresh} to move it. A key that is not a gauge shows as
      * {@link #setIcon} would.
      */
-    void setGauge(int slot, @NotNull PrismKey gauge, double fraction, @NotNull String name,
-            @NotNull List<String> lore);
+    default void setGauge(int slot, @NotNull PrismKey gauge, double fraction, @NotNull String name,
+            @NotNull List<String> lore) {
+        setGauge(slot, gauge, fraction, Message.of(name), messages(lore));
+    }
+
+    /** {@link #setGauge(int, PrismKey, double, String, List)} with a translated name and lore. */
+    void setGauge(int slot, @NotNull PrismKey gauge, double fraction, @NotNull Message name,
+            @NotNull List<Message> lore);
 
     /**
      * Whether the player changed {@code slot} and {@link ContainerMenu#onSlotChanged} has not reported it yet. While
@@ -48,4 +64,10 @@ public interface MenuView {
     void close();
 
     boolean isOpen();
+
+    private static List<Message> messages(List<String> lines) {
+        List<Message> messages = new java.util.ArrayList<>(lines.size());
+        lines.forEach(line -> messages.add(Message.of(line)));
+        return messages;
+    }
 }

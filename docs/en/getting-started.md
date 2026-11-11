@@ -26,9 +26,17 @@ The namespace of your content is the lower-cased plugin name (`examplemod`). Not
 ```yaml
 base: minecraft:paper
 components:
-  prism:display_name: "<red>Ruby"
   prism:max_stack_size: 16
 ```
+
+Its name goes in a language file, one per locale, in the same jar: `src/main/resources/prism/lang/en_us.json`
+
+```json
+{ "item.examplemod.ruby": "<red>Ruby" }
+```
+
+and `prism/lang/zh_tw.json` with `{ "item.examplemod.ruby": "<red>紅寶石" }`. Every player sees the name in their own
+language, and the stacks stay identical on the server. See [Translations](translations.md).
 
 ## 3. A texture
 

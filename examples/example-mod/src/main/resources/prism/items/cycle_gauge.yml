@@ -2,7 +2,6 @@
 # nine step icons (empty to full) for both editions; no texture needed.
 base: minecraft:paper
 components:
-  prism:display_name: "<gold>Cycle"
   prism:gauge:
     style: arrow
     color: "#e0b030"

@@ -29,7 +29,7 @@ public interface MenuService {
      * {@code onSubmit} receives the text on the player's thread and the prompt closes. Closing it any other way calls
      * {@code onCancel} if given. No item moves: the anvil's items are only a display. Callable from any thread.
      *
-     * @param title MiniMessage
+     * @param title a translation key or MiniMessage text
      */
     void prompt(@NotNull Player player, @NotNull String title, @NotNull String initial,
             @NotNull Consumer<String> onSubmit, @org.jetbrains.annotations.Nullable Runnable onCancel);

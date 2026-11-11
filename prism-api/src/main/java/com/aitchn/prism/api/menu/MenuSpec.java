@@ -4,7 +4,10 @@ import java.util.List;
 import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 
-/** A list of buttons the player picks one from. One description, rendered per client (see {@link MenuService}). */
+/**
+ * A list of buttons the player picks one from. One description, rendered per client (see {@link MenuService}).
+ * The title is a translation key or MiniMessage text, shown in the viewer's language.
+ */
 public record MenuSpec(@NotNull String title, @NotNull List<MenuButton> buttons) {
 
     /** Largest menu the chest renderer can show (6 rows of 9). */
