@@ -98,7 +98,15 @@ public final class GeyserBlockRegistrar {
             if (content == null || content.pack() == null) {
                 return;
             }
-            event.register(ResourcePack.create(PackCodec.path(content.pack())));
+            ResourcePack pack = ResourcePack.create(PackCodec.path(content.pack()));
+            // Geyser loads its own packs folder before this event. A copy of this pack left there (written for the
+            // legacy route, or by an earlier version) has the same UUID and would make the registration fail on
+            // every start, so the stale copy gives way to the one built for this boot.
+            java.util.UUID id = pack.manifest().header().uuid();
+            if (event.resourcePacks().stream().anyMatch(known -> known.manifest().header().uuid().equals(id))) {
+                event.unregister(id);
+            }
+            event.register(pack);
         } catch (RuntimeException | LinkageError e) {
             source.failed(e);
         }
