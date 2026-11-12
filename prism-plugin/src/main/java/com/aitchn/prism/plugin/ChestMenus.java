@@ -86,7 +86,7 @@ final class ChestMenus implements MenuService, Listener {
     public void open(@NotNull Player player, @NotNull MenuSpec spec, @NotNull Consumer<String> onSelect) {
         List<String> ids = new ArrayList<>();
         Holder holder = new Holder(ids, onSelect);
-        MenuArt art = arts.art(spec.art());
+        MenuArt art = arts.art(spec.art(), spec.buttons().size());
         int rows = art != null ? art.rows() : spec.rows();
         // The title is fixed when the inventory is made, so it is translated for this viewer here; item names and lore
         // are translated in the packets. With art, the buttons fill the slots the picture uses (ADR-0028).

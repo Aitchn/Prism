@@ -127,3 +127,5 @@ final class CounterMenu implements ContainerMenu {
 - 元件改變時會以新標題重新開啟畫面，這會中斷玩家當下正在拖曳的物品。
 - 標題文字無法上下移動。
 - 資源包仍在載入的 Java 玩家，在載入完成前會在標題看到方框。
+
+當 `pack.enabled` 為 `false`，或按鈕選單的按鈕數量多於背景圖可用的格子時，選單會以一般箱子介面加上備援圖示顯示（後者會記錄一次 `PRISM_MENU_WARNING`）。
