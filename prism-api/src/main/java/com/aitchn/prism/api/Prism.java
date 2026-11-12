@@ -3,6 +3,7 @@ package com.aitchn.prism.api;
 import com.aitchn.prism.api.block.BlockService;
 import com.aitchn.prism.api.client.ClientService;
 import com.aitchn.prism.api.data.DataService;
+import com.aitchn.prism.api.effect.EffectService;
 import com.aitchn.prism.api.menu.MenuService;
 import com.aitchn.prism.api.item.ItemService;
 import com.aitchn.prism.api.mod.ModRegistrar;
@@ -59,6 +60,11 @@ public final class Prism {
         return current().translations();
     }
 
+    /** Particles, travelling visuals and beams that exist only in packets; block emitters are {@code prism:particles}. */
+    public static @NotNull EffectService effects() {
+        return current().effects();
+    }
+
     private static Services current() {
         Services current = services;
         if (current == null) {
@@ -78,11 +84,12 @@ public final class Prism {
             @NotNull DataService data,
             @NotNull PrismScheduler scheduler,
             @NotNull RecipeService recipes,
-            @NotNull TranslationService translations) {
+            @NotNull TranslationService translations,
+            @NotNull EffectService effects) {
         services = new Services(Objects.requireNonNull(mods), Objects.requireNonNull(items),
                 Objects.requireNonNull(blocks), Objects.requireNonNull(clients), Objects.requireNonNull(menus),
                 Objects.requireNonNull(data), Objects.requireNonNull(scheduler), Objects.requireNonNull(recipes),
-                Objects.requireNonNull(translations));
+                Objects.requireNonNull(translations), Objects.requireNonNull(effects));
     }
 
     @ApiStatus.Internal
@@ -92,5 +99,5 @@ public final class Prism {
 
     private record Services(ModRegistrar mods, ItemService items, BlockService blocks, ClientService clients,
             MenuService menus, DataService data, PrismScheduler scheduler, RecipeService recipes,
-            TranslationService translations) {}
+            TranslationService translations, EffectService effects) {}
 }

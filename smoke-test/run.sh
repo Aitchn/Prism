@@ -81,7 +81,7 @@ if docker logs "$NAME" 2>&1 | grep -q 'PRISM_SCHEDULER_FAIL'; then
   exit 1
 fi
 # Mods enable before the first tick, so these lines normally exist already; allow a few seconds anyway.
-for marker in 'PRISM_MOD_ACTIVE ExampleMod items=8 blocks=8' 'PRISM_MODELS_SYNCED changed=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'EXAMPLE_LORE_OK' 'EXAMPLE_RECIPES_OK polishing=1' 'PRISM_RECIPES_READY added=[0-9][0-9]* skipped=0' 'PRISM_PACK_READY sha1=' 'PRISM_BEDROCK_PACK_READY sha1=.* blocks=[0-9][0-9]* sounds=[1-9][0-9]* flipbooks=[1-9][0-9]* geometries=[1-9][0-9]* gauges=[1-9][0-9]* ' 'PRISM_DATA_OK' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block' 'PRISM_NATIVE_SELFTEST_OK examplemod:ruby_block' 'PRISM_GEYSER_EXPORTED' 'PRISM_PLATFORM_SELFTEST_OK examplemod:ruby_counter' 'PRISM_ORE_SELFTEST_OK examplemod:ruby_ore' 'PRISM_CONNECTIONS_SELFTEST_OK examplemod:ruby_cable' 'PRISM_PASSABLE_SELFTEST_OK examplemod:ruby_flower' 'PRISM_STRUCTURE_SELFTEST_OK examplemod:ruby_core' 'PRISM_CUBOID_SELFTEST_OK examplemod:ruby_tank' 'PRISM_LIGHT_SELFTEST_OK examplemod:ruby_counter' 'PRISM_CONSISTENCY_SELFTEST_OK examplemod:ruby_block' 'PRISM_BEDROCK_SELFTEST_OK looks=10000 synthetic=10000 ' 'PRISM_DISPLAY_SELFTEST_OK lattice=256 entities=256 enclosed=0 budget=85 sent=85' 'PRISM_SYNTHETIC_SELFTEST_OK blocks=10000 looks=1[0-9][0-9][0-9][0-9] state=[1-9][0-9]* display=[1-9][0-9]* unplaced=0'; do
+for marker in 'PRISM_MOD_ACTIVE ExampleMod items=8 blocks=9' 'PRISM_MODELS_SYNCED changed=1' 'EXAMPLE_ITEM_OK examplemod:ruby' 'EXAMPLE_LORE_OK' 'EXAMPLE_RECIPES_OK polishing=1' 'PRISM_RECIPES_READY added=[0-9][0-9]* skipped=0' 'PRISM_PACK_READY sha1=' 'PRISM_BEDROCK_PACK_READY sha1=.* blocks=[0-9][0-9]* sounds=[1-9][0-9]* flipbooks=[1-9][0-9]* geometries=[1-9][0-9]* gauges=[1-9][0-9]* ' 'PRISM_DATA_OK' 'PRISM_BLOCK_SELFTEST_OK examplemod:ruby_block' 'PRISM_NATIVE_SELFTEST_OK examplemod:ruby_block' 'PRISM_GEYSER_EXPORTED' 'PRISM_PLATFORM_SELFTEST_OK examplemod:ruby_counter' 'PRISM_ORE_SELFTEST_OK examplemod:ruby_ore' 'PRISM_CONNECTIONS_SELFTEST_OK examplemod:ruby_cable' 'PRISM_PASSABLE_SELFTEST_OK examplemod:ruby_flower' 'PRISM_STRUCTURE_SELFTEST_OK examplemod:ruby_core' 'PRISM_CUBOID_SELFTEST_OK examplemod:ruby_tank' 'PRISM_LIGHT_SELFTEST_OK examplemod:ruby_counter' 'PRISM_CONSISTENCY_SELFTEST_OK examplemod:ruby_block' 'PRISM_BEDROCK_SELFTEST_OK looks=10000 synthetic=10000 ' 'PRISM_DISPLAY_SELFTEST_OK lattice=256 entities=256 enclosed=0 budget=85 sent=85' 'PRISM_SYNTHETIC_SELFTEST_OK blocks=10000 looks=1[0-9][0-9][0-9][0-9] state=[1-9][0-9]* display=[1-9][0-9]* unplaced=0' 'PRISM_EFFECTS_SELFTEST_OK emitters=2 launched=1 completed=1 tinted=2'; do
   found=""
   for ((i = 0; i < 90; i++)); do
     if docker logs "$NAME" 2>&1 | grep -q "$marker"; then found=1; break; fi
@@ -95,13 +95,13 @@ for marker in 'PRISM_MOD_ACTIVE ExampleMod items=8 blocks=8' 'PRISM_MODELS_SYNCE
     exit 1
   fi
 done
-if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMPLE_LORE_FAIL|EXAMPLE_RECIPES_FAIL|PRISM_RECIPE_SKIPPED|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL|PRISM_NATIVE_SELFTEST_FAIL|PRISM_CONSISTENCY_SELFTEST_FAIL|PRISM_ORE_SELFTEST_FAIL|PRISM_ORE_UNKNOWN_BLOCK|PRISM_LOOK_UNPLACED|PRISM_LOOKS_FAIL|PRISM_SYNTHETIC_SELFTEST_FAIL|PRISM_DISPLAY_SELFTEST_FAIL|PRISM_BEDROCK_SELFTEST_FAIL|PRISM_BEDROCK_SYNTHETIC_FAIL|PRISM_GEYSER_INSTALL_FAIL'; then
+if docker logs "$NAME" 2>&1 | grep -qE 'PRISM_MOD_FAILED|EXAMPLE_ITEM_FAIL|EXAMPLE_LORE_FAIL|EXAMPLE_RECIPES_FAIL|PRISM_RECIPE_SKIPPED|PRISM_PACK_FAIL|PRISM_BLOCK_SELFTEST_FAIL|PRISM_PLATFORM_SELFTEST_FAIL|PRISM_NATIVE_SELFTEST_FAIL|PRISM_CONSISTENCY_SELFTEST_FAIL|PRISM_ORE_SELFTEST_FAIL|PRISM_ORE_UNKNOWN_BLOCK|PRISM_LOOK_UNPLACED|PRISM_LOOKS_FAIL|PRISM_SYNTHETIC_SELFTEST_FAIL|PRISM_DISPLAY_SELFTEST_FAIL|PRISM_BEDROCK_SELFTEST_FAIL|PRISM_BEDROCK_SYNTHETIC_FAIL|PRISM_GEYSER_INSTALL_FAIL|PRISM_EFFECTS_SELFTEST_FAIL'; then
   echo "FAIL: a mod failed to activate" >&2
   exit 1
 fi
 # Per-viewer item text (ADR-0026): the missing-translation summary of the example mod (one deliberate gap), and the
 # self test that runs a stack through PacketEvents for two locales and normalises a stack with baked text.
-for marker in 'PRISM_LANG ExampleMod locales=en_us,zh_tw keys=26 missing=1 (zh_tw: examplemod.demo.english_only)' 'PRISM_LANG_SELFTEST_OK examplemod:ruby locales=2 restored=equal legacy=normalised '; do
+for marker in 'PRISM_LANG ExampleMod locales=en_us,zh_tw keys=27 missing=1 (zh_tw: examplemod.demo.english_only)' 'PRISM_LANG_SELFTEST_OK examplemod:ruby locales=2 restored=equal legacy=normalised '; do
   found=""
   for ((i = 0; i < 90; i++)); do
     if docker logs "$NAME" 2>&1 | grep -qF "$marker"; then found=1; break; fi

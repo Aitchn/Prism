@@ -215,6 +215,11 @@ final class PackManager implements Listener {
         return JavaPackBuilder.build(input());
     }
 
+    /** The Java pack's files for the current looks, unzipped, on the calling thread (for the self tests). */
+    JavaPackBuilder.Resolved resolveNow() {
+        return JavaPackBuilder.resolve(input());
+    }
+
     private void queueBuild() {
         if (buildQueued.compareAndSet(false, true)) {
             scheduler.runAsync(this::build);

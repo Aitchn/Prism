@@ -200,10 +200,24 @@ class ExampleModTest {
     }
 
     @Test
+    void lampDeclaresEmittersPerVariantAndATint() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var lamp = harness.block("examplemod:ruby_lamp");
+        var particles = lamp.components().get(PrismComponents.PARTICLES).orElseThrow();
+        assertEquals(1, particles.in("idle").size());
+        assertEquals(2, particles.in("active").size());
+        assertEquals(0.5, particles.in("active").get(1).rate());
+        var tint = lamp.components().get(PrismComponents.TINT).orElseThrow();
+        assertEquals(java.util.List.of(0x3ab5ff), tint.colorsFor("active"));
+        assertEquals(java.util.List.of(0xffb0b0), tint.colorsFor("idle"));
+    }
+
+    @Test
     void everyItemHasANameAndOnlyTheDemoKeyIsMissing() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());
-        assertEquals("PRISM_LANG examplemod locales=en_us,zh_tw keys=26 missing=1 (zh_tw: examplemod.demo.english_only)",
+        assertEquals("PRISM_LANG examplemod locales=en_us,zh_tw keys=27 missing=1 (zh_tw: examplemod.demo.english_only)",
                 harness.manager().langSummary("examplemod").orElseThrow());
         var tables = harness.manager().translations();
         var names = new com.aitchn.prism.core.lang.ItemTextRenderer(() -> tables, harness.manager().items());

@@ -131,10 +131,12 @@ public final class JavaPackBuilder {
                     PrismKey look = Appearances.gaugeLook(item.key(), step);
                     all &= generate(files, warnings, item.key().toString(),
                             "assets/" + look.namespace() + "/items/" + look.value() + ".json",
-                            Appearances.gaugeModel(item.key(), step), "minecraft:item/generated", "layer0", "item");
+                            Appearances.gaugeModel(item.key(), step), "minecraft:item/generated", "layer0", "item",
+                            List.of());
                 }
                 if (all && generate(files, warnings, item.key().toString(), definitionPath,
-                        Appearances.gaugeModel(item.key(), steps), "minecraft:item/generated", "layer0", "item")) {
+                        Appearances.gaugeModel(item.key(), steps), "minecraft:item/generated", "layer0", "item",
+                        List.of())) {
                     itemsOk.add(item.key());
                 }
                 continue;
@@ -142,7 +144,7 @@ public final class JavaPackBuilder {
             PrismKey model = item.components().get(PrismComponents.MODEL).map(PrismComponents.Model::model)
                     .orElseGet(() -> new PrismKey(item.key().namespace(), "item/" + item.key().value()));
             if (generate(files, warnings, item.key().toString(), definitionPath, model, "minecraft:item/generated", "layer0",
-                    "item")) {
+                    "item", tints(item.components(), ""))) {
                 itemsOk.add(item.key());
             }
         }
@@ -162,7 +164,7 @@ public final class JavaPackBuilder {
                 boolean cross = Appearances.passable(block);
                 all &= generate(files, warnings, "block " + block.key() + (variant.isEmpty() ? "" : " variant " + variant),
                         definitionPath, model, cross ? "minecraft:block/cross" : "minecraft:block/cube_all",
-                        cross ? "cross" : "all", "block");
+                        cross ? "cross" : "all", "block", tints(block.components(), variant));
             }
             if (all) {
                 blocksOk.add(block.key());
@@ -185,13 +187,18 @@ public final class JavaPackBuilder {
         Map<String, DisplayPlan> plans = new TreeMap<>();
         DisplayModels displays = new DisplayModels(files, warnings);
         for (BlockDefinition block : input.blocks()) {
+            Set<String> untinted = new LinkedHashSet<>();
             for (Appearances.Look look : Appearances.looks(block)) {
                 LookTable.Placement placement = table.placement(look.id());
                 if (placement == null || placement.bedrockOnly()) {
                     continue;
                 }
                 PrismKey model = Appearances.model(block, look.variant());
+                List<Integer> tints = tints(block.components(), look.variant());
                 if (placement.tier() == LookTable.Tier.STATE) {
+                    if (!tints.isEmpty()) {
+                        untinted.add(look.id());
+                    }
                     int[] rotation = Appearances.rotation(look.facing());
                     custom.computeIfAbsent(placement.state().block(), k -> new LinkedHashMap<>())
                             .put(placement.state(), new ModelRef(model.toString(), rotation[0], rotation[1]));
@@ -202,8 +209,15 @@ public final class JavaPackBuilder {
                     PrismKey itemModel = Appearances.itemModel(block.key(), look.variant());
                     String whole = files.containsKey("assets/" + itemModel.namespace() + "/items/" + itemModel.value()
                             + ".json") ? itemModel.toString() : "";
-                    plans.put(look.id(), displays.plan("block " + look.id(), model, whole, input.lighting()));
+                    plans.put(look.id(), displays.plan("block " + look.id(), model, whole, input.lighting(), tints));
                 }
+            }
+            if (!untinted.isEmpty()) {
+                // One warning per block and build: a blockstate file names a model and a rotation, nothing else, and the
+                // client tints only the vanilla blocks it knows (ADR-0027).
+                warnings.add("block " + block.key() + ": prism:tint cannot apply to looks drawn as a borrowed block"
+                        + " state (" + String.join(", ", untinted) + "); their tinted faces are drawn untinted. Use"
+                        + " prism:render: display for this block");
             }
         }
         for (ResolvedPool.Family family : table.pool().families()) {
@@ -269,8 +283,13 @@ public final class JavaPackBuilder {
             PrismKey model,
             String parent,
             String textureLayer,
-            String kind) {
+            String kind,
+            List<Integer> tints) {
         if (files.containsKey(definitionPath)) {
+            if (!tints.isEmpty()) {
+                warnings.add(label + ": ships its own item definition " + definitionPath + "; prism:tint is not added to"
+                        + " it (put the tints in that file)");
+            }
             return true;
         }
         String modelPath = "assets/" + model.namespace() + "/models/" + model.value() + ".json";
@@ -288,13 +307,36 @@ public final class JavaPackBuilder {
             generated.put("textures", textures);
             files.put(modelPath, JsonWriter.write(generated).getBytes(StandardCharsets.UTF_8));
         }
-        Map<String, Object> inner = new LinkedHashMap<>();
-        inner.put("type", "minecraft:model");
-        inner.put("model", model.toString());
         Map<String, Object> definition = new LinkedHashMap<>();
-        definition.put("model", inner);
+        definition.put("model", modelReference(model.toString(), tints));
         files.put(definitionPath, JsonWriter.write(definition).getBytes(StandardCharsets.UTF_8));
         return true;
+    }
+
+    /**
+     * The {@code minecraft:model} item model of an item definition, with a constant tint per tint index when
+     * {@code tints} is not empty: {@code {"type": "minecraft:constant", "value": <rgb>}}.
+     */
+    static Map<String, Object> modelReference(String model, List<Integer> tints) {
+        Map<String, Object> inner = new LinkedHashMap<>();
+        inner.put("type", "minecraft:model");
+        inner.put("model", model);
+        if (!tints.isEmpty()) {
+            List<Object> sources = new ArrayList<>();
+            for (int rgb : tints) {
+                Map<String, Object> constant = new LinkedHashMap<>();
+                constant.put("type", "minecraft:constant");
+                constant.put("value", rgb & 0xFFFFFF);
+                sources.add(constant);
+            }
+            inner.put("tints", sources);
+        }
+        return inner;
+    }
+
+    /** The constant tints ({@code prism:tint}) of {@code variant} ({@code ""} for an item); empty for none. */
+    static List<Integer> tints(com.aitchn.prism.api.content.ComponentMap components, String variant) {
+        return components.get(PrismComponents.TINT).map(tint -> tint.colorsFor(variant)).orElse(List.of());
     }
 
     private static String mcmeta(Input input) {

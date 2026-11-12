@@ -45,6 +45,24 @@ blocks:
     # only invisible if the client's solid render layer ignores transparent texels, which no known client does; leave
     # off unless tested.
     solid-shells: false
+effects:
+  # World effects (ADR-0027): block particle emitters (prism:particles), and the travelling visuals, bursts and beams
+  # mods start with Prism.effects(). Nothing is a server entity; particles and packet-only displays go only to the
+  # players in range who have the chunk. Changing these needs a restart.
+  # How far from a travelling visual, burst or beam a player still gets it, in blocks.
+  view-range: 48
+  particles:
+    # Ticks between two runs of the shared emitter clock. Every emitting block near a player is handled in each run;
+    # the clock does not run at all while no loaded chunk has an emitting block.
+    interval: 5
+    # Range of an emitter that does not set its own, in blocks (at most 128).
+    range: 32
+    # The most particles one player is sent per second by block emitters. Blocks nearest the player go first; the
+    # farthest are skipped when the budget runs out.
+    max-per-player: 2000
+  travel:
+    # The most travelling visuals one player is shown at once; the farthest are dropped first.
+    max-per-player: 64
 bedrock:
   # How Geyser players are shown custom blocks (ADR-0024).
   #   auto  - when Geyser runs in this server, Prism registers one real Bedrock custom block per look through the

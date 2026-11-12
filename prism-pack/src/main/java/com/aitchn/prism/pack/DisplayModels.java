@@ -68,9 +68,9 @@ final class DisplayModels {
      */
     static final int MANY_FACES = 24;
 
-    /** As {@link #plan(String, PrismKey, String, DisplayLighting)} with face lighting (ADR-0023). */
+    /** As {@link #plan(String, PrismKey, String, DisplayLighting, List)} with face lighting (ADR-0023), untinted. */
     DisplayPlan plan(String label, PrismKey model, String wholeItemModel) {
-        return plan(label, model, wholeItemModel, DisplayLighting.FACES);
+        return plan(label, model, wholeItemModel, DisplayLighting.FACES, List.of());
     }
 
     /**
@@ -80,9 +80,12 @@ final class DisplayModels {
      *                       {@link DisplayLighting#BLOCK} draws, and what face lighting uses when the model cannot be
      *                       split; {@code ""} if there is none
      * @param lighting       {@link DisplayLighting#BLOCK} needs only the whole model; face lighting also gets face models
+     * @param tints          constant tint colours by tint index ({@code prism:tint}); the whole item model carries them
+     *                       already (its definition is the caller's), face item definitions get them here
      */
-    DisplayPlan plan(String label, PrismKey model, String wholeItemModel, DisplayLighting lighting) {
-        String cached = model + "|" + wholeItemModel + "|" + lighting;
+    DisplayPlan plan(String label, PrismKey model, String wholeItemModel, DisplayLighting lighting,
+            List<Integer> tints) {
+        String cached = model + "|" + wholeItemModel + "|" + lighting + "|" + tints;
         DisplayPlan known = cache.get(cached);
         if (known != null) {
             return known;
@@ -96,7 +99,7 @@ final class DisplayModels {
             }
             plan = DisplayPlan.whole(wholeItemModel);
         } else {
-            plan = compute(label, model, wholeItemModel, expanded);
+            plan = compute(label, model, wholeItemModel, expanded, tints);
         }
         cache.put(cached, plan);
         return plan;
@@ -122,7 +125,8 @@ final class DisplayModels {
 
     private final java.util.Set<String> reported = new java.util.HashSet<>();
 
-    private DisplayPlan compute(String label, PrismKey model, String wholeItemModel, Optional<Expanded> expanded) {
+    private DisplayPlan compute(String label, PrismKey model, String wholeItemModel, Optional<Expanded> expanded,
+            List<Integer> tints) {
         if (expanded.isEmpty() || !splittable(expanded.get())) {
             if (wholeItemModel.isEmpty()) {
                 warnings.add(label + ": the model cannot be split by face and has no item model; it is invisible");
@@ -157,12 +161,13 @@ final class DisplayModels {
             String text = JsonWriter.write(json);
             String name = "face/" + JavaPackBuilder.sha1(text.getBytes(StandardCharsets.UTF_8)).substring(0, 16);
             files.putIfAbsent("assets/prism/models/" + name + ".json", text.getBytes(StandardCharsets.UTF_8));
-            Map<String, Object> inner = new LinkedHashMap<>();
-            inner.put("type", "minecraft:model");
-            inner.put("model", "prism:" + name);
-            files.putIfAbsent("assets/prism/items/" + name + ".json",
-                    JsonWriter.write(Map.of("model", inner)).getBytes(StandardCharsets.UTF_8));
-            ids.add("prism:" + name);
+            // A tinted face shares the model of the untinted one but needs its own item definition.
+            String item = tints.isEmpty() ? name : name + "_t" + JavaPackBuilder.sha1(tints.toString()
+                    .getBytes(StandardCharsets.UTF_8)).substring(0, 8);
+            files.putIfAbsent("assets/prism/items/" + item + ".json", JsonWriter.write(
+                    Map.of("model", JavaPackBuilder.modelReference("prism:" + name, tints)))
+                    .getBytes(StandardCharsets.UTF_8));
+            ids.add("prism:" + item);
         }
         return DisplayPlan.split(ids, wholeItemModel);
     }

@@ -18,6 +18,7 @@ import com.github.retrooper.packetevents.wrapper.PacketWrapper;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerBundle;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerDestroyEntities;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityMetadata;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerEntityTeleport;
 import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
 import io.github.retrooper.packetevents.util.SpigotReflectionUtil;
 import java.util.ArrayList;
@@ -44,8 +45,11 @@ public final class DisplayEntities {
      * Minecraft 26.1 (protocol 775) as PrismarineJS minecraft-data lists it, identical to 1.20.2 to 1.21.9; 26.3 itself
      * was not available to check (see ADR-0025).
      */
+    private static final int POS_ROT_INTERPOLATION = 10;
     private static final int TRANSLATION = 11;
+    private static final int SCALE = 12;
     private static final int LEFT_ROTATION = 13;
+    private static final int BILLBOARD = 15;
     private static final int VIEW_RANGE = 17;
     private static final int ITEM = 23;
 
@@ -98,6 +102,40 @@ public final class DisplayEntities {
                     EntityTypes.ITEM_DISPLAY, new Vector3d(x, y, z), 0f, 0f, 0f, 0, Optional.empty()));
             packets.add(new WrapperPlayServerEntityMetadata(entityId, data(model, translation, rotation, viewRange,
                     true)));
+        }
+
+        /**
+         * Adds the spawn of an item display that is about to move (a travelling visual, ADR-0027): drawn at
+         * {@code scale} with {@code billboard} (0 fixed, 1 vertical, 2 horizontal, 3 centre), its moves interpolated by
+         * the client over {@code moveTicks} ticks (at most 59).
+         */
+        public void spawnMoving(int entityId, double x, double y, double z, String model, float scale, int billboard,
+                int moveTicks, float viewRange) {
+            packets.add(new WrapperPlayServerSpawnEntity(entityId, Optional.of(UUID.randomUUID()),
+                    EntityTypes.ITEM_DISPLAY, new Vector3d(x, y, z), 0f, 0f, 0f, 0, Optional.empty()));
+            List<EntityData<?>> data = new ArrayList<>(5);
+            data.add(new EntityData<>(POS_ROT_INTERPOLATION, EntityDataTypes.INT, Math.max(0, Math.min(59, moveTicks))));
+            if (scale != 1f) {
+                data.add(new EntityData<>(SCALE, EntityDataTypes.VECTOR3F, new Vector3f(scale, scale, scale)));
+            }
+            if (billboard != 0) {
+                data.add(new EntityData<>(BILLBOARD, EntityDataTypes.BYTE, (byte) billboard));
+            }
+            if (viewRange != 1f) {
+                data.add(new EntityData<>(VIEW_RANGE, EntityDataTypes.FLOAT, viewRange));
+            }
+            data.add(new EntityData<>(ITEM, EntityDataTypes.ITEMSTACK, stack(model)));
+            packets.add(new WrapperPlayServerEntityMetadata(entityId, data));
+        }
+
+        /**
+         * Adds a move of an existing display to {@code (x, y, z)}, which the client interpolates over {@code moveTicks}
+         * ticks (at most 59): the interpolation length, then the teleport.
+         */
+        public void move(int entityId, double x, double y, double z, int moveTicks) {
+            packets.add(new WrapperPlayServerEntityMetadata(entityId, List.of(new EntityData<>(POS_ROT_INTERPOLATION,
+                    EntityDataTypes.INT, Math.max(0, Math.min(59, moveTicks))))));
+            packets.add(new WrapperPlayServerEntityTeleport(entityId, new Vector3d(x, y, z), 0f, 0f, false));
         }
 
         /** Adds a metadata packet that changes what an existing display draws, without respawning it. */
@@ -153,8 +191,7 @@ public final class DisplayEntities {
 
         private static List<EntityData<?>> data(String model, float[] translation, float[] rotation, float viewRange,
                 boolean spawn) {
-            ItemStack stack = ItemStack.builder().type(ItemTypes.STONE).amount(1)
-                    .component(ComponentTypes.ITEM_MODEL, new ItemModel(new ResourceLocation(model))).build();
+            ItemStack stack = stack(model);
             List<EntityData<?>> data = new ArrayList<>(4);
             // Defaults (zero translation, identity rotation) are left out of a spawn: the client starts with them.
             if (!spawn || translation[0] != 0 || translation[1] != 0 || translation[2] != 0) {
@@ -170,6 +207,11 @@ public final class DisplayEntities {
             }
             data.add(new EntityData<>(ITEM, EntityDataTypes.ITEMSTACK, stack));
             return data;
+        }
+
+        private static ItemStack stack(String model) {
+            return ItemStack.builder().type(ItemTypes.STONE).amount(1)
+                    .component(ComponentTypes.ITEM_MODEL, new ItemModel(new ResourceLocation(model))).build();
         }
     }
 }
