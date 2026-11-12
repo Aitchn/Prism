@@ -84,21 +84,33 @@ public final class PrismPlugin extends JavaPlugin {
         packManager.configure(render, getConfig().getBoolean("blocks.display.solid-shells", false));
         packManager.bedrockBlocks().attach();
         packManager.installInto(new GeyserInstaller(getLogger(), getDataFolder().toPath().resolve("geyser")));
-        PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, new BlockIndex(this), display,
+        BlockIndex blockIndex = new BlockIndex(this);
+        PrismBlockService blocks = new PrismBlockService(mods.blocks(), items, blockIndex, display,
                 packManager::looks, dispatcher, scheduler, getLogger());
+        // World effects (ADR-0027): block emitters on one shared clock, travelling visuals, bursts and beams.
+        BedrockDetector bedrockPlayers = BedrockDetector.create(getLogger());
+        EffectViewers effectViewers = new EffectViewers(bedrockPlayers, Bukkit.getOnlinePlayers());
+        EffectParticles effectParticles = new EffectParticles(getLogger());
+        BlockEmitters emitters = new BlockEmitters(mods.blocks(), blockIndex, scheduler, effectViewers,
+                effectParticles, Math.clamp(getConfig().getInt("effects.particles.interval", 5), 1, 100),
+                Math.clamp(getConfig().getDouble("effects.particles.range", 32), 1, 128),
+                Math.max(0, getConfig().getInt("effects.particles.max-per-player", 2000)));
+        WorldEffects effects = new WorldEffects(scheduler, effectViewers, effectParticles, getLogger(),
+                Math.clamp(getConfig().getDouble("effects.view-range", 48), 1, 256),
+                Math.max(0, getConfig().getInt("effects.travel.max-per-player", 64)));
         RegistryRecipes recipes = new RegistryRecipes(mods.recipeTypes(), mods.recipes());
         VanillaRecipes vanillaRecipes = new VanillaRecipes(recipes, items, scheduler, getLogger());
         Runnable contentChanged = () -> {
             vanillaRecipes.sync();
             packManager.contentChanged();
             modelSync.contentChanged();
+            emitters.contentChanged();
             blocks.contentChanged();
         };
         ModLifecycle lifecycle = new ModLifecycle(this, mods, contentChanged);
         PrismTranslations translations = new PrismTranslations(this,
                 new com.aitchn.prism.core.lang.ItemTextRenderer(mods::translations, mods.items()), scheduler);
         ChestMenus menus = new ChestMenus(items, translations, scheduler, getLogger());
-        BedrockDetector bedrockPlayers = BedrockDetector.create(getLogger());
         BedrockModelLooks modelLooks = new BedrockModelLooks(blocks, packManager::looks, bedrockPlayers, scheduler);
         packManager.onRelook(() -> scheduler.runGlobal(blocks::contentChanged));
         blocks.onLookChanged(modelLooks::changed);
@@ -111,10 +123,16 @@ public final class PrismPlugin extends JavaPlugin {
         blocks.onLookChanged(displayLayer::changed);
         blocks.onChunkRelooked(displayLayer::relooked);
         getServer().getPluginManager().registerEvents(displayLayer, this);
+        blocks.onLookChanged(emitters::changed);
+        blocks.onChunkRelooked(emitters::chunkChanged);
+        blocks.onChunkActivated(emitters::chunkChanged);
+        getServer().getPluginManager().registerEvents(effectViewers, this);
+        getServer().getPluginManager().registerEvents(emitters, this);
+        getServer().getPluginManager().registerEvents(effects, this);
         getServer().getPluginManager().registerEvents(new BreakFeel(this, blocks, packManager::looks,
                 id -> packManager.bedrockBlocks().bedrockStates() && bedrockPlayers.test(id)), this);
         Prism.install(lifecycle, items, blocks, new Profiles(bedrockPlayers), menus, data,
-                new SchedulerAdapter(scheduler), recipes, translations);
+                new SchedulerAdapter(scheduler), recipes, translations, effects);
         getServer().getPluginManager().registerEvents(menus, this);
         getServer().getPluginManager().registerEvents(menus.containers(), this);
         getServer().getPluginManager().registerEvents(menus.prompts(), this);
@@ -220,6 +238,12 @@ public final class PrismPlugin extends JavaPlugin {
         if (syntheticSelfTest != null) {
             getServer().getPluginManager().registerEvents(new SyntheticSelfTest(Integer.parseInt(syntheticSelfTest),
                     mods, contentChanged, packManager, blocks, displayLayer, scheduler, getLogger()), this);
+        }
+        String effectsSelfTest = System.getProperty("prism.selftest.effects");
+        if (effectsSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new EffectsSelfTest(
+                    com.aitchn.prism.api.PrismKey.parse(effectsSelfTest), blocks, emitters, effects, packManager,
+                    scheduler, getLogger()), this);
         }
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {

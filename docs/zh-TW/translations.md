@@ -37,7 +37,7 @@ src/main/resources/prism/lang/zh_tw.json
 啟動時 Prism 為每個模組印出一行缺漏摘要：
 
 ```
-PRISM_LANG ExampleMod locales=en_us,zh_tw keys=26 missing=1 (zh_tw: examplemod.demo.english_only)
+PRISM_LANG ExampleMod locales=en_us,zh_tw keys=27 missing=1 (zh_tw: examplemod.demo.english_only)
 ```
 
 某個鍵在同一模組的其他語系存在、或它是某個完全沒有名稱的物品的名稱鍵時，就算是該語系的缺漏。

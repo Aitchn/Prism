@@ -1,0 +1,28 @@
+# Key: examplemod:ruby_lamp. Shows the world effects (ADR-0027): particles the block gives off by itself, a second
+# emitter that runs only while it is active, and a tinted model. Its models (block/ruby_lamp_idle.json and
+# block/ruby_lamp_active.json) draw every face with "tintindex": 0, the way models taken from other games often do;
+# prism:tint gives that index a colour per variant. Mods can also launch travelling visuals with Prism.effects().
+base: minecraft:barrier
+components:
+  prism:variants: [idle, active]
+  prism:particles:
+    # A slow glow in every variant: two emissions a second, three particles each, just above the block.
+    - particle: minecraft:dust
+      color: "#ff4060"
+      size: 0.8
+      rate: 2
+      count: 3
+      offset: [0, 0.7, 0]
+      spread: [0.25, 0.05, 0.25]
+    # Sparks only while active: one every two seconds (a rate below one), seen up to 24 blocks away.
+    - particle: minecraft:end_rod
+      rate: 0.5
+      offset: [0, 0.6, 0]
+      speed: 0.02
+      range: 24
+      variants: [active]
+  prism:tint:
+    colors: ["#ffb0b0"]
+    variants:
+      active: ["#3ab5ff"]
+  prism:mining: 0.5

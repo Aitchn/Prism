@@ -40,7 +40,7 @@ A key is looked up in this order:
 At startup Prism prints one line per mod with what is missing:
 
 ```
-PRISM_LANG ExampleMod locales=en_us,zh_tw keys=26 missing=1 (zh_tw: examplemod.demo.english_only)
+PRISM_LANG ExampleMod locales=en_us,zh_tw keys=27 missing=1 (zh_tw: examplemod.demo.english_only)
 ```
 
 A key counts as missing in a locale when another locale of the same mod has it, or when it names an item that has no

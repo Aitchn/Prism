@@ -89,6 +89,8 @@ final class PrismBlockService implements BlockService, Listener {
             new java.util.concurrent.CopyOnWriteArrayList<>();
     private final java.util.List<java.util.function.Consumer<Block>> lookChanged =
             new java.util.concurrent.CopyOnWriteArrayList<>();
+    private final java.util.List<java.util.function.Consumer<BlockIndex.Loaded>> chunkActivated =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
 
     PrismBlockService(Registry<BlockDefinition> definitions, ItemService items, BlockIndex index,
             DisplayEntityBackend display, java.util.function.Supplier<ClientLooks> clientLooks,
@@ -378,6 +380,11 @@ final class PrismBlockService implements BlockService, Listener {
 
     void onLookChanged(java.util.function.Consumer<Block> listener) {
         this.lookChanged.add(listener);
+    }
+
+    /** Told, on the chunk's thread, after a loaded chunk's blocks were activated (load behaviors ran, ticking started). */
+    void onChunkActivated(java.util.function.Consumer<BlockIndex.Loaded> listener) {
+        this.chunkActivated.add(listener);
     }
 
     /**
@@ -877,6 +884,10 @@ final class PrismBlockService implements BlockService, Listener {
         }
         refreshBorders(chunk);
         structures.chunkLoaded(chunk);
+        BlockIndex.Loaded mirror = index.loaded(chunk);
+        if (mirror != null) {
+            chunkActivated.forEach(listener -> listener.accept(mirror));
+        }
     }
 
     /** Connected blocks on the edges of the loaded chunks around {@code chunk} may now reach into it. */

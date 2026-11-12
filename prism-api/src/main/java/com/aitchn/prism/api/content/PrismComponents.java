@@ -459,6 +459,134 @@ public final class PrismComponents {
                         ? java.util.Optional.of(section.getBoolean("occludes", true)) : java.util.Optional.empty());
             });
 
+    /**
+     * Particles a block gives off by itself while it is loaded and a player is near: smoke from a chimney, sparks from a
+     * working machine, a glow over a portal. One emitter or a list of them; each can be limited to some variants, so
+     * switching a block's variant switches its emitters.
+     * <pre>{@code
+     * prism:particles:
+     *   - particle: minecraft:flame   # a vanilla particle id
+     *     rate: 4                     # emissions per second, may be below 1 (0.2 = one every five seconds); default 1
+     *     count: 2                    # particles per emission, default 1
+     *     offset: [0, 0.6, 0]         # from the block's centre, for a block facing north; default 0
+     *     spread: [0.2, 0.05, 0.2]    # Gaussian scatter per axis, or one number; default 0
+     *     speed: 0.01                 # default 0
+     *     range: 24                   # blocks; default the server's effects.particles.range
+     *     variants: [active]          # default every variant
+     *   - particle: minecraft:dust
+     *     color: "#ff4040"            # for types that take a colour
+     *     size: 1.2                   # dust size
+     *   - particle: minecraft:item
+     *     material: minecraft:redstone   # for types that show an item or a block
+     * }</pre>
+     * Prism sends emitters only to players who are in range and have the chunk, on a slow shared clock (not one task
+     * per block), nearest blocks first within a per-player budget ({@code effects.particles.max-per-player}). Bedrock
+     * players get them too, as Geyser translates the particles.
+     */
+    public static final ComponentType<Particles> PARTICLES = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "particles"),
+            Particles.class,
+            section -> {
+                java.util.List<ConfigSection> specs = section.has("value")
+                        ? section.getSectionList("value") : java.util.List.of(section);
+                if (specs.isEmpty()) {
+                    throw section.error("expected an emitter mapping or a list of them");
+                }
+                if (specs.size() > Particles.MAX_EMITTERS) {
+                    throw section.error("at most " + Particles.MAX_EMITTERS + " emitters per block, got " + specs.size());
+                }
+                java.util.List<com.aitchn.prism.api.effect.Emitter> emitters = new java.util.ArrayList<>();
+                for (ConfigSection spec : specs) {
+                    emitters.add(com.aitchn.prism.api.effect.Emitter.decode(spec));
+                }
+                return new Particles(java.util.List.copyOf(emitters));
+            });
+
+    /**
+     * Constant tint colours for the faces of a model that carry a {@code tintindex} (models taken from other games or
+     * mods often have them): colour {@code n} of the list tints the faces with {@code "tintindex": n}. On an item it
+     * tints the item model (layer 0 of a generated item is tint index 0). On a block it tints the model the display
+     * layer draws, per variant if wanted. A block drawn as a borrowed vanilla state ({@code prism:render: state})
+     * cannot be tinted: a block state file has no tint, so the pack build warns and those faces stay untinted.
+     * Bedrock gets the colour baked into a copy of the textures of tinted faces.
+     * <pre>{@code
+     * prism:tint: ["#3ab5ff"]              # every variant
+     * prism:tint:                          # or per variant
+     *   colors: ["#ffffff"]                # the variants not listed below (optional)
+     *   variants:
+     *     active: ["#3ab5ff", "#ffffff"]
+     * }</pre>
+     */
+    public static final ComponentType<Tint> TINT = new ComponentType<>(
+            new PrismKey(PrismKey.PRISM_NAMESPACE, "tint"),
+            Tint.class,
+            section -> {
+                if (section.has("value")) {
+                    return new Tint(tintColors(section, "value"), java.util.Map.of());
+                }
+                section.rejectUnknownKeys(java.util.Set.of("colors", "variants"));
+                java.util.List<Integer> colors = tintColors(section, "colors");
+                java.util.Map<String, java.util.List<Integer>> variants = new java.util.TreeMap<>();
+                if (section.has("variants")) {
+                    ConfigSection byVariant = section.requireSection("variants");
+                    for (String variant : byVariant.keys()) {
+                        variants.put(variant, tintColors(byVariant, variant));
+                    }
+                }
+                if (colors.isEmpty() && variants.isEmpty()) {
+                    throw section.error("tint needs colors, variants or both");
+                }
+                return new Tint(colors, variants);
+            });
+
+    private static java.util.List<Integer> tintColors(ConfigSection section, String key) throws ContentException {
+        java.util.List<String> texts = section.getStringList(key);
+        if (texts.size() > Tint.MAX_INDEXES) {
+            throw section.error(key + ": at most " + Tint.MAX_INDEXES + " tint colours, got " + texts.size());
+        }
+        java.util.List<Integer> colors = new java.util.ArrayList<>();
+        for (String text : texts) {
+            colors.add(com.aitchn.prism.api.effect.ParticleSpec.color(section, text));
+        }
+        return java.util.List.copyOf(colors);
+    }
+
+    /** @see #PARTICLES */
+    public record Particles(java.util.List<com.aitchn.prism.api.effect.Emitter> emitters) {
+
+        /** The most emitters one block may declare. */
+        public static final int MAX_EMITTERS = 8;
+
+        public Particles {
+            emitters = java.util.List.copyOf(emitters);
+        }
+
+        /** The emitters that run while the block shows {@code variant}. */
+        public java.util.List<com.aitchn.prism.api.effect.Emitter> in(String variant) {
+            return emitters.stream().filter(emitter -> emitter.runsIn(variant)).toList();
+        }
+    }
+
+    /**
+     * @see #TINT; colours are {@code 0xRRGGBB}, index {@code n} for {@code tintindex} n. {@code variants} overrides
+     * {@code colors} for the variants it names.
+     */
+    public record Tint(java.util.List<Integer> colors, java.util.Map<String, java.util.List<Integer>> variants) {
+
+        /** The most tint indexes a model may be given colours for. */
+        public static final int MAX_INDEXES = 16;
+
+        public Tint {
+            colors = java.util.List.copyOf(colors);
+            variants = java.util.Map.copyOf(variants);
+        }
+
+        /** The colours of {@code variant} ({@code ""} for a block without variants, or an item); may be empty. */
+        public java.util.List<Integer> colorsFor(String variant) {
+            return variants.getOrDefault(variant, colors);
+        }
+    }
+
     /** @see #RENDER */
     public enum Render { AUTO, STATE, DISPLAY }
 

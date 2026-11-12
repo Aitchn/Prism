@@ -244,3 +244,8 @@ Generic gaps found (a mod with another theme needs the same; none is Mekanism sp
 | E8 | Entities as block parts (rotating or moving parts such as the robit) | any moving machine |
 
 Plugin side, not Prism: choosing which sound or particle a machine plays, and when.
+
+- E7 addressed by [ADR-0027](adr/0027-world-effects.md): `prism:particles` block emitters per variant on one shared
+  clock, and `Prism.effects()` for travelling visuals, bursts and beams (packet-only, no server entity).
+- E6 covered by `prism:ambient_sound` ([ADR-0015](adr/0015-sounds-and-animated-textures.md)): it plays per variant
+  and stops when the block goes. It repeats a clip on an interval rather than holding a true loop that is cut off.

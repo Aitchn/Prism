@@ -219,8 +219,14 @@ public final class BedrockPackBuilder {
                             : TripwireStates.isTripwire(state);
                     Map<String, Object> materials = new LinkedHashMap<>();
                     Map<String, String> atlasNames = new LinkedHashMap<>();
+                    // prism:tint: Bedrock has no tint index, so tinted textures get a copy with the colour baked in.
+                    List<Integer> tints = JavaPackBuilder.tints(block.components(), look.variant());
+                    Map<String, Integer> tinted = tints.isEmpty() ? Map.of() : TintBake.tintIndexes(sources, model);
                     faces.forEach((face, texturePath) -> {
-                        String atlas = terrainTexture(sources, files, terrainData, flipbooks, texturePath);
+                        Integer index = tinted.get(texturePath);
+                        int tint = index != null && index >= 0 && index < tints.size() ? tints.get(index) : NO_TINT;
+                        String atlas = terrainTexture(sources, files, terrainData, flipbooks, texturePath, tint,
+                                warnings);
                         atlasNames.put(face, atlas);
                         materials.put(face, material(atlas));
                     });
@@ -332,13 +338,36 @@ public final class BedrockPackBuilder {
                 SyntheticExport.json(input.synthetic(), synthetics));
     }
 
+    /** No {@code prism:tint} colour for a texture. */
+    private static final int NO_TINT = -1;
+
     /** Registers a Java block texture in the Bedrock terrain atlas (and as a flipbook if animated); returns its name. */
     private static String terrainTexture(Map<String, byte[]> sources, Map<String, byte[]> files,
             Map<String, Object> terrainData, Map<String, Object> flipbooks, String texturePath) {
+        return terrainTexture(sources, files, terrainData, flipbooks, texturePath, NO_TINT, new ArrayList<>());
+    }
+
+    /**
+     * As {@link #terrainTexture(Map, Map, Map, Map, String)}; with a {@code tint} ({@code 0xRRGGBB}) the atlas entry is a
+     * copy of the texture with the colour multiplied in, named after the colour so equal tints share it.
+     */
+    private static String terrainTexture(Map<String, byte[]> sources, Map<String, byte[]> files,
+            Map<String, Object> terrainData, Map<String, Object> flipbooks, String texturePath, int tint,
+            List<String> warnings) {
         String name = "prismb_" + texturePath.substring("assets/".length(), texturePath.length() - 4)
                 .replace("/textures/", "_").replace('/', '_');
+        byte[] png = sources.get(texturePath);
+        if (tint != NO_TINT) {
+            byte[] baked = TintBake.multiply(png, tint);
+            if (baked == null) {
+                warnings.add("bedrock: cannot read " + texturePath + " to bake its prism:tint; Bedrock shows it untinted");
+            } else {
+                name = name + "_t" + String.format(java.util.Locale.ROOT, "%06x", tint & 0xFFFFFF);
+                png = baked;
+            }
+        }
         String packTexture = "textures/prism/blocks/" + name;
-        files.put(packTexture + ".png", sources.get(texturePath));
+        files.put(packTexture + ".png", png);
         terrainData.put(name, Map.of("textures", packTexture));
         Animation animation = animation(sources, texturePath);
         if (animation != null) {
@@ -518,6 +547,16 @@ public final class BedrockPackBuilder {
         String name = look.value().replace('/', '_');
         String icon = look.namespace() + "_" + name;
         String packTexture = "textures/prism/" + look.namespace() + "/" + name;
+        // prism:tint: layer 0 of a generated item model is tint index 0, so its colour goes into the icon.
+        List<Integer> tints = look.equals(item.key()) ? JavaPackBuilder.tints(item.components(), "") : List.of();
+        if (!tints.isEmpty()) {
+            byte[] baked = TintBake.multiply(png, tints.getFirst());
+            if (baked == null) {
+                warnings.add("bedrock " + look + ": cannot read " + texturePath + " to bake its prism:tint");
+            } else {
+                png = baked;
+            }
+        }
         files.put(packTexture + ".png", png);
         textureData.put(icon, Map.of("textures", packTexture));
 
