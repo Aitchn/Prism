@@ -132,3 +132,5 @@ other tick, so call `setWidget` as often as you like.
   moment.
 - The title text cannot move up or down.
 - A Java player whose pack is still loading sees boxes in the title until it has loaded.
+
+When `pack.enabled` is `false`, or a button menu has more buttons than its art has usable slots, the menu is shown as a plain chest with fallback widgets (the second case logs `PRISM_MENU_WARNING` once).

@@ -77,6 +77,31 @@ final class MenuArts implements Listener {
         return art;
     }
 
+    /**
+     * The art {@code key} names when its usable slots hold {@code buttons} buttons, or null: an art with too few
+     * slots would hide some of the buttons, so the menu is shown as a plain chest instead (reported once).
+     */
+    @Nullable MenuArt art(@Nullable PrismKey key, int buttons) {
+        MenuArt art = art(key);
+        if (art == null) {
+            return null;
+        }
+        int usable = 0;
+        for (int slot = 0; slot < art.rows() * 9; slot++) {
+            if (!art.hidden(slot)) {
+                usable++;
+            }
+        }
+        if (usable >= buttons) {
+            return art;
+        }
+        if (warned.add(key)) {
+            log.warning("PRISM_MENU_WARNING art " + key + " has " + usable + " usable slots for " + buttons
+                    + " buttons; the menu is shown as a plain chest");
+        }
+        return null;
+    }
+
     /** The layout {@code player} sees for {@code art}, or null when they see the plain chest. */
     @Nullable MenuLayout layoutFor(Player player, @Nullable MenuArt art) {
         if (art == null || bedrock.test(player.getUniqueId()) || withoutPack.contains(player.getUniqueId())) {

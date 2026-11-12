@@ -139,7 +139,8 @@ final class PackManager implements Listener {
                 + " state=" + table.count(LookTable.Tier.STATE) + " display=" + table.count(LookTable.Tier.DISPLAY)
                 + " unplaced=" + table.unplaced().size() + " families=" + table.activeBlocks().size());
         appearance.update(resolved.itemsWithAppearance(), resolved.blocksWithAppearance());
-        menusChanged.accept(resolved.menus().layouts());
+        // Without pack delivery no viewer has the menu font, so everyone gets the plain title and fallback widgets.
+        menusChanged.accept(config.getBoolean("pack.enabled", true) ? resolved.menus().layouts() : java.util.Map.of());
         if (serverStarted && config.getBoolean("pack.enabled", true)) {
             queueBuild();
         }
