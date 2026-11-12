@@ -80,6 +80,25 @@ final class EffectsSelfTest implements Listener {
 
     private void fail(String reason) {
         log.severe("PRISM_EFFECTS_SELFTEST_FAIL " + reason);
+        release();
+    }
+
+    /** The chunk under test stays loaded for the test: an unloaded chunk rightly has no emitters. */
+    private volatile org.bukkit.Chunk held;
+
+    private void hold(Block block) {
+        held = block.getChunk();
+        held.addPluginChunkTicket(org.bukkit.plugin.java.JavaPlugin.getProvidingPlugin(EffectsSelfTest.class));
+    }
+
+    private void release() {
+        org.bukkit.Chunk chunk = held;
+        held = null;
+        if (chunk != null) {
+            scheduler.runAt(new Location(chunk.getWorld(), chunk.getX() << 4, 64, chunk.getZ() << 4),
+                    () -> chunk.removePluginChunkTicket(
+                    org.bukkit.plugin.java.JavaPlugin.getProvidingPlugin(EffectsSelfTest.class)));
+        }
     }
 
     /** Waits a little more than two emitter cycles, so the chunk's emitters were rebuilt. */
@@ -96,6 +115,7 @@ final class EffectsSelfTest implements Listener {
 
     private void place(Block block) {
         try {
+            hold(block);
             if (!blocks.place(key, block.getLocation())) {
                 fail("cannot place " + key);
                 return;
@@ -191,6 +211,7 @@ final class EffectsSelfTest implements Listener {
             }
             log.info("PRISM_EFFECTS_SELFTEST_OK emitters=" + active + " launched=1 completed=" + completed
                     + " tinted=" + tinted);
+            release();
         });
     }
 
