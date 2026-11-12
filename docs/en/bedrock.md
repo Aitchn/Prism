@@ -18,6 +18,7 @@ Bedrock players join through Geyser. Prism detects them (Floodgate, then Geyser)
 | Animated block textures (`.png.mcmeta`) | yes | yes (flipbook) |
 | Menu gauges (`prism:gauge`) | stepped icon | stepped icon (Bedrock custom item per step) |
 | Menus | chest container | chest container (Geyser translates); native forms not implemented |
+| Menu backgrounds and pixel widgets (`prism/menus/*.yml`) | picture in the title, widgets move | chest with a clean title; widgets show as their fallback gauge items |
 
 ## How blocks reach Bedrock (ADR-0024)
 

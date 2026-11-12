@@ -249,3 +249,6 @@ Plugin side, not Prism: choosing which sound or particle a machine plays, and wh
   clock, and `Prism.effects()` for travelling visuals, bursts and beams (packet-only, no server entity).
 - E6 covered by `prism:ambient_sound` ([ADR-0015](adr/0015-sounds-and-animated-textures.md)): it plays per variant
   and stops when the block goes. It repeats a clip on an interval rather than holding a true loop that is cut off.
+- Machine screens (the menu side of the progress arrow, energy bar and tank icons above) addressed by
+  [ADR-0028](adr/0028-menu-backgrounds-and-pixel-widgets.md): a background picture behind the slots, pixel widgets
+  drawn in steps, and hidden slots, for Java players with the pack; Bedrock keeps the chest with gauge items.

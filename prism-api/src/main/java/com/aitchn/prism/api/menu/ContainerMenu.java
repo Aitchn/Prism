@@ -1,7 +1,9 @@
 package com.aitchn.prism.api.menu;
 
+import com.aitchn.prism.api.PrismKey;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A container GUI with real slots: buttons, input slots players drag items into and output slots they take items
@@ -18,8 +20,19 @@ public interface ContainerMenu {
     /** Title: a translation key or literal MiniMessage text, shown in the viewer's language when the menu opens. */
     @NotNull String title();
 
-    /** Rows of 9 slots, 1 to 6. */
+    /** Rows of 9 slots, 1 to 6. A menu with {@link #art} uses the art's row count instead. */
     int rows();
+
+    /**
+     * The menu's art: the key of a menu file {@code <content root>/menus/<path>.yml} of your mod (for example
+     * {@code examplemod:counter} for {@code prism/menus/counter.yml}). It gives the background picture, the pixel
+     * widgets ({@link MenuView#setWidget}) and the slots the picture uses; every other slot is hidden (inert and
+     * empty). Java players with the resource pack see the picture; Bedrock players see the chest with a clean title
+     * and each widget's fallback item. Null (the default) is the plain chest.
+     */
+    default @Nullable PrismKey art() {
+        return null;
+    }
 
     /** The role of {@code slot}; {@link SlotRole#BUTTON} unless overridden. */
     default @NotNull SlotRole role(int slot) {

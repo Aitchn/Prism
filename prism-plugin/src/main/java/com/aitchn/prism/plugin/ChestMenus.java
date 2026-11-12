@@ -4,11 +4,15 @@ import com.aitchn.prism.api.menu.ContainerMenu;
 import com.aitchn.prism.api.menu.MenuButton;
 import com.aitchn.prism.api.menu.MenuService;
 import com.aitchn.prism.api.menu.MenuSpec;
+import com.aitchn.prism.core.menu.MenuArt;
+import com.aitchn.prism.core.menu.MenuTitles;
 import com.aitchn.prism.platform.spi.PlatformScheduler;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import com.aitchn.prism.api.text.Message;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -28,13 +32,15 @@ final class ChestMenus implements MenuService, Listener {
     private final PlatformScheduler scheduler;
     private final ContainerMenus containers;
     private final TextPrompts prompts;
+    private final MenuArts arts;
 
-    ChestMenus(BukkitItemService items, PrismTranslations translations, PlatformScheduler scheduler,
+    ChestMenus(BukkitItemService items, PrismTranslations translations, PlatformScheduler scheduler, MenuArts arts,
             java.util.logging.Logger log) {
         this.items = items;
         this.translations = translations;
         this.scheduler = scheduler;
-        this.containers = new ContainerMenus(items, translations, scheduler, log);
+        this.arts = arts;
+        this.containers = new ContainerMenus(items, translations, scheduler, arts, log);
         this.prompts = new TextPrompts(scheduler, translations, log);
     }
 
@@ -60,6 +66,7 @@ final class ChestMenus implements MenuService, Listener {
     }
 
     private static final class Holder implements MenuHolder {
+        /** The button id of each slot; null for a slot without a button. */
         private final List<String> ids;
         private final Consumer<String> handler;
         private Inventory inventory;
@@ -79,14 +86,24 @@ final class ChestMenus implements MenuService, Listener {
     public void open(@NotNull Player player, @NotNull MenuSpec spec, @NotNull Consumer<String> onSelect) {
         List<String> ids = new ArrayList<>();
         Holder holder = new Holder(ids, onSelect);
+        MenuArt art = arts.art(spec.art());
+        int rows = art != null ? art.rows() : spec.rows();
         // The title is fixed when the inventory is made, so it is translated for this viewer here; item names and lore
-        // are translated in the packets.
-        Inventory inventory = Bukkit.createInventory(holder, spec.rows() * 9,
-                translations.render(Message.of(spec.title()), player));
+        // are translated in the packets. With art, the buttons fill the slots the picture uses (ADR-0028).
+        Component title = arts.title(translations.render(Message.of(spec.title()), player), art,
+                arts.layoutFor(player, art), art == null ? Map.of() : MenuTitles.initial(art));
+        Inventory inventory = Bukkit.createInventory(holder, rows * 9, title);
         holder.inventory = inventory;
-        for (MenuButton button : spec.buttons()) {
-            inventory.setItem(ids.size(), icon(button));
-            ids.add(button.id());
+        int next = 0;
+        for (int slot = 0; slot < rows * 9; slot++) {
+            boolean usable = art == null || !art.hidden(slot);
+            if (usable && next < spec.buttons().size()) {
+                MenuButton button = spec.buttons().get(next++);
+                inventory.setItem(slot, icon(button));
+                ids.add(button.id());
+            } else {
+                ids.add(null);
+            }
         }
         scheduler.runOn(player, () -> player.openInventory(inventory), null);
     }
@@ -109,7 +126,7 @@ final class ChestMenus implements MenuService, Listener {
             return;
         }
         int slot = event.getSlot();
-        if (slot >= 0 && slot < holder.ids.size()) {
+        if (slot >= 0 && slot < holder.ids.size() && holder.ids.get(slot) != null) {
             // Closing or opening inventories inside the click transaction is unsafe; run after the event.
             Player player = (Player) event.getWhoClicked();
             String id = holder.ids.get(slot);

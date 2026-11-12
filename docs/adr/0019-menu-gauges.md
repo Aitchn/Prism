@@ -29,8 +29,9 @@ editions can show.
 
 - Each gauge costs `steps + 1` Bedrock custom items. Thirty-three at most per gauge.
 - A gauge is coarse: 16 steps is a 6 % resolution. Exact values stay in the name and lore.
-- Full custom menu backgrounds (the other half of row 49) are not done. They would be Java only (a font glyph in the
-  title); Bedrock keeps the chest UI.
+- Full custom menu backgrounds (the other half of row 49) are done in
+  [ADR-0028](0028-menu-backgrounds-and-pixel-widgets.md): Java only (a font glyph in the title), with these gauges as
+  the Bedrock fallback of its pixel widgets.
 
 ## Not verified by CI
 

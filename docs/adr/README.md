@@ -33,3 +33,4 @@ the ADRs are the authoritative English form.
 | [0025](0025-display-first.md) | Display layer first, one entity per block | Accepted |
 | [0026](0026-per-viewer-item-text.md) | Per-viewer item text, translated in packets | Accepted |
 | [0027](0027-world-effects.md) | World effects | Accepted |
+| [0028](0028-menu-backgrounds-and-pixel-widgets.md) | Menu backgrounds and pixel widgets | Accepted |

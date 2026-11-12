@@ -13,6 +13,7 @@ import com.aitchn.prism.core.look.LookTable;
 import com.aitchn.prism.core.look.ModelRef;
 import com.aitchn.prism.core.look.ResolvedPool;
 import com.aitchn.prism.core.look.StateRef;
+import com.aitchn.prism.core.menu.MenuArt;
 import com.aitchn.prism.pack.json.JsonWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -44,7 +45,8 @@ public final class JavaPackBuilder {
 
     /**
      * Input for one build. {@code assets} maps mod id to its pack files; {@code lighting} decides whether display looks
-     * also get face models (ADR-0023) or only their whole model (ADR-0025).
+     * also get face models (ADR-0023) or only their whole model (ADR-0025); {@code menus} is the menu art drawn with
+     * the {@code prism:menu} font (ADR-0028).
      */
     public record Input(
             @NotNull Map<String, Map<String, byte[]>> assets,
@@ -53,7 +55,14 @@ public final class JavaPackBuilder {
             int packFormat,
             @NotNull String description,
             @NotNull LookTable looks,
-            @NotNull DisplayLighting lighting) {
+            @NotNull DisplayLighting lighting,
+            @NotNull Collection<MenuArt> menus) {
+
+        public Input(@NotNull Map<String, Map<String, byte[]>> assets, @NotNull Collection<ItemDefinition> items,
+                @NotNull Collection<BlockDefinition> blocks, int packFormat, @NotNull String description,
+                @NotNull LookTable looks, @NotNull DisplayLighting lighting) {
+            this(assets, items, blocks, packFormat, description, looks, lighting, List.of());
+        }
 
         public Input(@NotNull Map<String, Map<String, byte[]>> assets, @NotNull Collection<ItemDefinition> items,
                 @NotNull Collection<BlockDefinition> blocks, int packFormat, @NotNull String description) {
@@ -72,13 +81,15 @@ public final class JavaPackBuilder {
      * @param itemsWithAppearance  items that got an item definition; only these may carry {@code item_model}
      * @param blocksWithAppearance blocks that got one, drawn with item model {@code <ns>:block/<value>}
      * @param displayPlans         for each look of the input's {@link LookTable} that the display layer draws, how
+     * @param menus                the menu art glyphs in the pack and their layouts (ADR-0028)
      */
     public record Resolved(
             @NotNull Map<String, byte[]> files,
             @NotNull List<String> warnings,
             @NotNull Set<PrismKey> itemsWithAppearance,
             @NotNull Set<PrismKey> blocksWithAppearance,
-            @NotNull Map<String, DisplayPlan> displayPlans) {}
+            @NotNull Map<String, DisplayPlan> displayPlans,
+            MenuArtPack.@NotNull Result menus) {}
 
     public record Result(
             byte @NotNull [] zip,
@@ -87,7 +98,8 @@ public final class JavaPackBuilder {
             int fileCount,
             @NotNull Set<PrismKey> itemsWithAppearance,
             @NotNull Set<PrismKey> blocksWithAppearance,
-            @NotNull Map<String, DisplayPlan> displayPlans) {}
+            @NotNull Map<String, DisplayPlan> displayPlans,
+            MenuArtPack.@NotNull Result menus) {}
 
     private JavaPackBuilder() {}
 
@@ -96,7 +108,8 @@ public final class JavaPackBuilder {
         Resolved resolved = resolve(input);
         byte[] zip = zip(resolved.files());
         return new Result(zip, sha1(zip), resolved.warnings(), resolved.files().size(),
-                resolved.itemsWithAppearance(), resolved.blocksWithAppearance(), resolved.displayPlans());
+                resolved.itemsWithAppearance(), resolved.blocksWithAppearance(), resolved.displayPlans(),
+                resolved.menus());
     }
 
     /** Merges assets and generates definitions and models, without compressing anything. */
@@ -171,9 +184,11 @@ public final class JavaPackBuilder {
             }
         }
         Map<String, DisplayPlan> plans = looks(input, files, warnings);
+        MenuArtPack.Result menus = MenuArtPack.add(files, warnings, input.menus());
 
         files.put("pack.mcmeta", mcmeta(input).getBytes(StandardCharsets.UTF_8));
-        return new Resolved(files, List.copyOf(warnings), Set.copyOf(itemsOk), Set.copyOf(blocksOk), Map.copyOf(plans));
+        return new Resolved(files, List.copyOf(warnings), Set.copyOf(itemsOk), Set.copyOf(blocksOk), Map.copyOf(plans),
+                menus);
     }
 
     /**
