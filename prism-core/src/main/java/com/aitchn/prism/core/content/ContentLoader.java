@@ -11,6 +11,7 @@ import com.aitchn.prism.api.content.ContentException;
 import com.aitchn.prism.api.content.ItemDefinition;
 import com.aitchn.prism.api.recipe.PrismRecipe;
 import com.aitchn.prism.api.recipe.RecipeType;
+import com.aitchn.prism.core.menu.MenuArt;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,7 +23,8 @@ import java.util.function.Predicate;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Reads {@code <root>/items/**.yml}, {@code <root>/blocks/**.yml} and {@code <root>/recipes/**.yml}. The file path
+ * Reads {@code <root>/items/**.yml}, {@code <root>/blocks/**.yml}, {@code <root>/recipes/**.yml} and
+ * {@code <root>/menus/**.yml} (menu art, ADR-0028). The file path
  * below the folder (without extension) becomes the key value in the mod's namespace. All problems are collected, not just the first, so a
  * creator fixes a file in one pass.
  */
@@ -30,7 +32,12 @@ public final class ContentLoader {
 
     /** Everything one mod declared. */
     public record Loaded(Map<PrismKey, ItemDefinition> items, Map<PrismKey, BlockDefinition> blocks,
-            Map<PrismKey, PrismRecipe<?>> recipes) {
+            Map<PrismKey, PrismRecipe<?>> recipes, Map<PrismKey, MenuArt> menus) {
+
+        public Loaded(Map<PrismKey, ItemDefinition> items, Map<PrismKey, BlockDefinition> blocks,
+                Map<PrismKey, PrismRecipe<?>> recipes) {
+            this(items, blocks, recipes, Map.of());
+        }
 
         public Loaded(Map<PrismKey, ItemDefinition> items, Map<PrismKey, BlockDefinition> blocks) {
             this(items, blocks, Map.of());
@@ -72,7 +79,12 @@ public final class ContentLoader {
             read(file, contentRoot + "/recipes", namespace, problems,
                     key -> recipes.put(key, loadRecipe(source, file, key, owner)));
         }
-        return new Loaded(items, blocks, recipes);
+        Map<PrismKey, MenuArt> menus = new LinkedHashMap<>();
+        for (String file : yamlFiles(source, contentRoot + "/menus", problems)) {
+            read(file, contentRoot + "/menus", namespace, problems, key -> menus.put(key, MenuArt.decode(key,
+                    MapConfigSection.of("", YamlFiles.parse(file, source.readText(file))))));
+        }
+        return new Loaded(items, blocks, recipes, menus);
     }
 
     private PrismRecipe<?> loadRecipe(ContentSource source, String file, PrismKey id, String owner)

@@ -78,6 +78,10 @@ Java 版玩家看到的是屏障方塊上的顯示實體，所以相鄰方塊的
 Java 與基岩版玩家看到相同的分段量條或箭頭。若要換成自己的圖，提供 `textures/item/<名稱>/gauge_<n>.png` 即可取代該階。
 範例是計數器介面中的循環箭頭。
 
+**選單背景與像素元件。** 選單檔 `prism/menus/<名稱>.yml` 讓 `ContainerMenu`（`art()`）或 `MenuSpec` 擁有一張墊在格子後面的
+背景圖、畫在任意像素位置的進度箭頭與量條（`view.setWidget(id, fraction)`），以及隱藏格。裝了資源包的 Java 玩家會看到圖；
+基岩版玩家看到箱子介面，元件改以各自的備用量表物品呈現。詳見[選單](menus.md)。
+
 **連同資料撿起方塊。** `BlockDropBehavior` 在移除行為之前，把方塊資料寫進掉落物（`Prism.items().editData(drop, ...)`）；
 `BlockPlaceBehavior` 再從 `context.placedFrom()` 讀回。計數器就是這樣保留計數。
 

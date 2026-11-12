@@ -1,0 +1,22 @@
+# The counter's menu art (ADR-0028). Java players with the pack see this picture behind the slots, an arrow that fills
+# as the count goes through its cycle of ten, and a bar that shows how full the stored stack is. Bedrock players see
+# the plain chest; the arrow then shows as the cycle gauge item in slot 12.
+background: gui/counter        # assets/examplemod/textures/gui/counter.png, 176x71: the three rows, no inventory part
+rows: 3
+slots: [11, 13, 15, 22]        # the slots the picture draws; every other slot is hidden (inert, always empty)
+widgets:
+  cycle:
+    type: progress
+    sprite: gui/counter_arrow  # 16x11, revealed left to right
+    x: 62
+    y: 38
+    steps: 10
+    fallback:
+      slot: 12                 # hidden on Java, the gauge item on Bedrock
+      item: cycle_gauge
+  store:
+    type: bar
+    sprite: gui/counter_store  # 8x50, revealed bottom up
+    x: 156
+    y: 18
+    steps: 16

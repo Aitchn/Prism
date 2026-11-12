@@ -24,6 +24,7 @@ import com.aitchn.prism.core.lang.ItemTextRenderer;
 import com.aitchn.prism.core.lang.LangJson;
 import com.aitchn.prism.core.lang.LangSummary;
 import com.aitchn.prism.core.lang.Translations;
+import com.aitchn.prism.core.menu.MenuArt;
 import com.aitchn.prism.core.registry.MutableRegistry;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,6 +50,7 @@ public final class ModManager {
     private final MutableRegistry<BlockDefinition> blocks = new MutableRegistry<>();
     private final MutableRegistry<RecipeType<?>> recipeTypes = new MutableRegistry<>();
     private final MutableRegistry<PrismRecipe<?>> recipes = new MutableRegistry<>();
+    private final MutableRegistry<MenuArt> menus = new MutableRegistry<>();
     private final Map<String, Map<String, byte[]>> assets = new LinkedHashMap<>();
     private final Map<String, Map<PrismKey, byte[]>> models = new LinkedHashMap<>();
     private final Map<String, ModCandidate> active = new HashMap<>();
@@ -110,6 +112,11 @@ public final class ModManager {
         Map<PrismKey, byte[]> all = new LinkedHashMap<>();
         models.values().forEach(all::putAll);
         return java.util.Collections.unmodifiableMap(all);
+    }
+
+    /** The menu art ({@code <root>/menus/**.yml}, ADR-0028) of every active mod, keyed by menu key. */
+    public @NotNull Registry<MenuArt> menus() {
+        return menus;
     }
 
     /** Recipe types: Prism's vanilla ones plus every active mod's. */
@@ -219,6 +226,7 @@ public final class ModManager {
             blocks.publish(mod.id(), loaded.blocks());
             recipeTypes.publish(mod.id(), staging.recipeTypes);
             recipes.publish(mod.id(), loaded.recipes());
+            menus.publish(mod.id(), loaded.menus());
         } catch (IllegalStateException e) {
             rollback(mod.id());
             problems.add(new Problem("", e.getMessage()));
@@ -272,6 +280,7 @@ public final class ModManager {
 
     private void rollback(String id) {
         recipes.unregisterOwner(id);
+        menus.unregisterOwner(id);
         recipeTypes.unregisterOwner(id);
         items.unregisterOwner(id);
         blocks.unregisterOwner(id);

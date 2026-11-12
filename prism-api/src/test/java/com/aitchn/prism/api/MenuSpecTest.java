@@ -34,4 +34,13 @@ class MenuSpecTest {
         MenuButton a = new MenuButton("x", "A", PrismKey.parse("minecraft:stone"));
         assertThrows(IllegalArgumentException.class, () -> new MenuSpec("t", List.of(a, a)));
     }
+
+    @Test
+    void artIsOptional() {
+        MenuSpec plain = new MenuSpec("t", buttons(3));
+        assertEquals(null, plain.art());
+        MenuSpec drawn = plain.withArt(PrismKey.parse("m:machine"));
+        assertEquals(PrismKey.parse("m:machine"), drawn.art());
+        assertEquals(plain.buttons(), drawn.buttons());
+    }
 }

@@ -101,6 +101,11 @@ call `view.setGauge(slot, key, fraction, name, lore)`, for example from `onRefre
 to full, into both packs, so Java and Bedrock players see the same stepped bar or arrow. Ship
 `textures/item/<name>/gauge_<n>.png` to replace a step with your own art. The counter's cycle arrow is the example.
 
+**Menu backgrounds and pixel widgets.** A menu file `prism/menus/<name>.yml` gives a `ContainerMenu` (`art()`) or a
+`MenuSpec` a background picture, progress arrows and bars drawn at any pixel position (`view.setWidget(id, fraction)`)
+and hidden slots. Java players with the pack see the picture; Bedrock players see the chest with each widget's
+fallback gauge. See [Menus](menus.md).
+
 **Picking blocks up with their data.** A `BlockDropBehavior` writes the block's data into the dropped item
 (`Prism.items().editData(drop, ...)`) before remove behaviors run. A `BlockPlaceBehavior` reads it back from
 `context.placedFrom()`. The counter keeps its count this way.

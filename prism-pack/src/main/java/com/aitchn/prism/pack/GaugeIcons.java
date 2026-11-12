@@ -100,11 +100,16 @@ public final class GaugeIcons {
 
     /** A minimal RGBA PNG encoder (no filtering), deterministic for the same pixels. */
     static byte[] encode(int[] argb) {
+        return encode(argb, SIZE, SIZE);
+    }
+
+    /** {@link #encode(int[])} for any size; {@code argb} is row-major, {@code width} wide. */
+    static byte[] encode(int[] argb, int width, int height) {
         ByteArrayOutputStream raw = new ByteArrayOutputStream();
-        for (int y = 0; y < SIZE; y++) {
+        for (int y = 0; y < height; y++) {
             raw.write(0); // filter: none
-            for (int x = 0; x < SIZE; x++) {
-                int p = argb[y * SIZE + x];
+            for (int x = 0; x < width; x++) {
+                int p = argb[y * width + x];
                 raw.write((p >> 16) & 0xFF);
                 raw.write((p >> 8) & 0xFF);
                 raw.write(p & 0xFF);
@@ -124,7 +129,7 @@ public final class GaugeIcons {
         ByteArrayOutputStream png = new ByteArrayOutputStream();
         png.writeBytes(new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'});
         ByteBuffer header = ByteBuffer.allocate(13);
-        header.putInt(SIZE).putInt(SIZE).put((byte) 8).put((byte) 6).put((byte) 0).put((byte) 0).put((byte) 0);
+        header.putInt(width).putInt(height).put((byte) 8).put((byte) 6).put((byte) 0).put((byte) 0).put((byte) 0);
         chunk(png, "IHDR", header.array());
         chunk(png, "IDAT", compressed.toByteArray());
         chunk(png, "IEND", new byte[0]);

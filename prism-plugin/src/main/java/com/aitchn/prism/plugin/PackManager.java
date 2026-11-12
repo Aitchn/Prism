@@ -14,6 +14,8 @@ import com.aitchn.prism.core.look.LookTable;
 import com.aitchn.prism.core.look.PhysicsClass;
 import com.aitchn.prism.core.look.RenderSettings;
 import com.aitchn.prism.core.look.ResolvedPool;
+import com.aitchn.prism.core.menu.MenuArt;
+import com.aitchn.prism.core.menu.MenuLayout;
 import com.aitchn.prism.core.mod.ModManager;
 import com.aitchn.prism.pack.BedrockPackBuilder;
 import com.aitchn.prism.pack.JavaPackBuilder;
@@ -48,7 +50,7 @@ import org.bukkit.plugin.Plugin;
  */
 final class PackManager implements Listener {
 
-    private static final UUID PACK_ID = UUID.nameUUIDFromBytes("prism:content-pack".getBytes(StandardCharsets.UTF_8));
+    static final UUID PACK_ID = UUID.nameUUIDFromBytes("prism:content-pack".getBytes(StandardCharsets.UTF_8));
 
     private final Plugin plugin;
     private final ModManager mods;
@@ -67,6 +69,7 @@ final class PackManager implements Listener {
     private final BedrockBlocks bedrock;
     private final Object looksLock = new Object();
     private volatile Runnable relooked = () -> {};
+    private volatile java.util.function.Consumer<java.util.Map<PrismKey, MenuLayout>> menusChanged = layouts -> {};
     private final java.util.concurrent.atomic.AtomicInteger generation = new java.util.concurrent.atomic.AtomicInteger();
     private BedrockPackBuilder.Result bedrockCache;
     private int bedrockCacheGeneration = -1;
@@ -136,6 +139,7 @@ final class PackManager implements Listener {
                 + " state=" + table.count(LookTable.Tier.STATE) + " display=" + table.count(LookTable.Tier.DISPLAY)
                 + " unplaced=" + table.unplaced().size() + " families=" + table.activeBlocks().size());
         appearance.update(resolved.itemsWithAppearance(), resolved.blocksWithAppearance());
+        menusChanged.accept(resolved.menus().layouts());
         if (serverStarted && config.getBoolean("pack.enabled", true)) {
             queueBuild();
         }
@@ -147,6 +151,11 @@ final class PackManager implements Listener {
             looks = looks.withBedrock(bedrock.activeIds());
         }
         relooked.run();
+    }
+
+    /** Receives the menu art layouts (ADR-0028) of every content change. */
+    void onMenus(java.util.function.Consumer<java.util.Map<PrismKey, MenuLayout>> listener) {
+        this.menusChanged = listener;
     }
 
     /** Called after Geyser viewers got synthetic ids, to publish the looks of the chunks that are already loaded. */
@@ -232,6 +241,11 @@ final class PackManager implements Listener {
             JavaPackBuilder.Result result = JavaPackBuilder.build(input());
             result.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
             publish(PACK_ID, "PRISM_PACK_READY", result.sha1(), result.zip(), result.fileCount());
+            if (!result.menus().layouts().isEmpty()) {
+                plugin.getLogger().info("PRISM_PACK_MENUS menus=" + result.menus().layouts().size()
+                        + " backgrounds=" + result.menus().backgrounds() + " widgets=" + result.menus().widgets()
+                        + " glyphs=" + result.menus().glyphs());
+            }
             BedrockPackBuilder.Result built = bedrockResult();
             built.warnings().forEach(warning -> plugin.getLogger().warning("PRISM_PACK_WARNING " + warning));
             ensureServer().publishBedrock(built.sha1(), built.mcpack(), built.mappings());
@@ -380,7 +394,11 @@ final class PackManager implements Listener {
         if (format <= 0) {
             format = PackFormats.forVersion(platform.minecraftVersion()).number();
         }
+        List<MenuArt> menus = new ArrayList<>();
+        for (PrismKey key : mods.menus().keys()) {
+            mods.menus().get(key).ifPresent(menus::add);
+        }
         return new JavaPackBuilder.Input(mods.assets(), items, blocks, format, "Prism content pack", table,
-                settings.lighting());
+                settings.lighting(), menus);
     }
 }

@@ -47,6 +47,22 @@ class ExampleModTest {
     }
 
     @Test
+    void counterMenuHasArt() {
+        var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
+        assertTrue(harness.report().active(), harness.report().problems().toString());
+        var art = harness.manager().menus().get(CounterMenu.ART).orElseThrow();
+        assertEquals("examplemod:gui/counter", String.valueOf(art.background()));
+        assertEquals(3, art.rows());
+        assertTrue(art.hidden(12) && art.hidden(0));
+        assertTrue(!art.hidden(11) && !art.hidden(15) && !art.hidden(22));
+        assertEquals(java.util.List.of("cycle", "store"),
+                art.widgets().stream().map(com.aitchn.prism.core.menu.MenuArt.Widget::id).toList());
+        assertEquals(12, art.widget("cycle").fallbackSlot());
+        assertEquals("examplemod:cycle_gauge", art.widget("cycle").fallbackItems().getFirst().toString());
+        assertEquals(-1, art.widget("store").fallbackSlot());
+    }
+
+    @Test
     void blockAndItsPlacingItemLoad() {
         var harness = ModTestHarness.load("examplemod", new Mod(), Path.of("src/main/resources"));
         assertTrue(harness.report().active(), harness.report().problems().toString());

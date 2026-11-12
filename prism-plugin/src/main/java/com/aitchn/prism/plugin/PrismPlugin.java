@@ -35,6 +35,7 @@ public final class PrismPlugin extends JavaPlugin {
     private SqliteDataService data;
     private Runnable uninstallRewriter;
     private Runnable uninstallItemText;
+    private com.aitchn.prism.client.MenuTitleChannel menuTitles;
 
     @Override
     public void onEnable() {
@@ -110,7 +111,13 @@ public final class PrismPlugin extends JavaPlugin {
         ModLifecycle lifecycle = new ModLifecycle(this, mods, contentChanged);
         PrismTranslations translations = new PrismTranslations(this,
                 new com.aitchn.prism.core.lang.ItemTextRenderer(mods::translations, mods.items()), scheduler);
-        ChestMenus menus = new ChestMenus(items, translations, scheduler, getLogger());
+        // Menu art (ADR-0028): layouts from each pack resolve, titles changed through the packet route.
+        MenuArts menuArts = new MenuArts(mods.menus(), bedrockPlayers, PackManager.PACK_ID, getLogger());
+        packManager.onMenus(menuArts::update);
+        menuTitles = com.aitchn.prism.client.MenuTitleChannel.install();
+        menuArts.channel(menuTitles);
+        getServer().getPluginManager().registerEvents(menuArts, this);
+        ChestMenus menus = new ChestMenus(items, translations, scheduler, menuArts, getLogger());
         BedrockModelLooks modelLooks = new BedrockModelLooks(blocks, packManager::looks, bedrockPlayers, scheduler);
         packManager.onRelook(() -> scheduler.runGlobal(blocks::contentChanged));
         blocks.onLookChanged(modelLooks::changed);
@@ -245,6 +252,12 @@ public final class PrismPlugin extends JavaPlugin {
                     com.aitchn.prism.api.PrismKey.parse(effectsSelfTest), blocks, emitters, effects, packManager,
                     scheduler, getLogger()), this);
         }
+        String menuArtSelfTest = System.getProperty("prism.selftest.menuart");
+        if (menuArtSelfTest != null) {
+            getServer().getPluginManager().registerEvents(new MenuArtSelfTest(
+                    com.aitchn.prism.api.PrismKey.parse(menuArtSelfTest), mods, packManager, menuArts, scheduler,
+                    getLogger()), this);
+        }
         String selfTest = System.getProperty("prism.selftest");
         if (selfTest != null) {
             getServer().getPluginManager().registerEvents(
@@ -267,6 +280,9 @@ public final class PrismPlugin extends JavaPlugin {
         }
         if (uninstallItemText != null) {
             uninstallItemText.run();
+        }
+        if (menuTitles != null) {
+            menuTitles.uninstall();
         }
         if (data != null) {
             data.close();

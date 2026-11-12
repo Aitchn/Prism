@@ -55,6 +55,37 @@ public interface MenuView {
             @NotNull List<Message> lore);
 
     /**
+     * Moves pixel widget {@code id} of the menu's art (a {@code progress} or {@code bar} widget) to the step nearest
+     * {@code fraction} (0 empty, 1 full). Java players with the pack see the picture change; the title is resent only
+     * when a step really changes, at most every other tick. Everyone else sees the widget's fallback gauge item in its
+     * fallback slot, named {@code name} with {@code lore} (an empty name key keeps the item's own name). Unknown ids
+     * and menus without art are ignored. Call it from {@link ContainerMenu#onRefresh} like {@link #setGauge}.
+     */
+    void setWidget(@NotNull String id, double fraction, @NotNull Message name, @NotNull List<Message> lore);
+
+    /** {@link #setWidget(String, double, Message, List)} with the fallback item's own name and no lore. */
+    default void setWidget(@NotNull String id, double fraction) {
+        setWidget(id, fraction, Message.of(""), List.of());
+    }
+
+    /**
+     * Shows state {@code state} (0 to its states minus one, clamped) of {@code icon} widget {@code id}; the fallback
+     * slot shows the matching fallback item, named {@code name} with {@code lore}.
+     */
+    void setWidgetState(@NotNull String id, int state, @NotNull Message name, @NotNull List<Message> lore);
+
+    /** {@link #setWidgetState(String, int, Message, List)} with the fallback item's own name and no lore. */
+    default void setWidgetState(@NotNull String id, int state) {
+        setWidgetState(id, state, Message.of(""), List.of());
+    }
+
+    /**
+     * Whether this viewer sees the menu's art (a Java player with the pack, and the art is in the pack). When false,
+     * widgets show as fallback items and the title is plain text.
+     */
+    boolean showsArt();
+
+    /**
      * Whether the player changed {@code slot} and {@link ContainerMenu#onSlotChanged} has not reported it yet. While
      * true, the slot's content may still be moving; do not copy it into your model or overwrite it.
      */

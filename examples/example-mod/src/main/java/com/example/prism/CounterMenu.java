@@ -29,8 +29,8 @@ final class CounterMenu implements ContainerMenu {
     static final NamespacedKey LABEL = NamespacedKey.fromString("examplemod:label");
 
     private static final int COUNT_SLOT = 11;
-    private static final int CYCLE_SLOT = 12;
-    private static final PrismKey CYCLE_GAUGE = PrismKey.parse("examplemod:cycle_gauge");
+    /** The menu file {@code prism/menus/counter.yml}: background, the cycle arrow and the store bar. */
+    static final PrismKey ART = PrismKey.parse("examplemod:counter");
     private static final int SWITCH_SLOT = 13;
     private static final int STORE_SLOT = 15;
     private static final int LABEL_SLOT = 22;
@@ -88,6 +88,11 @@ final class CounterMenu implements ContainerMenu {
     }
 
     @Override
+    public PrismKey art() {
+        return ART;
+    }
+
+    @Override
     public @NotNull SlotRole role(int slot) {
         return slot == STORE_SLOT ? SlotRole.INPUT : SlotRole.BUTTON;
     }
@@ -97,6 +102,7 @@ final class CounterMenu implements ContainerMenu {
         drawCount(view);
         drawSwitch(view);
         view.setItem(STORE_SLOT, stored);
+        drawStore(view, stored);
         // The label is the player's own text: passed as an argument, so it is shown as typed (never as markup).
         view.setIcon(LABEL_SLOT, PrismKey.parse("minecraft:name_tag"),
                 label.isEmpty() ? Message.of("examplemod.counter.no_label")
@@ -136,6 +142,7 @@ final class CounterMenu implements ContainerMenu {
     @Override
     public void onSlotChanged(@NotNull MenuView view, int slot) {
         ItemStack item = view.item(STORE_SLOT);
+        drawStore(view, item);
         byte[] bytes = item == null ? null : item.serializeAsBytes();
         Prism.scheduler().runAt(at, () -> Prism.blocks().get(at.getBlock()).ifPresent(block -> {
             if (bytes == null) {
@@ -178,10 +185,16 @@ final class CounterMenu implements ContainerMenu {
     private void drawCount(MenuView view) {
         view.setIcon(COUNT_SLOT, PrismKey.parse("minecraft:clock"), Message.of("examplemod.counter.count", count.get()),
                 List.of(Message.of("examplemod.counter.count_hint")));
-        // A stepped gauge icon (prism:gauge): the same arrow on Java and Bedrock.
+        // A pixel widget of the menu art: an arrow drawn over the background on Java; Bedrock players (and Java
+        // players without the pack) see the cycle gauge item (prism:gauge) in the widget's fallback slot instead.
         int cycle = count.get() % 10;
-        view.setGauge(CYCLE_SLOT, CYCLE_GAUGE, cycle / 10.0, Message.of("examplemod.counter.cycle", cycle),
+        view.setWidget("cycle", cycle / 10.0, Message.of("examplemod.counter.cycle", cycle),
                 List.of(Message.of("examplemod.counter.cycle_hint")));
+    }
+
+    /** The bar beside the slots: how full the stored stack is. Java only; Bedrock players see the stack itself. */
+    private static void drawStore(MenuView view, ItemStack item) {
+        view.setWidget("store", item == null ? 0 : (double) item.getAmount() / item.getMaxStackSize());
     }
 
     private void drawSwitch(MenuView view) {
