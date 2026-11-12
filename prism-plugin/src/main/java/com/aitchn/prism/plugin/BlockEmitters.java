@@ -60,6 +60,8 @@ final class BlockEmitters implements Listener {
     private final AtomicLong tasks = new AtomicLong();
     private volatile boolean anyEmitting;
     private ScheduledTask clock;
+    private volatile RuntimeException lastFailure;
+    private volatile boolean failureLogged;
 
     /**
      * @param interval        ticks between cycles ({@code effects.particles.interval})
@@ -170,8 +172,21 @@ final class BlockEmitters implements Listener {
         return idle;
     }
 
-    /** One cycle, on the global thread. */
+    /** One cycle, on the global thread. A failure is reported once and must not end the clock silently. */
     private void cycle() {
+        try {
+            runCycle();
+        } catch (RuntimeException e) {
+            lastFailure = e;
+            if (!failureLogged) {
+                failureLogged = true;
+                java.util.logging.Logger.getLogger("Prism").log(java.util.logging.Level.WARNING,
+                        "PRISM_EFFECTS_WARNING the particle emitter cycle failed", e);
+            }
+        }
+    }
+
+    private void runCycle() {
         long now = cycle.incrementAndGet();
         dirty.forEach((world, chunks) -> {
             for (var it = chunks.iterator(); it.hasNext();) {
@@ -278,6 +293,15 @@ final class BlockEmitters implements Listener {
             }
         }
         return total;
+    }
+
+    /** Why the chunk of {@code block} has the emitters it has: for the self test's failure line. */
+    String describe(Block block) {
+        BlockIndex.Loaded mirror = index.loaded(block.getWorld(), block.getX() >> 4, block.getZ() >> 4);
+        Set<Long> pending = dirty.get(block.getWorld().getUID());
+        return "mirror=" + (mirror != null) + " blocks=" + (mirror == null ? -1 : mirror.blocks.size())
+                + " anyEmitting=" + anyEmitting + " cycles=" + cycle.get() + " dirty="
+                + (pending == null ? 0 : pending.size()) + " failure=" + lastFailure;
     }
 
     /** Player tasks the clock has scheduled since start. */

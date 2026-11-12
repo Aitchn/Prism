@@ -117,7 +117,7 @@ final class EffectsSelfTest implements Listener {
         long tasks = emitters.tasksScheduled();
         if (idle == 0 || near == 0 || far != 0 || noPlayers && tasks != 0 || !emitters.running()) {
             fail("idle emitters=" + idle + " near=" + near + " far=" + far + " tasks=" + tasks + " noPlayers="
-                    + noPlayers + " running=" + emitters.running());
+                    + noPlayers + " running=" + emitters.running() + " " + emitters.describe(block));
             blocks.remove(block, false);
             return;
         }
