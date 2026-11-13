@@ -11,6 +11,7 @@ import com.aitchn.prism.core.mod.ModManifest;
 import com.aitchn.prism.core.mod.ModReport;
 import java.io.IOException;
 import java.util.Locale;
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginDisableEvent;
@@ -64,7 +65,11 @@ final class ModLifecycle implements ModRegistrar, Listener {
     public void onDisable(PluginDisableEvent event) {
         if (manager.isActive(event.getPlugin().getName())) {
             manager.deactivate(event.getPlugin().getName());
-            onContentChanged.run();
+            // While the server stops every mod unloads; rebuilding then would overwrite the packs and the
+            // Geyser mappings with an empty set that the next start has to rebuild again.
+            if (!Bukkit.isStopping()) {
+                onContentChanged.run();
+            }
         }
     }
 
